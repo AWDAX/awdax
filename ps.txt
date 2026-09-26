@@ -1,0 +1,26 @@
+PROBLEM STATEMENT 01
+AI-Powered Data Intelligence Platform
+
+Businesses often need to collect specific information from the web, such as job openings, sales leads, sponsor opportunities, market data, or other business-relevant information. However, building separate scrapers and workflows for every requirement is time-consuming, difficult to maintain, and not scalable.
+
+The challenge is to build an AI-powered data intelligence platform where users can describe what they need in plain English. The AI should understand the request, dynamically create and execute an appropriate data-collection workflow, gather information from permitted sources, process and validate the data, and present the results through a centralized dashboard.
+
+The platform should also allow users to manage collection tasks, monitor their progress, explore results, inspect sources, revisit previous workflows, and export datasets.
+
+GOAL
+
+Build a prompt-based AI Data Intelligence Platform that can:
+
+  • Understand data requirements from natural-language prompts.
+  • Dynamically design and execute data-collection workflows.
+  • Collect and process information from multiple permitted sources.
+  • Provide source-backed, traceable data.
+  • Clean, structure, validate, and deduplicate results.
+  • Present results through an interactive dashboard.
+  • Allow users to search, filter, and export collected data.
+  • Allow users to monitor and manage collection tasks.
+  • Maintain workflow and dataset history.
+
+EXPECTED OUTCOME
+
+A complete product that turns a natural-language business requirement into a clean, structured, source-backed dataset with a managed end-to-end workflow.

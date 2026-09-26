@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWDAX</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+    <div id="app" class="shell">
+        <aside id="sidebar" class="sidebar" aria-label="Tracks"></aside>
+        <div class="chat-panel">
+            <main class="main">
+                <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+                <section id="live-status" class="live-status"></section>
+                <section id="dashboard" class="dashboard"></section>
+            </main>
+            <form id="chat-form" class="chat-form" autocomplete="off">
+                <input
+                    id="chat-input"
+                    class="chat-input"
+                    type="text"
+                    placeholder="Track Indian EV sales every month…"
+                    aria-label="Message"
+                />
+                <button type="submit" class="chat-send" aria-label="Send">↑</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
