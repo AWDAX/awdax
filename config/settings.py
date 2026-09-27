@@ -17,7 +17,7 @@ class Settings:
     redis_url: str | None = os.getenv("REDIS_URL")
     openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
-    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     min_validated_sources: int = int(os.getenv("MIN_VALIDATED_SOURCES", "3"))
     max_sources_to_inspect: int = int(os.getenv("MAX_SOURCES_TO_INSPECT", "10"))
     max_discovery_search_rounds: int = int(os.getenv("MAX_DISCOVERY_SEARCH_ROUNDS", "8"))
