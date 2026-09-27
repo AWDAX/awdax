@@ -20,21 +20,15 @@ from inspector.browser import browser_session
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Search engine configurations
-# ---------------------------------------------------------------------------
 
+# Search engine configurations
 _DDG_URL  = "https://html.duckduckgo.com/html/"
 _BING_URL = "https://www.bing.com/search"
 
 _DDG_SELECTORS  = "a.result__a, a.result-link"
 _BING_SELECTORS = "li.b_algo h2 a"
 
-
-# ---------------------------------------------------------------------------
 # Query variant builder
-# ---------------------------------------------------------------------------
-
 def search_query_variants(user_goal: str, round_idx: int) -> list[str]:
     goal = user_goal.strip()
     base = [
@@ -59,10 +53,7 @@ def search_query_variants(user_goal: str, round_idx: int) -> list[str]:
     return ordered[start : start + 2] or ordered[-2:]
 
 
-# ---------------------------------------------------------------------------
 # URL unwrappers — each engine wraps real links differently
-# ---------------------------------------------------------------------------
-
 def _unwrap_ddg_url(href: str) -> str | None:
     """Resolve DuckDuckGo redirect links (uddg= param) to the real URL."""
     if not href:
@@ -101,10 +92,8 @@ def _unwrap_bing_url(href: str) -> str | None:
     return None
 
 
-# ---------------------------------------------------------------------------
-# Per-engine page scrapers
-# ---------------------------------------------------------------------------
 
+# Per-engine page scrapers
 def _scrape_ddg(page: Page, query: str, *, max_results: int = 10) -> list[SearchHit]:
     """Attempt a single query on DuckDuckGo HTML. Raises on network failure."""
     hits: list[SearchHit] = []
@@ -147,7 +136,7 @@ def _search_on_page(page: Page, query: str, *, max_results: int = 10) -> list[Se
       - DDG raises any network/timeout exception, OR
       - DDG returns zero results (blocked silently).
     """
-    # --- Primary: DuckDuckGo ---
+    # Primary: DuckDuckGo
     try:
         hits = _scrape_ddg(page, query, max_results=max_results)
         if hits:
@@ -156,7 +145,7 @@ def _search_on_page(page: Page, query: str, *, max_results: int = 10) -> list[Se
     except Exception as exc:
         logger.warning("DDG failed for %r (%s) — falling back to Bing.", query[:80], exc)
 
-    # --- Fallback: Bing ---
+    # Fallback: Bing
     try:
         return _scrape_bing(page, query, max_results=max_results)
     except Exception as exc:
@@ -164,10 +153,7 @@ def _search_on_page(page: Page, query: str, *, max_results: int = 10) -> list[Se
         return []
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
-
 def browser_search_queries(queries: list[str], *, max_results_per_query: int = 8) -> list[SearchHit]:
     """Search all queries and return deduplicated hits."""
     if not queries:
