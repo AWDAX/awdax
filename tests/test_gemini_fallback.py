@@ -32,12 +32,12 @@ class _Client:
 
 
 def _run(outcomes: dict[str, object]):
-    """generate_json against a fake client, trying the models in the order given."""
+    """The Gemini step against a fake client, trying the models in the order given (no NVIDIA, no network)."""
     client = _Client(outcomes)
     original = gemini._client, gemini._candidate_models
     gemini._client, gemini._candidate_models = (lambda: client), (lambda: list(outcomes))
     try:
-        return gemini.generate_json("prompt", _Out), client.models.calls
+        return gemini._gemini_json("prompt", _Out, 0.4), client.models.calls
     except gemini.GeminiError as exc:
         return exc, client.models.calls
     finally:
