@@ -11,6 +11,10 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
+def _csv(name: str, default: str) -> tuple[str, ...]:
+    return tuple(m.strip() for m in os.getenv(name, default).split(",") if m.strip())
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./awdax.db")
@@ -19,13 +23,18 @@ class Settings:
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     # Tried in order when gemini_model is overloaded, out of quota or retired. Free-tier models only.
-    gemini_fallback_models: tuple[str, ...] = tuple(
-        m.strip()
-        for m in os.getenv(
-            "GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-3-flash-preview,gemini-3.1-flash-lite"
-        ).split(",")
-        if m.strip()
+    gemini_fallback_models: tuple[str, ...] = _csv(
+        "GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-3-flash-preview,gemini-3.1-flash-lite"
     )
+    # NVIDIA's hosted models (build.nvidia.com) are tried before Gemini when NVIDIA_API_KEY is set.
+    # Free developer access is rate-limited; when it says no, calls fall through to Gemini.
+    nvidia_api_key: str | None = os.getenv("NVIDIA_API_KEY")
+    nvidia_base_url: str = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1").rstrip("/")
+    nvidia_models: tuple[str, ...] = _csv(
+        "NVIDIA_MODELS", "nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-super-120b-a12b"
+    )
+    nvidia_vision_model: str = os.getenv("NVIDIA_VISION_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning")
+    nvidia_timeout_seconds: float = float(os.getenv("NVIDIA_TIMEOUT_SECONDS", "90"))
     min_validated_sources: int = int(os.getenv("MIN_VALIDATED_SOURCES", "3"))
     max_sources_to_inspect: int = int(os.getenv("MAX_SOURCES_TO_INSPECT", "10"))
     max_discovery_search_rounds: int = int(os.getenv("MAX_DISCOVERY_SEARCH_ROUNDS", "8"))

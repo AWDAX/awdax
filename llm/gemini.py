@@ -1,4 +1,4 @@
-"""Gemini client (Flash Lite) with JSON structured output."""
+"""Structured JSON for the agents: NVIDIA's hosted models first (when NVIDIA_API_KEY is set), then Gemini."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 from config.settings import settings
+from llm import nvidia
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -41,7 +42,25 @@ def _client() -> genai.Client:
     return genai.Client(api_key=settings.gemini_api_key)
 
 
+_nvidia_key_rejected = False
+
+
 def generate_json(prompt: str, schema: type[T], *, temperature: float = 0.4) -> T:
+    """JSON from the first model that answers: NVIDIA's models when NVIDIA_API_KEY is set, then Gemini's."""
+    global _nvidia_key_rejected
+    if settings.nvidia_api_key and not _nvidia_key_rejected:
+        for model in settings.nvidia_models:
+            try:
+                return nvidia.generate_json(model, prompt, schema, temperature=temperature)
+            except nvidia.NvidiaError as exc:
+                logger.warning("%s — trying the next model.", str(exc)[:200])
+                if exc.key_rejected:
+                    _nvidia_key_rejected = True  # a refused key stays refused until restart
+                    break
+    return _gemini_json(prompt, schema, temperature)
+
+
+def _gemini_json(prompt: str, schema: type[T], temperature: float) -> T:
     """Call Gemini and parse the response into a Pydantic model."""
     client = _client()
     config = types.GenerateContentConfig(
