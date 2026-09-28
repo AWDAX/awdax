@@ -32,8 +32,12 @@ class Settings:
     nvidia_base_url: str = (
         os.getenv("NVIDIA_BASE_URL") or os.getenv("NVIDIA_API_BASE") or "https://integrate.api.nvidia.com/v1"
     ).rstrip("/")
+    # Ordered by what answered on 29 Sep: Ultra gave the best plans; the others were intermittently
+    # overloaded (503) or slow. nemotron-nano-3-30b-a3b and llama-3.1-nemotron-70b are listed but 404.
     nvidia_models: tuple[str, ...] = _csv(
-        "NVIDIA_MODELS", "nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-super-120b-a12b"
+        "NVIDIA_MODELS",
+        "nvidia/nemotron-3-ultra-550b-a55b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning,"
+        "nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-super-120b-a12b",
     )
     nvidia_vision_model: str = os.getenv("NVIDIA_VISION_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning")
     nvidia_timeout_seconds: float = float(os.getenv("NVIDIA_TIMEOUT_SECONDS", "90"))
