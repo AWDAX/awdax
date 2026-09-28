@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 class DorkPlan(BaseModel):
     intent_summary: str = Field(description="What data the user wants, in one sentence.")
     dork_queries: list[str] = Field(
-        description="Google-style dork queries to find authoritative data sources.",
+        description="Short keyword search queries, run on Bing, that find pages publishing this data.",
         min_length=1,
         max_length=8,
     )

@@ -1,4 +1,4 @@
-"""Collect candidate URLs for headless inspection (no DuckDuckGo / search APIs)."""
+"""Collect candidate URLs for headless inspection from headless browser search."""
 
 from __future__ import annotations
 
@@ -19,12 +19,12 @@ def gather_candidates(
     """
     Return URLs for the headless browser to open.
 
-    ``dork_offset`` / ``dork_batch`` are kept for pipeline compatibility; dork strings
-    from the planner are reference strategies only (not sent to a search engine).
+    Each attempt searches the next ``dork_batch`` planner queries from ``dork_offset``, skipping any
+    already tried. When the plan runs out, fixed variants of the goal are searched instead.
     """
-    _ = tried_queries, dork_batch
     round_idx = expansion_round if expansion_round is not None else (dork_offset // max(dork_batch, 1))
-    hits = gather_url_candidates(user_goal, plan, skip_urls=skip_urls, expansion_round=round_idx)
-    new_offset = dork_offset + dork_batch
     strategies = plan.dork_queries[dork_offset : dork_offset + dork_batch]
+    fresh = [q for q in strategies if q not in tried_queries]
+    hits = gather_url_candidates(user_goal, plan, skip_urls=skip_urls, expansion_round=round_idx, queries=fresh)
+    new_offset = dork_offset + dork_batch
     return hits, new_offset, strategies

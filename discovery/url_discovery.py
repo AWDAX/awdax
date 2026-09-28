@@ -18,16 +18,19 @@ def gather_url_candidates(
     *,
     skip_urls: set[str],
     expansion_round: int,
+    queries: list[str] | None = None,
 ) -> list[SearchHit]:
     """
     URLs come from **headless search results**, not from LLM-invented links.
 
-    ``plan.seed_urls`` / dork strings are not used as URLs — only logged as strategies.
+    ``queries`` are the planner's search queries for this attempt (``plan.dork_queries``, short keyword
+    queries written for the goal). Once they run out, fixed variants of the goal are searched instead.
+    ``plan.seed_urls`` are never opened as URLs.
     """
     _ = plan  # intent only; no AI URL list
     skip_norm = {u.rstrip("/") for u in skip_urls}
 
-    queries = search_query_variants(user_goal, expansion_round)
+    queries = [q.strip() for q in (queries or []) if q.strip()] or search_query_variants(user_goal, expansion_round)
     hits = browser_search_queries(queries, max_results_per_query=8)
 
     if len(hits) < 5 and expansion_round == 0:

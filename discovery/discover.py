@@ -24,8 +24,11 @@ If the goal is a **product/catalog listing** (e.g. cars with prices, SKUs, model
 If the goal is **statistics/time series** (sales, registrations, monthly trends):
 - Prefer government open data, SIAM, regulator statistics, filetype:csv/pdf/xlsx
 
-Produce 4–7 **discovery strategy** strings (Google-dork style hints for humans/logs — the bot does NOT run a search engine).
-Optional **seed_urls** for logging only — runtime URL discovery uses headless search, not this list.
+Produce 4–7 **search queries**. They are run as-is on Bing, in order, so:
+- Write short keyword queries (3–8 words), never the user's sentence. Drop filler words such as "track", "how many", "show me".
+- Name the key entities, the metric and the period, e.g. "Mahindra electric SUV price range", "Tata EV ex-showroom price list".
+- site: and filetype: work; other Google-only operators do not.
+Optional **seed_urls** for logging only — runtime URL discovery uses the search results, not this list.
 Avoid Wikipedia, encyclopedias, and generic electricity utility sites."""
 
 
