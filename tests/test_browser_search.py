@@ -111,3 +111,16 @@ def test_gather_searches_the_planned_queries_then_falls_back():
     assert searched[0] == ["q1", "q3"]  # q2 was already tried
     assert searched[1] == ["q4"]
     assert searched[2] == bs.search_query_variants(GOAL, 1)  # plan used up
+
+
+def test_curated_seeds_join_the_first_round_even_when_search_finds_plenty():
+    many = [SearchHit(url=f"https://example{i}.com/", title="x", snippet="", from_dork="q") for i in range(8)]
+    original = ud.browser_search_queries
+    ud.browser_search_queries = lambda qs, **_kw: list(many)
+    try:
+        plan = DorkPlan(intent_summary="EV prices", dork_queries=["q"])
+        hits = ud.gather_url_candidates("Electric cars in India with price", plan, skip_urls=set(), expansion_round=0, queries=["q"])
+    finally:
+        ud.browser_search_queries = original
+    assert hits[0].url == "https://www.cardekho.com/electric-cars"
+    assert len(hits) == 8 + 5

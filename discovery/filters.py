@@ -46,6 +46,9 @@ _EV_GOAL_RE = re.compile(
 )
 
 
+_SIGNAL_WORDS = re.compile(r"\b(price|ex-showroom|electric|model|variant)|\b(evs?)\b")
+
+
 def _host(url: str) -> str:
     return urlparse(url).netloc.lower().removeprefix("www.")
 
@@ -80,15 +83,16 @@ def score_hit(user_goal: str, hit: SearchHit) -> int:
     if is_blocked_url(hit.url):
         return -100
     score = 0
-    blob = f"{hit.title} {hit.snippet} {hit.url}".lower()
+    # A search hit's snippet is just the query that found it, so it says nothing about the page.
+    text = hit.title if hit.from_dork else f"{hit.title} {hit.snippet}"
+    blob = f"{text} {hit.url}".lower()
     goal = user_goal.lower()
 
     if is_automotive_catalog_url(hit.url):
         score += 12
 
-    for word in ("price", "ex-showroom", "electric", "ev", "model", "variant"):
-        if word in blob:
-            score += 2
+    signals = {m.group(1) or "ev" for m in _SIGNAL_WORDS.finditer(blob)}
+    score += 2 * len(signals)
 
     if _EV_GOAL_RE.search(goal):
         if any(s in _host(hit.url) for s in _AUTOMOTIVE_HOST_SUFFIXES):

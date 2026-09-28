@@ -33,13 +33,15 @@ def gather_url_candidates(
     queries = [q.strip() for q in (queries or []) if q.strip()] or search_query_variants(user_goal, expansion_round)
     hits = browser_search_queries(queries, max_results_per_query=8)
 
-    if len(hits) < 5 and expansion_round == 0:
-        backup = hits_from_urls(
+    if expansion_round == 0:
+        # Curated listing pages for the goal's topic always join the first round: search can
+        # return plenty of hits and still miss them.
+        seeds = hits_from_urls(
             topic_seed_urls(user_goal),
             title="Topic seed (curated)",
-            snippet="Fallback listing URL — not from LLM.",
+            snippet="Curated listing URL — not from LLM.",
         )
-        hits = dedupe_hits(hits + backup)
+        hits = dedupe_hits(seeds + hits)
 
     hits = dedupe_hits(hits)
     return [h for h in hits if h.url.rstrip("/") not in skip_norm]

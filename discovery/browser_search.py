@@ -134,7 +134,8 @@ def _scrape_bing(page: Page, query: str, *, max_results: int = 10) -> list[Searc
                 return []
             return _read_bing_hits(page, query, max_results)
         except PlaywrightError as exc:
-            if attempt == 1 and "Execution context was destroyed" in str(exc):
+            # Both mean another navigation cut in (Bing redirecting); the retry usually lands.
+            if attempt == 1 and any(s in str(exc) for s in ("Execution context was destroyed", "net::ERR_ABORTED")):
                 continue
             raise
     return []
