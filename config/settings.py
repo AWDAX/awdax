@@ -18,6 +18,14 @@ class Settings:
     openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    # Tried in order when gemini_model is overloaded, out of quota or retired. Free-tier models only.
+    gemini_fallback_models: tuple[str, ...] = tuple(
+        m.strip()
+        for m in os.getenv(
+            "GEMINI_FALLBACK_MODELS", "gemini-3.5-flash-lite,gemini-3-flash-preview,gemini-3.1-flash-lite"
+        ).split(",")
+        if m.strip()
+    )
     min_validated_sources: int = int(os.getenv("MIN_VALIDATED_SOURCES", "3"))
     max_sources_to_inspect: int = int(os.getenv("MAX_SOURCES_TO_INSPECT", "10"))
     max_discovery_search_rounds: int = int(os.getenv("MAX_DISCOVERY_SEARCH_ROUNDS", "8"))
