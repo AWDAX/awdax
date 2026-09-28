@@ -29,7 +29,9 @@ class Settings:
     # NVIDIA's hosted models (build.nvidia.com) are tried before Gemini when NVIDIA_API_KEY is set.
     # Free developer access is rate-limited; when it says no, calls fall through to Gemini.
     nvidia_api_key: str | None = os.getenv("NVIDIA_API_KEY")
-    nvidia_base_url: str = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1").rstrip("/")
+    nvidia_base_url: str = (
+        os.getenv("NVIDIA_BASE_URL") or os.getenv("NVIDIA_API_BASE") or "https://integrate.api.nvidia.com/v1"
+    ).rstrip("/")
     nvidia_models: tuple[str, ...] = _csv(
         "NVIDIA_MODELS", "nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-super-120b-a12b"
     )
