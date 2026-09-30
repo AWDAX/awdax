@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+__MACOSX/
+PROJECT_KEYS.md
+**/PROJECT_KEYS.md
+Frontend/node_modules/
+Frontend/dist/
+

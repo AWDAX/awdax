@@ -1,0 +1,87 @@
+import { useSyncExternalStore } from 'react'
+
+// Legacy: older builds stored web chat renames only in this browser. New renames go to PATCH /api/instances/:id.
+// Uploaded-file chats are renamed in IndexedDB (renameLocal in app/files/localProjects.ts).
+const KEY = 'awdax.chat.titles'
+const EMPTY: Record<string, string> = {}
+const listeners = new Set<() => void>()
+let cache: Record<string, string> | null = null
+
+function read(): Record<string, string> {
+  if (cache) return cache
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? '{}')
+    cache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, string>) : {}
+  } catch {
+    cache = {}
+  }
+  return cache
+}
+
+function write(next: Record<string, string>) {
+  cache = next
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next))
+  } catch {
+    // storage blocked: the new name lasts until the page reloads
+  }
+  listeners.forEach((l) => l())
+}
+
+/** Renames a web chat in this browser. An empty title goes back to the backend's own. */
+export function setChatTitle(id: string, title: string) {
+  const next = { ...read() }
+  const t = title.trim()
+  if (t) next[id] = t
+  else delete next[id]
+  write(next)
+}
+
+/** One-time migration: push any browser-only titles to the backend, then drop local overrides. */
+export async function migrateLocalTitlesToBackend(
+  save: (id: string, title: string) => Promise<void>,
+): Promise<void> {
+  const local = { ...read() }
+  for (const [id, title] of Object.entries(local)) {
+    const t = title.trim()
+    if (!t) {
+      forgetChatTitle(id)
+      continue
+    }
+    try {
+      await save(id, t)
+    } catch {
+      // keep local title until the next session if the backend was down
+      continue
+    }
+    forgetChatTitle(id)
+  }
+}
+
+/** Drops a deleted chat's name. */
+export function forgetChatTitle(id: string) {
+  if (!(id in read())) return
+  const next = { ...read() }
+  delete next[id]
+  write(next)
+}
+
+const subscribe = (onChange: () => void) => {
+  listeners.add(onChange)
+  // Another tab renamed a chat.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key !== KEY) return
+    cache = null
+    onChange()
+  }
+  window.addEventListener('storage', onStorage)
+  return () => {
+    listeners.delete(onChange)
+    window.removeEventListener('storage', onStorage)
+  }
+}
+
+/** Every web chat renamed in this browser: id → name. */
+export function useChatTitles(): Record<string, string> {
+  return useSyncExternalStore(subscribe, read, () => EMPTY)
+}

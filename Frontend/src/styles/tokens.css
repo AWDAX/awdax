@@ -1,0 +1,135 @@
+/* Every color, type size, radius and easing comes from here. No raw hex in components.
+   docs/DESIGN_SYSTEM.md explains each token.
+
+   "The web, highlighted": ink on true-white paper. Color appears only as highlighter fills,
+   and each fill has one meaning everywhere:
+     signal (yellow)   = AWDAX: the promise, primary actions, "just found"
+     m-structured      = structured data (JSON-LD, OpenGraph, RSS)
+     m-content         = page content (plain HTML text)
+     m-rendered        = rendered page (headless browser)
+     m-ai              = AI reading (model extraction, validated)
+     blocked (red pen) = skipped or rejected, drawn as a line-through
+   Text on a highlighter is always ink. The *-line variants are for strokes, icons and text on white.
+
+   References (Awwwards 2026 winners, nothing copied): AI in Design Report for ink-on-paper charts,
+   Why Zero for saturated color used sparingly, Squarespace Foundations for heavy ink rules. */
+@theme {
+  --color-*: initial;
+
+  --color-canvas: #ffffff;
+  --color-surface: #ffffff;
+  --color-sunken: #f4f4f1;
+  --color-line: #e3e3de;
+  --color-line-strong: #b9b9b2;
+  --color-ink: #0b0b0c;
+  --color-ink-2: #3d3d3a;
+  --color-ink-3: #6b6b66;
+  --color-on-ink: #ffffff;
+
+  --color-signal: #ffe92e;
+  --color-signal-hover: #ffe100;
+  --color-signal-soft: #fff6a8;
+  --color-on-signal: #0b0b0c;
+
+  --color-m-structured: #7dfc8f;
+  --color-m-structured-line: #0b8a3a;
+  --color-m-content: #8fd0ff;
+  --color-m-content-line: #0f62d1;
+  --color-m-rendered: #ffbd6b;
+  --color-m-rendered-line: #b35400;
+  --color-m-ai: #ff9ce0;
+  --color-m-ai-line: #c0168c;
+
+  --color-blocked: #e0251b;
+
+  /* Charts: ink on paper by default. One series is ink with a yellow wash under lines. Ordered
+     levels (tiers) take a grey ramp, light to dark. Never a categorical rainbow inside one chart:
+     the method hues already have meanings. A tile can take one of the chart colours below instead
+     of ink (owner, 2026-09-28); its ramp and wash are then mixed from that colour
+     (src/app/dashboard/chartColor.ts). */
+  --color-series: #0b0b0c;
+  --color-series-wash: #ffe92e80;
+  --color-ramp-1: #d6d6d0;
+  --color-ramp-2: #a3a39c;
+  --color-ramp-3: #6b6b66;
+  --color-ramp-4: #3d3d3a;
+  --color-ramp-5: #0b0b0c;
+  --color-other: #e3e3de;
+  /* Picked per tile. Each is dark enough (at least 4.5:1 on white) for thin lines and small marks. */
+  --color-chart-ink: #0b0b0c;
+  --color-chart-blue: #1f5fd6;
+  --color-chart-teal: #0f766e;
+  --color-chart-green: #2e7d32;
+  --color-chart-orange: #c2410c;
+  --color-chart-purple: #6d28d9;
+  --color-chart-pink: #be185d;
+
+  --font-display: "Mona Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Mona Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Set at 125% width (font-wide). Capped so "Describe the data." holds one line at 1024px and up. */
+  --text-display: clamp(2.5rem, 6vw, 5.5rem);
+  --text-display--line-height: 0.94;
+  --text-display--letter-spacing: -0.03em;
+  --text-h1: clamp(2.25rem, 4.2vw, 3.75rem);
+  --text-h1--line-height: 1.02;
+  --text-h1--letter-spacing: -0.03em;
+  /* Section headlines (wide 800): two lines in eight columns, so a section fits one laptop screen. */
+  --text-section: clamp(2rem, 3.4vw, 3.25rem);
+  --text-section--line-height: 1.02;
+  --text-section--letter-spacing: -0.03em;
+  --text-h2: clamp(1.75rem, 2.6vw, 2.5rem);
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h3: 1.25rem;
+  --text-h3--line-height: 1.25;
+  --text-h3--letter-spacing: -0.01em;
+  --text-lead: clamp(1.125rem, 1.4vw, 1.3125rem);
+  --text-lead--line-height: 1.5;
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.45;
+  --text-micro: 0.75rem;
+  --text-micro--line-height: 1.35;
+  --text-micro--letter-spacing: 0.06em;
+
+  --radius-control: 0.25rem;
+  --radius-panel: 0.375rem;
+  --shadow-float: none;
+  --container-page: 76rem;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* The motion verbs (highlight, strike, trace) and the step band: a hand drawing a stroke,
+     easing in and out. JS twin: EASE_DRAW in src/ui/motion.ts. */
+  --ease-draw: cubic-bezier(0.65, 0, 0.35, 1);
+  /* Everything that arrives or moves: eases out without the expo snap. JS twin: EASE_SOFT. */
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-in-quart: cubic-bezier(0.5, 0, 0.75, 0);
+
+  /* Text cursor: a hard blink, like a real one. */
+  --animate-caret: caret 1.05s steps(1) infinite;
+  @keyframes caret {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  /* A row arriving: fades up, holds a yellow "just found" tint so the eye finds it, then settles. */
+  --animate-row-in: row-in 1.8s var(--ease-soft) both;
+  @keyframes row-in {
+    0% {
+      opacity: 0;
+      translate: 0 8px;
+      background-color: var(--color-signal-soft);
+    }
+    30% {
+      opacity: 1;
+      translate: 0 0;
+      background-color: var(--color-signal-soft);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+}

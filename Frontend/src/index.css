@@ -1,0 +1,109 @@
+@import "tailwindcss";
+@import "./styles/tokens.css";
+
+/* Headlines and the wordmark run Mona Sans at its widest. */
+@utility font-wide {
+  font-stretch: 125%;
+}
+
+/* The highlighter. Always `mark` + exactly one of mark-on / mark-off + one color.
+   mark-off → mark-on sweeps the fill in from the left. Hover: `mark-off group-hover:mark-on`.
+   docs/DESIGN_SYSTEM.md, "The highlighter utility". */
+@utility mark {
+  background-image: linear-gradient(var(--mark-color), var(--mark-color));
+  background-repeat: no-repeat;
+  background-position: 0 70%;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding-inline: 0.12em;
+  margin-inline: -0.12em;
+  transition: background-size 900ms var(--ease-draw);
+}
+@utility mark-off {
+  background-size: 0% 78%;
+}
+@utility mark-on {
+  background-size: 100% 78%;
+}
+@utility mark-yellow {
+  --mark-color: var(--color-signal);
+}
+@utility mark-structured {
+  --mark-color: var(--color-m-structured);
+}
+@utility mark-content {
+  --mark-color: var(--color-m-content);
+}
+@utility mark-rendered {
+  --mark-color: var(--color-m-rendered);
+}
+@utility mark-ai {
+  --mark-color: var(--color-m-ai);
+}
+
+/* The red pen: skipped or rejected. Always `strike` + one of strike-on / strike-off.
+   strike-off → strike-on draws the line from the left. */
+@utility strike {
+  background-image: linear-gradient(var(--color-blocked), var(--color-blocked));
+  background-repeat: no-repeat;
+  background-position: 0 58%;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-size 800ms var(--ease-draw);
+}
+@utility strike-off {
+  background-size: 0% 2px;
+}
+@utility strike-on {
+  background-size: 100% 2px;
+}
+
+/* Scrolls, but shows no scrollbar: long bar lists and tables inside a chart tile (wheel, touch and keys
+   still scroll them). */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    min-height: 100dvh;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: var(--color-signal);
+    color: var(--color-on-signal);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    /* A staggered highlight would otherwise pop in late; with reduced motion everything is there at once. */
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

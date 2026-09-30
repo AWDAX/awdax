@@ -1,0 +1,9 @@
+flask
+requests
+certifi
+google-generativeai
+selenium
+pymupdf
+pdfminer.six
+flask-sock
+simple-websocket

@@ -1,0 +1,132 @@
+import { useId, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
+import { m } from 'motion/react'
+import { ChevronIcon } from './appIcons.tsx'
+import { CheckIcon } from './icons.tsx'
+import { EASE_SOFT } from './motion.ts'
+import { Popover } from './Popover.tsx'
+
+export type SelectOption<T extends string> = { value: T; label: string }
+
+type Props<T extends string> = {
+  value: T
+  options: readonly SelectOption<T>[]
+  onChange: (value: T) => void
+  /** Accessible name, e.g. "Sort projects". */
+  label: string
+  className?: string
+}
+
+/**
+ * A single-choice dropdown in the design system (the native <select> list can't be styled). It opens in a
+ * Popover, marks the current choice with a tick, and works like a native one from the keyboard: arrows, Home,
+ * End, Enter or Space to pick, Escape or Tab to close. Pattern copied from TileMenu (Popover + focus on open).
+ */
+export function Select<T extends string>({ value, options, onChange, label, className = '' }: Props<T>) {
+  const [open, setOpen] = useState(false)
+  const [active, setActive] = useState(0)
+  const [width, setWidth] = useState(0)
+  const button = useRef<HTMLButtonElement>(null)
+  const list = useRef<HTMLDivElement>(null)
+  const id = useId()
+  const at = Math.max(0, options.findIndex((o) => o.value === value))
+
+  const show = () => {
+    setActive(at)
+    setWidth(button.current?.offsetWidth ?? 0)
+    setOpen(true)
+    // A frame later: the popover is measured invisibly first, and a hidden element can't take focus.
+    requestAnimationFrame(() => list.current?.focus())
+  }
+  const hide = (refocus: boolean) => {
+    setOpen(false)
+    if (refocus) button.current?.focus()
+  }
+  const pick = (i: number) => {
+    if (options[i].value !== value) onChange(options[i].value)
+    hide(true)
+  }
+
+  const onButtonKey = (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
+      e.preventDefault()
+      show()
+    }
+  }
+  const onListKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const last = options.length - 1
+    const moves: Record<string, number> = { ArrowDown: Math.min(last, active + 1), ArrowUp: Math.max(0, active - 1), Home: 0, End: last }
+    if (e.key in moves) {
+      e.preventDefault()
+      setActive(moves[e.key])
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      pick(active)
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      hide(true)
+    } else if (e.key === 'Tab') {
+      hide(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`${label}: ${options[at]?.label ?? ''}`}
+        onClick={() => (open ? hide(false) : show())}
+        onKeyDown={onButtonKey}
+        className={
+          'group inline-flex h-10 items-center justify-between gap-3 rounded-control border-2 bg-surface pr-2.5 pl-3 text-small font-medium ' +
+          'transition-[border-color,background-color] duration-300 ease-soft hover:border-ink focus-visible:border-ink focus-visible:outline-none ' +
+          `${open ? 'border-ink bg-sunken' : 'border-line'} ${className}`
+        }
+      >
+        <span className="truncate">{options[at]?.label}</span>
+        <ChevronIcon className={`shrink-0 text-ink-2 transition-transform duration-300 ease-soft ${open ? '-rotate-90' : 'rotate-90'}`} />
+      </button>
+      <Popover anchor={button} open={open} onClose={() => hide(false)} align="end" className="overflow-hidden">
+        <m.div
+          ref={list}
+          role="listbox"
+          tabIndex={-1}
+          aria-label={label}
+          aria-activedescendant={`${id}-${active}`}
+          onKeyDown={onListKey}
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: EASE_SOFT }}
+          style={{ minWidth: Math.max(176, width) }}
+          className="flex flex-col p-1 outline-none"
+        >
+          {options.map((o, i) => {
+            const selected = o.value === value
+            return (
+              <div
+                key={o.value}
+                id={`${id}-${i}`}
+                role="option"
+                aria-selected={selected}
+                onPointerEnter={() => setActive(i)}
+                onClick={() => pick(i)}
+                className={`flex cursor-pointer items-center justify-between gap-4 rounded-control px-2.5 py-2 text-small transition-colors duration-200 ease-soft ${
+                  i === active ? 'bg-sunken text-ink' : 'text-ink-2'
+                } ${selected ? 'font-semibold text-ink' : ''}`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <span aria-hidden className={`h-4 w-1 rounded-full transition-colors duration-200 ease-soft ${selected ? 'bg-signal' : 'bg-transparent'}`} />
+                  {o.label}
+                </span>
+                {selected && <CheckIcon className="shrink-0" />}
+              </div>
+            )
+          })}
+        </m.div>
+      </Popover>
+    </>
+  )
+}
