@@ -53,6 +53,9 @@ from ui_sessions import (  # noqa: E402
     save_session,
 )
 
+
+from auth_helper import get_user_id
+
 app = Flask(__name__)
 
 from awdax_api import init_awdax_api  # noqa: E402
@@ -72,11 +75,11 @@ def _session_id_from_request(body: dict | None = None) -> str | None:
 def _work_session(body: dict | None = None) -> dict:
     sid = _session_id_from_request(body)
     if sid:
-        found = get_session(sid)
+        found = get_session(sid, get_user_id(request))
         if found:
             return found
         raise ValueError(f"Unknown session: {sid}")
-    return ensure_default_session()
+    return ensure_default_session(get_user_id(request))
 
 
 def _public_session(sess: dict) -> dict:
@@ -128,7 +131,7 @@ def _sessions_with_flags() -> list[dict]:
     live = set(overview.get("live_job_ids") or [])
     running = set(overview.get("running_job_ids") or [])
     out: list[dict] = []
-    for row in list_sessions():
+    for row in list_sessions(get_user_id(request)):
         jid = row.get("job_id")
         out.append(
             {
@@ -159,7 +162,7 @@ def api_sessions_create():
     try:
         body = request.get_json(silent=True) or {}
         title = str(body.get("title") or "New session").strip() or "New session"
-        sess = create_session(title=title)
+        sess = create_session(get_user_id(request), title=title)
         return jsonify({"ok": True, "session": _public_session(sess)})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
@@ -168,7 +171,7 @@ def api_sessions_create():
 @app.get("/api/sessions/<session_id>")
 def api_sessions_get(session_id: str):
     try:
-        sess = get_session(session_id)
+        sess = get_session(session_id, get_user_id(request))
         if not sess:
             return jsonify({"ok": False, "error": "Session not found"}), 404
         jid = sess.get("job_id")
@@ -189,7 +192,7 @@ def api_sessions_get(session_id: str):
 def api_sessions_patch(session_id: str):
     try:
         body = request.get_json(silent=True) or {}
-        sess = get_session(session_id)
+        sess = get_session(session_id, get_user_id(request))
         if not sess:
             return jsonify({"ok": False, "error": "Session not found"}), 404
         if body.get("title"):
@@ -207,7 +210,7 @@ def api_sessions_patch(session_id: str):
         ):
             if key in body:
                 sess[key] = body[key]
-        saved = save_session(sess)
+        saved = save_session(get_user_id(request), sess)
         return jsonify({"ok": True, "session": _public_session(saved)})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
@@ -216,16 +219,16 @@ def api_sessions_patch(session_id: str):
 @app.delete("/api/sessions/<session_id>")
 def api_sessions_delete(session_id: str):
     try:
-        sess = get_session(session_id)
+        sess = get_session(session_id, get_user_id(request))
         if not sess:
             return jsonify({"ok": False, "error": "Session not found"}), 404
         jid = sess.get("job_id")
         if jid and universal_service.is_job_live(jid):
             universal_service.stop_live(jid)
-        if not delete_session(session_id):
+        if not delete_session(session_id, get_user_id(request)):
             return jsonify({"ok": False, "error": "Session not found"}), 404
-        remaining = list_sessions()
-        fallback = get_session(remaining[0]["id"]) if remaining else create_session(title="Session 1")
+        remaining = list_sessions(get_user_id(request))
+        fallback = get_session(remaining[0]["id"], get_user_id(request)) if remaining else create_session(get_user_id(request), title="Session 1")
         return jsonify(
             {
                 "ok": True,
@@ -246,7 +249,7 @@ def api_feed():
     sess = None
     sid = request.args.get("session_id")
     if sid:
-        sess = get_session(sid)
+        sess = get_session(sid, get_user_id(request))
         if not sess:
             return jsonify({"ok": False, "error": "Session not found"}), 404
     job_id = request.args.get("job_id")
@@ -398,7 +401,7 @@ def api_scrape_live_stop():
             sess = _work_session(body)
             if sess.get("job_id") == job_id or not job_id:
                 sess["keep_live"] = False
-                save_session(sess)
+                save_session(get_user_id(request), sess)
         except ValueError:
             pass
         return jsonify({"ok": True, "message": "Live mode stopped", **result})
@@ -437,7 +440,7 @@ def api_prompt():
         sess["plan"] = None
         sess["plans"] = []
         sess["title"] = (intent.topic or text)[:120]
-        sess = save_session(sess)
+        sess = save_session(get_user_id(request), sess)
         job = ScrapeJob(job_id=intent.job_id, intent=intent, status="intent_ready")
         universal_service.save_job(job)
         return jsonify({"ok": True, "intent": intent.to_dict(), "session": _public_session(sess)})
@@ -464,7 +467,7 @@ def api_queries():
         queries = generate_search_queries(intent)
         sess["search_queries"] = [q.to_dict() for q in queries]
         sess["job_id"] = intent.job_id
-        sess = save_session(sess)
+        sess = save_session(get_user_id(request), sess)
         return jsonify(
             {
                 "ok": True,
@@ -506,7 +509,7 @@ def api_table_headers():
 
         sess["table_schema"] = schema
         sess["job_id"] = intent.job_id
-        sess = save_session(sess)
+        sess = save_session(get_user_id(request), sess)
         return jsonify({"ok": True, "table_schema": schema, "session": _public_session(sess)})
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 404
@@ -553,7 +556,7 @@ def api_discover():
         sess["plans"] = [p.to_dict() for p in plans]
         sess["plan"] = plans[0].to_dict() if plans else None
         sess["job_id"] = intent.job_id
-        sess = save_session(sess)
+        sess = save_session(get_user_id(request), sess)
         universal_service.save_job(
             ScrapeJob(job_id=intent.job_id, intent=intent, plans=plans, status="plans_ready")
         )
@@ -601,7 +604,7 @@ def api_inspect():
             plans = inspect_all_sources(intent, sources)
             sess["plans"] = [p.to_dict() for p in plans]
             sess["plan"] = plans[0].to_dict() if plans else None
-            sess = save_session(sess)
+            sess = save_session(get_user_id(request), sess)
             universal_service.save_job(
                 ScrapeJob(job_id=intent.job_id, intent=intent, plans=plans, status="plans_ready")
             )
@@ -631,7 +634,7 @@ def api_inspect():
         plan = inspect_source(intent, source)
         sess["plan"] = plan.to_dict()
         sess["plans"] = [plan.to_dict()]
-        sess = save_session(sess)
+        sess = save_session(get_user_id(request), sess)
         universal_service.save_job(
             ScrapeJob(job_id=intent.job_id, intent=intent, source=source, plan=plan, plans=[plan], status="plan_ready")
         )
@@ -670,7 +673,7 @@ def api_scrape_run():
             sess["plans"] = [plan.to_dict()]
             sess["job_id"] = intent.job_id
             sess["intent"] = intent.to_dict()
-            sess = save_session(sess)
+            sess = save_session(get_user_id(request), sess)
             result = _trigger_regulatory_feed_scrape(max_pages=max_pages)
             return jsonify(
                 {
@@ -701,10 +704,10 @@ def api_scrape_run():
             result = universal_service.trigger_scrape_all(plans, job, max_pages=scrape_max, live=live)
             if live and result.get("started"):
                 sess["keep_live"] = True
-                sess = save_session(sess)
+                sess = save_session(get_user_id(request), sess)
             elif live and not result.get("started"):
                 sess["keep_live"] = False
-                sess = save_session(sess)
+                sess = save_session(get_user_id(request), sess)
             msg = (
                 f"Live scrape watching {len(plans)} sources"
                 if live and result.get("started")
