@@ -40,6 +40,10 @@ def init_ui_sessions() -> None:
             )
             """
         )
+        try:
+            cur.execute("ALTER TABLE ui_sessions ADD COLUMN user_id TEXT DEFAULT 'anonymous'")
+        except sqlite3.OperationalError:
+            pass
         conn.commit()
         cur.close()
         conn.close()
@@ -80,17 +84,18 @@ def _row_to_session(row: sqlite3.Row) -> dict[str, Any]:
         "job_id": row["job_id"] or payload.get("job_id"),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
+        "user_id": row["user_id"] if "user_id" in row.keys() else "anonymous",
     }
     out.update(payload)
     return out
 
 
-def list_sessions() -> list[dict[str, Any]]:
+def list_sessions(user_id: str) -> list[dict[str, Any]]:
     init_ui_sessions()
     with _lock:
         conn = _conn()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM ui_sessions ORDER BY updated_at DESC")
+        cur.execute("SELECT * FROM ui_sessions WHERE user_id=? ORDER BY updated_at DESC", (user_id,))
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -108,12 +113,12 @@ def list_sessions() -> list[dict[str, Any]]:
     ]
 
 
-def get_session(session_id: str) -> dict[str, Any] | None:
+def get_session(session_id: str, user_id: str) -> dict[str, Any] | None:
     init_ui_sessions()
     with _lock:
         conn = _conn()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM ui_sessions WHERE id=?", (session_id,))
+        cur.execute("SELECT * FROM ui_sessions WHERE id=? AND user_id=?", (session_id, user_id))
         row = cur.fetchone()
         cur.close()
         conn.close()
@@ -122,7 +127,7 @@ def get_session(session_id: str) -> dict[str, Any] | None:
     return _row_to_session(row)
 
 
-def create_session(*, title: str = "New session") -> dict[str, Any]:
+def create_session(user_id: str, *, title: str = "New session") -> dict[str, Any]:
     init_ui_sessions()
     sid = uuid.uuid4().hex[:12]
     now = _now()
@@ -131,17 +136,17 @@ def create_session(*, title: str = "New session") -> dict[str, Any]:
         conn = _conn()
         cur = conn.cursor()
         cur.execute(
-            """INSERT INTO ui_sessions (id, title, job_id, payload_json, created_at, updated_at)
-               VALUES (?,?,?,?,?,?)""",
-            (sid, title.strip() or "New session", None, json.dumps(payload), now, now),
+            """INSERT INTO ui_sessions (id, title, job_id, payload_json, created_at, updated_at, user_id)
+               VALUES (?,?,?,?,?,?,?)""",
+            (sid, title.strip() or "Ne| session", None, json.dumps(payload), now, now, user_id),
         )
         conn.commit()
         cur.close()
         conn.close()
-    return get_session(sid) or {"id": sid, "title": title, **_empty_payload()}
+    return get_session(sid, user_id) or {"id": sid, "title": title, "user_id": user_id, **_empty_payload()}
 
 
-def save_session(session: dict[str, Any]) -> dict[str, Any]:
+def save_session(user_id: str, session: dict[str, Any]) -> dict[str, Any]:
     init_ui_sessions()
     sid = str(session.get("id") or "")
     if not sid:
@@ -158,30 +163,30 @@ def save_session(session: dict[str, Any]) -> dict[str, Any]:
         cur = conn.cursor()
         cur.execute(
             """UPDATE ui_sessions SET title=?, job_id=?, payload_json=?, updated_at=?
-               WHERE id=?""",
-            (title, job_id, json.dumps(payload), now, sid),
+               WHERE id=? AND user_id=?""",
+            (title, job_id, json.dumps(payload), now, sid, user_id),
         )
         if cur.rowcount == 0:
             cur.execute(
-                """INSERT INTO ui_sessions (id, title, job_id, payload_json, created_at, updated_at)
-                   VALUES (?,?,?,?,?,?)""",
-                (sid, title, job_id, json.dumps(payload), now, now),
+                """INSERT INTO ui_sessions (id, title, job_id, payload_json, created_at, updated_at, user_id)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (sid, title, job_id, json.dumps(payload), now, now, user_id),
             )
         conn.commit()
         cur.close()
         conn.close()
-    saved = get_session(sid)
+    saved = get_session(sid, user_id)
     if not saved:
         raise RuntimeError("failed to save session")
     return saved
 
 
-def delete_session(session_id: str) -> bool:
+def delete_session(session_id: str, user_id: str) -> bool:
     init_ui_sessions()
     with _lock:
         conn = _conn()
         cur = conn.cursor()
-        cur.execute("DELETE FROM ui_sessions WHERE id=?", (session_id,))
+        cur.execute("DELETE FROM ui_sessions WHERE id=? AND user_id=?", (session_id, user_id))
         deleted = cur.rowcount > 0
         conn.commit()
         cur.close()
@@ -189,10 +194,10 @@ def delete_session(session_id: str) -> bool:
     return deleted
 
 
-def ensure_default_session() -> dict[str, Any]:
-    sessions = list_sessions()
+def ensure_default_session(user_id: str) -> dict[str, Any]:
+    sessions = list_sessions(user_id)
     if sessions:
-        full = get_session(sessions[0]["id"])
+        full = get_session(sessions[0]["id"], user_id)
         if full:
             return full
-    return create_session(title="Session 1")
+    return create_session(user_id, title="Session 1")
