@@ -50,6 +50,13 @@ export default function Layout() {
   const bar = !showSidebar
   const slide = 'duration-500 ease-soft motion-reduce:transition-none'
 
+  const tourId =
+    pathname.startsWith('/app/projects')
+      ? 'projects-tour'
+      : pathname.startsWith('/app/c/') || pathname.startsWith('/app/f/') || pathname.startsWith('/app/sample')
+      ? 'chat-view-tour'
+      : 'new-chat-tour'
+
   return (
     <InstancesProvider>
       <ToastProvider>
@@ -77,7 +84,15 @@ export default function Layout() {
           </div>
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          {/* Top-right tour trigger for New Chat on desktop when the collapsible bar is hidden */}
+          {!bar && pathname === '/app' && (
+            <div className="absolute top-3.5 right-4 z-20">
+              <Tooltip content="Page Tour" placement="bottom-end">
+                <TourTrigger tourId="new-chat-tour" iconOnly label="Page Tour" className="size-9" />
+              </Tooltip>
+            </div>
+          )}
           <div
             inert={!bar}
             className={`relative z-20 flex shrink-0 items-center justify-between gap-1 border-ink px-3 transition-[height,border-bottom-width,opacity] ${slide} ${
@@ -107,7 +122,7 @@ export default function Layout() {
               <span className="ml-2 font-display font-wide text-body font-extrabold">AWDAX</span>
             </div>
             <Tooltip content="Page Tour" placement="bottom-end">
-              <TourTrigger tourId="new-chat-tour" iconOnly label="Page Tour" className="size-9" />
+              <TourTrigger tourId={tourId} iconOnly label="Page Tour" className="size-9" />
             </Tooltip>
           </div>
           {/* Keyed by path so each chat and view starts at the top with fresh state. */}

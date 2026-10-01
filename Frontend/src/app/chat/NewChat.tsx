@@ -4,10 +4,9 @@ import { Link, useNavigate } from 'react-router'
 import { awdax } from '../../api/awdax.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import { notifyInstancesChanged } from '../../api/instancesSync.ts'
-import { ChartIcon, CompassIcon, DatabaseIcon, FileIcon, ReportIcon, SearchIcon, SparkleIcon } from '../../ui/appIcons.tsx'
+import { ChartIcon, DatabaseIcon, FileIcon, ReportIcon, SearchIcon, SparkleIcon } from '../../ui/appIcons.tsx'
 import { PlayIcon } from '../../ui/icons.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
-import { useTour } from '../../ui/tour/tourContext.ts'
 import { useAutoTour } from '../../ui/tour/useAutoTour.ts'
 import { FEATURES } from '../features.ts'
 import { PromptBox } from '../prompt/PromptBox.tsx'
@@ -47,7 +46,6 @@ export default function NewChat() {
   const navigate = useNavigate()
   const { upsert } = useInstances()
   const { toast } = useToast()
-  const { startTour } = useTour()
 
   // Automatically triggers guided tour for first-time visitors once page is mounted
   useAutoTour('new-chat-tour', 900, true)
@@ -99,9 +97,6 @@ export default function NewChat() {
         <Link to="/app/sample" className={stripItem}>
           <PlayIcon /> Watch a sample run
         </Link>
-        <button type="button" onClick={() => startTour('new-chat-tour')} className={`${stripItem} text-signal font-medium hover:text-signal-dark`}>
-          <CompassIcon /> Guided tour
-        </button>
       </div>
       <span data-tour="new-chat-refresh-note" className="hidden font-mono text-micro leading-none tracking-normal text-ink-3 sm:inline">Web requests refresh every 5 min</span>
     </div>
