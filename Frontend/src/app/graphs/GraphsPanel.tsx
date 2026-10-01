@@ -9,6 +9,7 @@ import { ChartPicker } from '../dashboard/ChartPicker.tsx'
 import { draftFor, GALLERY, unavailable } from '../dashboard/chartTypes.ts'
 import { ChartView } from '../dashboard/charts/ChartView.tsx'
 import { graphIdeas, graphProfile } from './graphIdeas.ts'
+import { Select } from '../../ui/Select.tsx'
 
 type Saved = { instanceId: string; signature: string; overrides: Record<string, ChartSpec>; extra: ChartSpec[] }
 const keyFor = (id: string) => `awdax.graphs.v2.${id}`
@@ -112,11 +113,16 @@ export function GraphsPanel({ instanceId, profile: raw, includePartial, onInclud
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <select aria-label={`Chart type for ${chart.title}`} value={chart.type}
-                    onChange={(event) => update(changeType(profile, chart, event.target.value as ChartType))}
-                    className="h-9 rounded-control border-2 border-line bg-surface px-2 text-small">
-                    {GALLERY.map(({ type }) => <option key={type} value={type} disabled={chartTypeReason(profile, chart, type) !== null}>{CHART_LABEL[type]}</option>)}
-                  </select>
+                  <Select
+                    label={`Chart type for ${chart.title}`}
+                    value={chart.type}
+                    onChange={(type) => update(changeType(profile, chart, type))}
+                    options={GALLERY.map(({ type }) => ({
+                      value: type,
+                      label: CHART_LABEL[type],
+                      disabled: chartTypeReason(profile, chart, type) !== null,
+                    }))}
+                  />
                   <Button variant="secondary" onClick={() => setEditing(chart)}>Edit</Button>
                 </div>
               </header>

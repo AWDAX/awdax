@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { TableProfile } from '../../analytics/profile.ts'
 import { CloseIcon, DownloadIcon } from '../../ui/appIcons.tsx'
 import { Button } from '../../ui/Button.tsx'
+import { Select } from '../../ui/Select.tsx'
 import { CopyButton } from '../../ui/micro/CopyButton.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
 import { useFocusTrap } from '../../ui/useFocusTrap.ts'
@@ -118,13 +119,12 @@ export function ExportDialog({ profile, scope, title, onClose }: Props) {
             <>
               <label className="flex flex-col gap-1">
                 <span className="text-micro text-ink-3">Database</span>
-                <select value={dialect} onChange={(e) => setDialect(e.target.value as Dialect)} className="h-9 rounded-control border-2 border-line px-2 focus:border-ink focus:outline-none">
-                  {(Object.keys(DIALECT_LABEL) as Dialect[]).map((d) => (
-                    <option key={d} value={d}>
-                      {DIALECT_LABEL[d]}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  label="Database"
+                  value={dialect}
+                  onChange={(d) => setDialect(d)}
+                  options={(Object.keys(DIALECT_LABEL) as Dialect[]).map((d) => ({ value: d, label: DIALECT_LABEL[d] }))}
+                />
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-micro text-ink-3">Table name</span>
