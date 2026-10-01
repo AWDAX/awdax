@@ -162,3 +162,35 @@ export const LinkIcon = (p: P) => (
     <path d="M7 9a2.5 2.5 0 0 0 3.5 0l2-2A2.5 2.5 0 0 0 9 3.5l-.75.75M9 7a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 7 12.5l.75-.75" />
   </Icon>
 )
+
+export const BracesIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M6.5 3.5c-1 0-1.5.5-1.5 1.5v2c0 1-.5 1-1.5 1 1 0 1.5 0 1.5 1v2c0 1 .5 1.5 1.5 1.5M9.5 3.5c1 0 1.5.5 1.5 1.5v2c0 1 .5 1 1.5 1-1 0-1.5 0-1.5 1v2c0 1-.5 1.5-1.5 1.5" />
+  </Icon>
+)
+
+export const CodeIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M5.5 5L2 8l3.5 3M10.5 5L14 8l-3.5 3M9.5 3l-3 10" />
+  </Icon>
+)
+
+export const ExcelIcon = (p: P) => (
+  <Icon {...p}>
+    <rect x="2.5" y="2.5" width="11" height="11" rx="1" />
+    <path d="M6 6l4 4M10 6l-4 4" />
+  </Icon>
+)
+
+export const ListLinesIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M5 4.5h8M5 8h8M5 11.5h8M2.5 4.5h.01M2.5 8h.01M2.5 11.5h.01" strokeWidth={2.4} />
+  </Icon>
+)
+
+export const MarkdownIcon = (p: P) => (
+  <Icon {...p}>
+    <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" />
+    <path d="M4.5 10.5V6l1.5 2 1.5-2v4.5M11.5 6v4.5M9.5 8.5l2 2 2-2" />
+  </Icon>
+)
