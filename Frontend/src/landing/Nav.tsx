@@ -7,6 +7,7 @@ import { Mark } from '../ui/Mark.tsx'
 import { useSignedInHint } from './useSignedInHint.ts'
 
 import { TourTrigger } from '../ui/tour/TourTrigger.tsx'
+import { Tooltip } from '../ui/Tooltip.tsx'
 
 const links = [
   { href: '#how', label: 'How it works' },
@@ -68,8 +69,15 @@ export function Nav() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <TourTrigger tourId="landing-tour" label="Visual Tour" variant="secondary" className="hidden sm:inline-flex" />
           {signedIn ? <ButtonLink to="/app">Open the app</ButtonLink> : <ButtonLink to="/login">Sign in</ButtonLink>}
+          <Tooltip content="Visual Tour" placement="bottom">
+            <TourTrigger
+              tourId="landing-tour"
+              iconOnly
+              bordered
+              label="Visual Tour"
+            />
+          </Tooltip>
         </div>
       </Container>
     </header>

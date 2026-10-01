@@ -32,6 +32,14 @@ export type TourStep = {
   highlightPadding?: HighlightPadding
   /** Radius for the spotlight cutout corners (default: 6) */
   spotlightRadius?: number
+  /** Landing-tour only: strict explicit position for the card (bypasses auto-fallback) */
+  landingCardPosition?: 'top-right' | 'bottom-right' | 'top-left' | 'bottom-left' | 'inside-bottom-right' | 'inside-top-right' | 'inside-top-center' | 'inside-center' | 'inside-right-center' | 'right-center' | 'bottom-center'
+  /** Landing-tour only: manual nudge from the calculated position */
+  landingCardOffset?: { x?: number; y?: number }
+  /** Custom width for the card in pixels */
+  cardWidth?: number
+  /** Render in compact 16:9 ratio with tighter typography and padding */
+  compact?: boolean
 }
 
 export type TourDefinition = {

@@ -114,14 +114,33 @@ export default function ChatPage() {
   const title = raw && !isUntitled(raw) ? raw : 'Untitled chat'
   const actions = (
     <>
-      <BellToggle pressed={watched} onChange={(on) => setWatched(id, on, live.rowsTotal)} offLabel="Alert me on new rows" onLabel="Alerts on" />
-      {liveEnabled ? (
-        <FuseButton label="Pause tracking" undoLabel="Undo" doneLabel="Paused" icon={<PauseIcon />} undoWindow={3000} onCommit={() => void setLive(false)} />
-      ) : (
-        <Button variant="secondary" onClick={() => void setLive(true)}>
-          <PlayIcon /> Resume tracking
-        </Button>
-      )}
+      <BellToggle
+        pressed={watched}
+        onChange={(on) => setWatched(id, on, live.rowsTotal)}
+        offLabel="Row alerts off"
+        onLabel="Row alerts on"
+        title="Alerts you when background scraper finds new rows"
+      />
+      <Button
+        variant="secondary"
+        onClick={() => void setLive(!liveEnabled)}
+        aria-label={liveEnabled ? 'Pause tracking' : 'Resume tracking'}
+      >
+        <span className="grid text-left">
+          <span
+            className={`col-start-1 row-start-1 inline-flex items-center gap-2 transition-opacity duration-300 ${liveEnabled ? 'opacity-100' : 'opacity-0 invisible'}`}
+            aria-hidden={!liveEnabled}
+          >
+            <PauseIcon /> Pause tracking
+          </span>
+          <span
+            className={`col-start-1 row-start-1 inline-flex items-center gap-2 transition-opacity duration-300 ${!liveEnabled ? 'opacity-100' : 'opacity-0 invisible'}`}
+            aria-hidden={liveEnabled}
+          >
+            <PlayIcon /> Resume tracking
+          </span>
+        </span>
+      </Button>
       <FuseButton
         label="Delete chat"
         undoLabel="Undo"

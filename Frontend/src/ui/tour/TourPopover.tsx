@@ -11,6 +11,7 @@ type Props = {
   allSteps?: TourStep[]
   rect: TargetRect | null
   settled?: boolean
+  tourId?: string
   onNext: () => void
   onPrev: () => void
   onSkip: () => void
@@ -23,6 +24,7 @@ type Coords = {
 }
 
 const POPOVER_WIDTH = 380
+const LANDING_POPOVER_WIDTH = 295
 const MARGIN = 16
 const GAP = 14
 
@@ -33,11 +35,13 @@ export function TourPopover({
   allSteps,
   rect,
   settled = true,
+  tourId,
   onNext,
   onPrev,
   onSkip,
   onGoToStep,
 }: Props) {
+  const isLanding = tourId === 'landing-tour'
   const popoverRef = useRef<HTMLDivElement>(null)
   const [coords, setCoords] = useState<Coords>({ top: 100, left: 100 })
   const [entered, setEntered] = useState(false)
@@ -65,17 +69,91 @@ export function TourPopover({
     [allSteps, totalSteps],
   )
 
+  const isCompact = isLanding || Boolean(step.compact)
+
   const computePosition = useCallback(() => {
     const vw = window.innerWidth
     const vh = window.innerHeight
-    const cardWidth = Math.min(POPOVER_WIDTH, vw - MARGIN * 2)
-    const cardHeight = popoverRef.current?.offsetHeight ?? 250
+    const popoverWidth = step.cardWidth ?? (isCompact ? LANDING_POPOVER_WIDTH : POPOVER_WIDTH)
+    const cardWidth = Math.min(popoverWidth, vw - MARGIN * 2)
+    const cardHeight = popoverRef.current?.offsetHeight ?? (isCompact ? 175 : 250)
 
     if (!rect) {
       // Fallback: Center screen
       setCoords({
         top: Math.max(MARGIN, (vh - cardHeight) / 2),
         left: Math.max(MARGIN, (vw - cardWidth) / 2),
+      })
+      return
+    }
+
+    // Landing-tour: strict position overrides and manual offsets if provided.
+    if (isLanding) {
+      const navH = 80 + MARGIN
+      const currentCardWidth = step.cardWidth ?? LANDING_POPOVER_WIDTH
+      const cornerMap: Record<string, { top: number; left: number }> = {
+        'top-right': { top: navH, left: vw - currentCardWidth - MARGIN },
+        'bottom-right': { top: vh - cardHeight - MARGIN, left: vw - currentCardWidth - MARGIN },
+        'top-left': { top: navH, left: MARGIN },
+        'bottom-left': { top: vh - cardHeight - MARGIN, left: MARGIN },
+        'inside-bottom-right': {
+          top: Math.min(vh - cardHeight - MARGIN, (rect?.bottom ?? vh) - cardHeight - MARGIN * 1.5),
+          left: (rect?.right ?? vw) - currentCardWidth - MARGIN * 1.5,
+        },
+        'inside-top-right': {
+          top: Math.max(navH, (rect?.top ?? 0) + MARGIN * 1.5),
+          left: (rect?.right ?? vw) - currentCardWidth - MARGIN * 1.5,
+        },
+        'inside-top-center': {
+          top: Math.max(navH, (rect?.top ?? 0) + MARGIN * 1.5),
+          left: rect ? rect.left + (rect.width - currentCardWidth) / 2 : (vw - currentCardWidth) / 2,
+        },
+        'inside-center': {
+          top: Math.max(navH, rect ? rect.top + (rect.height - cardHeight) / 2 : (vh - cardHeight) / 2),
+          left: rect ? rect.left + (rect.width - currentCardWidth) / 2 : (vw - currentCardWidth) / 2,
+        },
+        'inside-right-center': {
+          top: Math.max(navH, rect ? rect.top + (rect.height - cardHeight) / 2 : (vh - cardHeight) / 2),
+          left: (rect?.right ?? vw) - currentCardWidth - MARGIN * 1.5,
+        },
+        'right-center': {
+          top: Math.max(MARGIN, (vh - cardHeight) / 2),
+          left: vw - currentCardWidth - MARGIN,
+        },
+        'bottom-center': {
+          top: vh - cardHeight - MARGIN,
+          left: Math.max(MARGIN, (vw - currentCardWidth) / 2),
+        },
+      }
+
+      let chosen = cornerMap['top-right']
+
+      if (step.landingCardPosition) {
+        // Strict explicit override (no overlap checks, respects user intent exactly)
+        chosen = cornerMap[step.landingCardPosition] ?? chosen
+      } else {
+        // Option A Auto-fallback: try corners in order until one clears the spotlight
+        const defaultOrder = ['top-right', 'bottom-right', 'top-left', 'bottom-left']
+        const overlaps = (t: number, l: number) =>
+          t < (rect?.bottom ?? 0) &&
+          t + cardHeight > (rect?.top ?? 0) &&
+          l < (rect?.right ?? 0) &&
+          l + currentCardWidth > (rect?.left ?? 0)
+
+        chosen = defaultOrder.map((k) => cornerMap[k]).find((c) => !overlaps(c.top, c.left)) ?? cornerMap['top-right']
+      }
+
+      // Apply any manual nudges
+      if (step.landingCardOffset) {
+        chosen = {
+          top: chosen.top + (step.landingCardOffset.y ?? 0),
+          left: chosen.left + (step.landingCardOffset.x ?? 0),
+        }
+      }
+
+      setCoords({
+        top: Math.max(MARGIN, chosen.top),
+        left: Math.max(MARGIN, chosen.left),
       })
       return
     }
@@ -196,7 +274,7 @@ export function TourPopover({
     }
 
     setCoords({ top, left })
-  }, [rect, step])
+  }, [rect, step, isLanding])
 
   useLayoutEffect(() => {
     computePosition()
@@ -220,23 +298,33 @@ export function TourPopover({
         position: 'fixed',
         top: `${coords.top}px`,
         left: `${coords.left}px`,
-        width: `min(${POPOVER_WIDTH}px, calc(100vw - 32px))`,
+        width: `min(${step.cardWidth ?? (isCompact ? LANDING_POPOVER_WIDTH : POPOVER_WIDTH)}px, calc(100vw - 32px))`,
         zIndex: 70,
       }}
-      className={`flex flex-col gap-3 rounded-panel border-2 border-ink bg-canvas p-4 text-ink shadow-[4px_4px_0px_var(--color-ink)] transition-[opacity,transform,translate] duration-400 ease-soft ${
+      className={`flex flex-col ${
+        isCompact ? 'gap-2 p-3 shadow-[2.5px_2.5px_0px_var(--color-ink)]' : 'gap-3 p-4 shadow-[4px_4px_0px_var(--color-ink)]'
+      } rounded-panel border-2 border-ink bg-canvas text-ink transition-[opacity,transform,translate] duration-400 ease-soft ${
         isVisible
           ? 'scale-100 opacity-100 translate-y-0 pointer-events-auto'
           : 'scale-[0.98] opacity-0 -translate-y-6 pointer-events-none'
       }`}
     >
       {/* Header with step counter, badge, and close button */}
-      <div className="flex items-center justify-between gap-2 border-b-2 border-line pb-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-control bg-signal px-2 py-0.5 font-mono text-micro font-extrabold text-on-signal">
+      <div className={`flex items-center justify-between gap-2 border-b-2 border-line ${isCompact ? 'pb-1.5' : 'pb-2.5'}`}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span
+            className={`rounded-control bg-signal font-mono font-extrabold text-on-signal ${
+              isCompact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-micro'
+            }`}
+          >
             {getStepLabel(stepIndex, step)}
           </span>
           {step.badge && (
-            <span className="rounded-control border border-line-strong px-2 py-0.5 font-mono text-micro text-ink-3">
+            <span
+              className={`rounded-control border border-line-strong font-mono text-ink-3 ${
+                isCompact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-micro'
+              }`}
+            >
               {step.badge}
             </span>
           )}
@@ -248,22 +336,26 @@ export function TourPopover({
           aria-label="Close tour"
           className="group flex items-center gap-1 rounded-control text-ink-3 hover:text-ink focus-visible:outline-2 focus-visible:outline-ink"
         >
-          <span className="grid size-7 place-items-center rounded-control hover:bg-sunken">
-            <CloseIcon />
+          <span className={`grid place-items-center rounded-control hover:bg-sunken ${isCompact ? 'size-6' : 'size-7'}`}>
+            <CloseIcon className={isCompact ? 'size-3.5' : 'size-4'} />
           </span>
         </button>
       </div>
 
       {/* Main content body */}
-      <div className="flex flex-col gap-2">
-        <h2 id="tour-step-title" className="font-display font-wide text-h3 font-extrabold text-ink leading-snug">
+      <div className={`flex flex-col ${isCompact ? 'gap-1.5' : 'gap-2'}`}>
+        <h2 id="tour-step-title" className={`font-display font-wide font-extrabold text-ink leading-snug ${isCompact ? 'text-body' : 'text-h3'}`}>
           {step.title}
         </h2>
-        <p className="text-small text-ink-2 leading-relaxed">{step.content}</p>
+        <p className={`text-ink-2 ${isCompact ? 'text-[11.5px] leading-relaxed' : 'text-small leading-relaxed'}`}>{step.content}</p>
 
         {step.tip && (
-          <div className="mt-1 flex items-start gap-2 rounded-control border border-signal-soft bg-signal-soft/40 p-2.5 text-micro text-ink">
-            <SparkleIcon className="size-4 shrink-0 text-ink" />
+          <div
+            className={`flex items-start rounded-control border border-signal-soft bg-signal-soft/40 text-ink ${
+              isCompact ? 'mt-0.5 p-1.5 gap-1.5 text-[10px]' : 'mt-1 p-2.5 gap-2 text-micro'
+            }`}
+          >
+            <SparkleIcon className={`shrink-0 text-ink ${isCompact ? 'size-3.5 mt-0.5' : 'size-4'}`} />
             <div className="flex-1 leading-normal">
               <strong className="font-semibold">Tip:</strong> {step.tip}
             </div>
@@ -272,7 +364,7 @@ export function TourPopover({
       </div>
 
       {/* Footer navigation */}
-      <div className="mt-1 flex items-center justify-between gap-2 border-t-2 border-line pt-3">
+      <div className={`flex items-center justify-between gap-2 border-t-2 border-line ${isCompact ? 'pt-2' : 'pt-3'}`}>
         {/* Step dots */}
         <div className="flex items-center gap-1" role="tablist" aria-label="Tour steps">
           {Array.from({ length: totalSteps }).map((_, i) => (
@@ -283,21 +375,27 @@ export function TourPopover({
               aria-selected={i === stepIndex}
               aria-label={allSteps ? getStepLabel(i, allSteps[i]) : `Go to step ${i + 1}`}
               onClick={() => onGoToStep(i)}
-              className={`size-2 rounded-full transition-all duration-300 ease-soft ${
-                i === stepIndex ? 'w-5 bg-ink' : 'bg-line-strong hover:bg-ink-3'
+              className={`rounded-full transition-all duration-300 ease-soft ${
+                isCompact
+                  ? i === stepIndex
+                    ? 'w-3.5 h-1.5 bg-ink'
+                    : 'size-1.5 bg-line-strong hover:bg-ink-3'
+                  : i === stepIndex
+                  ? 'w-5 size-2 bg-ink'
+                  : 'size-2 bg-line-strong hover:bg-ink-3'
               }`}
             />
           ))}
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {stepIndex > 0 && (
             <button
               type="button"
               onClick={onPrev}
               tabIndex={-1}
-              className={buttonClass('secondary', 'md', 'h-8 px-2.5 text-small focus:outline-none focus-visible:outline-none')}
+              className={buttonClass('secondary', 'md', `${isCompact ? 'h-7 px-2 text-[11px]' : 'h-8 px-2.5 text-small'} focus:outline-none focus-visible:outline-none`)}
             >
               Back
             </button>
@@ -307,13 +405,13 @@ export function TourPopover({
             type="button"
             onClick={onNext}
             tabIndex={-1}
-            className={buttonClass('primary', 'md', 'h-8 px-3 text-small focus:outline-none focus-visible:outline-none')}
+            className={buttonClass('primary', 'md', `${isCompact ? 'h-7 px-2.5 text-[11px]' : 'h-8 px-3 text-small'} focus:outline-none focus-visible:outline-none`)}
           >
             {isLast ? (
               'Got it'
             ) : (
-              <span className="flex items-center gap-1.5">
-                Next <ArrowIcon className="size-3.5" />
+              <span className="flex items-center gap-1">
+                Next <ArrowIcon className={isCompact ? 'size-3' : 'size-3.5'} />
               </span>
             )}
           </button>
@@ -321,12 +419,12 @@ export function TourPopover({
       </div>
 
       {/* Dedicated Keyboard shortcut hints footer */}
-      <div className="flex items-center justify-center gap-1.5 border-t border-line/60 pt-2 text-micro text-ink-3 select-none">
-        <kbd className="rounded border border-line-strong bg-sunken px-1.5 py-0.5 font-mono text-[10px] text-ink-2">←</kbd>
-        <kbd className="rounded border border-line-strong bg-sunken px-1.5 py-0.5 font-mono text-[10px] text-ink-2">→</kbd>
+      <div className={`flex items-center justify-center gap-1.5 border-t border-line/60 text-ink-3 select-none ${isCompact ? 'pt-1.5 text-[9.5px]' : 'pt-2 text-micro'}`}>
+        <kbd className="rounded border border-line-strong bg-sunken px-1.5 py-0.5 font-mono text-[9px] text-ink-2">←</kbd>
+        <kbd className="rounded border border-line-strong bg-sunken px-1.5 py-0.5 font-mono text-[9px] text-ink-2">→</kbd>
         <span>navigate</span>
         <span className="px-1 text-line-strong">|</span>
-        <kbd className="rounded border border-line-strong bg-sunken px-1.5 py-0.5 font-mono text-[10px] text-ink-2">Esc</kbd>
+        <kbd className="rounded border border-line-strong bg-sunken px-1.5 py-0.5 font-mono text-[9px] text-ink-2">Esc</kbd>
         <span>to skip</span>
       </div>
     </aside>

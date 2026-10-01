@@ -39,10 +39,11 @@ export function TourHost() {
   useEffect(() => {
     if (!isActive || !currentStep) return
 
+    const el = document.querySelector(currentStep.target) as HTMLElement | null
     let animId: number
     let isCancelled = false
     const startTime = performance.now()
-    let lastY = window.scrollY
+    let lastElTop = el ? el.getBoundingClientRect().top : 0
     let stationaryFrames = 0
     let hasScrolled = false
 
@@ -56,28 +57,15 @@ export function TourHost() {
       })
     }
 
-    // 1. Scroll: Bring targeted element smoothly into view with headroom for the tour card in the dimmed area
-    const el = document.querySelector(currentStep.target) as HTMLElement | null
+    // 1. Scroll: Bring targeted element smoothly into view
     if (el) {
-      const vh = window.innerHeight
-      const cardHeadroom = Math.min(330, Math.max(270, Math.floor(vh * 0.36)))
-      const pref = currentStep.placement ?? 'auto'
-
-      let targetViewportTop: number
-      if (pref === 'top') {
-        // Leave room above the target in the dimmed area for the tour card
-        targetViewportTop = cardHeadroom
-      } else if (pref === 'bottom') {
-        // Place target near the top so dimmed room is below it
-        targetViewportTop = Math.max(30, Math.floor(vh * 0.08))
-      } else {
-        // For auto/center, if the element is tall, default to giving top headroom so cards don't cover content
-        targetViewportTop = el.offsetHeight > vh * 0.45 ? cardHeadroom : Math.max(20, Math.floor((vh - el.offsetHeight) / 2))
-      }
-
-      const offset = -targetViewportTop
-
       if (lenis && document.documentElement.scrollHeight > window.innerHeight) {
+        // Landing-tour: pin element top just below the navbar (~80px) so the
+        // spotlight never bleeds behind the nav. All other tours center the element.
+        const isLandingTour = activeTour?.id === 'landing-tour'
+        const offset = isLandingTour
+          ? -80   // element top will land 80px from viewport top (below navbar)
+          : -Math.max(20, Math.floor((window.innerHeight - el.offsetHeight) / 2))
         lenis.scrollTo(el, {
           offset,
           duration: 0.65,
@@ -87,40 +75,28 @@ export function TourHost() {
           },
         })
       } else {
-        const hasScroll = document.documentElement.scrollHeight > window.innerHeight
-        if (hasScroll) {
-          const elTop = el.getBoundingClientRect().top + window.scrollY
-          window.scrollTo({
-            top: Math.max(0, elTop + offset),
-            behavior: 'smooth',
-          })
-        } else {
-          el.scrollIntoView({
-            behavior: 'smooth',
-            block: pref === 'top' ? 'end' : pref === 'bottom' ? 'start' : 'center',
-            inline: 'nearest',
-          })
-        }
+        const isTall = el.offsetHeight > window.innerHeight * 0.5
+        el.scrollIntoView({ behavior: 'smooth', block: isTall ? 'start' : 'center', inline: 'nearest' })
       }
     }
 
-    // 2. Continuously sample targetRect on each animation frame until scroll velocity reaches 0
+    // 2. Continuously sample targetRect on each animation frame until element movement settles
     const syncLoop = () => {
       if (isCancelled) return
       updateRect()
-      const currentY = window.scrollY
+      const currentElTop = el ? el.getBoundingClientRect().top : 0
       const elapsed = performance.now() - startTime
 
-      if (Math.abs(currentY - lastY) > 0.5) {
+      if (Math.abs(currentElTop - lastElTop) > 0.5) {
         hasScrolled = true
         stationaryFrames = 0
-      } else if (hasScrolled || elapsed > 100) {
+      } else if (hasScrolled || elapsed > 120) {
         stationaryFrames++
       }
-      lastY = currentY
+      lastElTop = currentElTop
 
-      // Settle as soon as stationary for 4 frames after a short delay, or at safety timeout
-      if ((stationaryFrames >= 4 && elapsed >= 120) || elapsed >= 700) {
+      // Settle as soon as stationary for 5 frames after animation, or at safety timeout
+      if ((stationaryFrames >= 5 && elapsed >= 180) || elapsed >= 800) {
         settle()
         return
       }
@@ -136,17 +112,24 @@ export function TourHost() {
     }
   }, [isActive, currentStep, currentStepIndex, lenis, updateRect])
 
-  // Coordinate rect updates with Lenis scroll events
+  // Coordinate rect updates with all scroll events (including internal containers like #main)
   useEffect(() => {
-    if (!isActive || !lenis) return
+    if (!isActive) return
 
-    const onLenisScroll = () => {
+    const onScroll = () => {
       requestAnimationFrame(updateRect)
     }
 
-    lenis.on('scroll', onLenisScroll)
+    document.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    if (lenis) {
+      lenis.on('scroll', onScroll)
+    }
+
     return () => {
-      lenis.off('scroll', onLenisScroll)
+      document.removeEventListener('scroll', onScroll, { capture: true })
+      if (lenis) {
+        lenis.off('scroll', onScroll)
+      }
     }
   }, [isActive, lenis, updateRect])
 
@@ -227,6 +210,7 @@ export function TourHost() {
       />
       <TourPopover
         key={currentStep.id}
+        tourId={activeTour.id}
         step={currentStep}
         stepIndex={currentStepIndex}
         totalSteps={activeTour.steps.length}

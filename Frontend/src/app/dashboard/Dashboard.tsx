@@ -132,43 +132,45 @@ export function Dashboard({ profile, dash, title, sources, graphs, scoring, reco
 
   return (
     <section ref={section} aria-label="Dashboard" className={`flex flex-col transition-all duration-300 ease-out gap-3 ${full ? 'overflow-auto bg-canvas p-4' : ''}`} data-lenis-prevent>
-      <div className="flex flex-wrap items-center gap-2">
-        <div ref={tablistRef} role="tablist" aria-label="Dashboard view" className="relative flex gap-1 overflow-hidden rounded-panel border-2 border-ink p-0.5">
-          <div
-            className="absolute top-0.5 bottom-0.5 rounded-control bg-ink transition-all duration-200 ease-out"
-            style={{ left: pillStyle.left, width: pillStyle.width, opacity: pillStyle.opacity }}
-          />
-          {tab('report', <ReportIcon />, 'Report')}
-          {tab('data', <TableIcon />, <>Data <span className="font-mono text-micro opacity-70">{profile.rowCount.toLocaleString('en-IN')}</span></>)}
-          {graphs && tab('graphs', <ChartIcon />, 'Graphs')}
-          {sources && tab('sources', <LinkIcon />, <>Sources <span className="font-mono text-micro opacity-70">{sources.count}</span></>)}
-        </div>
-        <span className="ml-auto flex flex-wrap items-center gap-2">
-          {view === 'report' && (
-            <>
-              {overflow && (
-                <Button variant="secondary" onClick={dash.fit} title="Some tiles sit below the page">
-                  Fit to one screen
+      <div data-tour="chat-data-view" className="scroll-mt-20 flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div ref={tablistRef} role="tablist" aria-label="Dashboard view" className="relative flex gap-1 overflow-hidden rounded-panel border-2 border-ink p-0.5">
+            <div
+              className="absolute top-0.5 bottom-0.5 rounded-control bg-ink transition-all duration-200 ease-out"
+              style={{ left: pillStyle.left, width: pillStyle.width, opacity: pillStyle.opacity }}
+            />
+            {tab('report', <ReportIcon />, 'Report')}
+            {tab('data', <TableIcon />, <>Data <span className="font-mono text-micro opacity-70">{profile.rowCount.toLocaleString('en-IN')}</span></>)}
+            {graphs && tab('graphs', <ChartIcon />, 'Graphs')}
+            {sources && tab('sources', <LinkIcon />, <>Sources <span className="font-mono text-micro opacity-70">{sources.count}</span></>)}
+          </div>
+          <span className="ml-auto flex flex-wrap items-center gap-2">
+            {view === 'report' && (
+              <>
+                {overflow && (
+                  <Button variant="secondary" onClick={dash.fit} title="Some tiles sit below the page">
+                    Fit to one screen
+                  </Button>
+                )}
+                <Button onClick={() => setPicker({})}>
+                  <PlusIcon /> Add charts
                 </Button>
-              )}
-              <Button onClick={() => setPicker({})}>
-                <PlusIcon /> Add charts
-              </Button>
-            </>
-          )}
-          <Button variant="secondary" onClick={() => setExporting({ kind: 'rows', filters: all, label: shown === profile.rowCount ? 'All rows' : 'Filtered rows' })}>
-            <DownloadIcon /> Export
-          </Button>
-          <Button variant="secondary" onClick={toggleFull} aria-pressed={full}>
-            {full ? <><MinimizeIcon /> Exit full screen</> : <><MaximizeIcon /> Full screen</>}
-          </Button>
-          {view === 'report' && <FuseButton label="Reset" undoLabel="Undo" doneLabel="Reset" tone="default" onCommit={dash.reset} />}
-        </span>
-      </div>
+              </>
+            )}
+            <Button variant="secondary" onClick={() => setExporting({ kind: 'rows', filters: all, label: shown === profile.rowCount ? 'All rows' : 'Filtered rows' })}>
+              <DownloadIcon /> Export
+            </Button>
+            <Button variant="secondary" onClick={toggleFull} aria-pressed={full}>
+              {full ? <><MinimizeIcon /> Exit full screen</> : <><MaximizeIcon /> Full screen</>}
+            </Button>
+            {view === 'report' && <FuseButton label="Reset" undoLabel="Undo" doneLabel="Reset" tone="default" onCommit={dash.reset} />}
+          </span>
+        </div>
 
-      {view !== 'sources' && view !== 'graphs' && (
-        <Slicers profile={profile} value={slicers} onChange={setSlicers} shown={shown} crossLabel={crossLabel} onClearCross={() => setCross(null)} />
-      )}
+        {view !== 'sources' && view !== 'graphs' && (
+          <Slicers profile={profile} value={slicers} onChange={setSlicers} shown={shown} crossLabel={crossLabel} onClearCross={() => setCross(null)} />
+        )}
+      </div>
 
       {/* Kept mounted (hidden on other tabs) so its measured size survives tab switches. */}
       {(

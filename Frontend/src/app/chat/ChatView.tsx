@@ -65,11 +65,13 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
           <h1 className="font-display font-wide text-h3 font-extrabold break-words">{title}</h1>
           <p className="mt-1 font-mono text-micro text-ink-3">{meta}</p>
         </div>
-        {/* Equal boxes: every action is the same height, and on wider screens the same width (the widest one's),
-            so the row reads as one set; on phones they stack full width. */}
         <div className="flex flex-wrap items-center gap-2">
           <TourTrigger tourId="chat-view-tour" label="Session Tour" variant="secondary" />
-          {actions && <div className="grid w-full grid-cols-1 gap-2 *:w-full *:justify-center sm:w-auto sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">{actions}</div>}
+          {actions && (
+            <div className="grid w-full grid-cols-1 gap-2 *:w-full *:justify-center sm:w-auto sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
+              {actions}
+            </div>
+          )}
         </div>
       </header>
 
@@ -81,7 +83,7 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
       </div>
 
       {table ? (
-        <div ref={dashRef} data-tour="chat-data-view" className="scroll-mt-4">
+        <div ref={dashRef} className="scroll-mt-4">
           <ChatData
             instanceId={instanceKey}
             table={table}

@@ -121,9 +121,11 @@ export default function Layout() {
               </Tooltip>
               <span className="ml-2 font-display font-wide text-body font-extrabold">AWDAX</span>
             </div>
-            <Tooltip content="Page Tour" placement="bottom-end">
-              <TourTrigger tourId={tourId} iconOnly label="Page Tour" className="size-9" />
-            </Tooltip>
+            {tourId !== 'chat-view-tour' && (
+              <Tooltip content="Page Tour" placement="bottom-end">
+                <TourTrigger tourId={tourId} iconOnly label="Page Tour" className="size-9" />
+              </Tooltip>
+            )}
           </div>
           {/* Keyed by path so each chat and view starts at the top with fresh state. */}
           <main id="main" key={pathname} className="relative min-h-0 flex-1 overflow-y-auto">

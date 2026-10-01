@@ -16,6 +16,7 @@ export type BellToggleProps = {
   iconOnly?: boolean
   disabled?: boolean
   className?: string
+  title?: string
 }
 
 // md matches buttonClass md (h-10, px-4, text-small), so it lines up with the buttons beside it.
@@ -34,6 +35,7 @@ export function BellToggle({
   iconOnly = false,
   disabled = false,
   className = '',
+  title,
 }: BellToggleProps) {
   const [inner, setInner] = useState(defaultPressed)
   const on = pressed ?? inner
@@ -66,6 +68,7 @@ export function BellToggle({
       disabled={disabled}
       aria-pressed={on}
       aria-label={iconOnly ? label : undefined}
+      title={title}
       onClick={toggle}
       className={
         `relative inline-flex items-center gap-2 rounded-control border-2 border-ink font-semibold transition-[background-color,color,scale] duration-300 ease-soft active:scale-97 ` +

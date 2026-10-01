@@ -7,6 +7,7 @@ type Props = {
   label?: string
   variant?: ButtonVariant
   iconOnly?: boolean
+  bordered?: boolean
   className?: string
 }
 
@@ -15,6 +16,7 @@ export function TourTrigger({
   label = 'Take a Tour',
   variant = 'secondary',
   iconOnly = false,
+  bordered = false,
   className = '',
 }: Props) {
   const { startTour, isActive } = useTour()
@@ -26,10 +28,13 @@ export function TourTrigger({
         onClick={() => startTour(tourId)}
         disabled={isActive}
         aria-label={label}
-        title={label}
-        className={`grid size-8 place-items-center rounded-control text-ink-2 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink ${className}`}
+        className={`grid place-items-center rounded-control outline-none transition-[background-color,border-color,color,scale] duration-200 ease-soft active:scale-97 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+          bordered
+            ? 'size-10 border-2 border-ink bg-surface text-ink hover:bg-sunken'
+            : 'size-8 text-ink-2 hover:bg-sunken hover:text-ink'
+        } ${className}`}
       >
-        <CompassIcon className="size-4" />
+        <CompassIcon className={bordered ? 'size-5' : 'size-4'} />
       </button>
     )
   }
