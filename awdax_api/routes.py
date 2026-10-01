@@ -19,7 +19,14 @@ from awdax_api.sources_stats_graph import (
 )
 from awdax_api.live_bridge import live_bridge
 from scraper import universal_service
-from ui_sessions import create_session, delete_session, get_session, list_sessions, save_session
+from ui_sessions import (
+    create_session,
+    delete_session,
+    get_session,
+    list_sessions,
+    save_session,
+    update_session_title,
+)
 
 bp = Blueprint("awdax_api", __name__)
 
@@ -50,8 +57,16 @@ def list_instances():
 @bp.post("/api/instances")
 def create_instance():
     body = request.get_json(silent=True) or {}
-    title = str(body.get("title") or "Untitled chat").strip() or "Untitled chat"
+    raw_title = str(body.get("title") or "").strip()
     goal = str(body.get("goal") or "").strip()
+    if not raw_title or raw_title in ("Untitled chat", "New session", "New track"):
+        if goal:
+            first_line = goal.splitlines()[0].strip() if goal.splitlines() else goal.strip()
+            title = first_line[:45].rstrip() + ("…" if len(first_line) > 45 else "")
+        else:
+            title = "Untitled chat"
+    else:
+        title = raw_title
     sess = create_session(title=title)
     if goal:
         sess["goal"] = goal
@@ -74,7 +89,10 @@ def patch_instance(instance_id: str):
         return detail_response(404, "Instance not found")
     body = request.get_json(silent=True) or {}
     if "title" in body:
-        sess["title"] = str(body.get("title") or sess.get("title"))
+        new_title = str(body.get("title") or "").strip()
+        if new_title:
+            update_session_title(instance_id, new_title)
+            sess["title"] = new_title
     if "archived" in body:
         sess["archived"] = bool(body.get("archived"))
     if "live_enabled" in body:
@@ -121,6 +139,14 @@ def post_message(instance_id: str):
     append_message(sess, role="user", content=content)
     sess["goal"] = content
     sess["keep_live"] = True
+    # Auto-derive chat title from prompt if currently untitled or default
+    current_title = (sess.get("title") or "").strip()
+    if not current_title or current_title in ("Untitled chat", "New session", "New track"):
+        first_line = content.splitlines()[0].strip() if content.splitlines() else content.strip()
+        derived_title = first_line[:45].rstrip() + ("…" if len(first_line) > 45 else "")
+        if derived_title:
+            sess["title"] = derived_title
+            update_session_title(instance_id, derived_title)
     if sess.get("job_id"):
         universal_service.clear_job_dataset(sess["job_id"])
     sess = persist_session(sess)

@@ -360,7 +360,7 @@ def api_events():
                 sent = False
                 for sub in subs:
                     try:
-                        event = sub.get(timeout=0.05)
+                        event = sub.get(timeout=1.0)
                         yield f"data: {json.dumps(event, default=str)}\n\n"
                         sent = True
                     except queue.Empty:

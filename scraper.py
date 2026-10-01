@@ -1079,6 +1079,7 @@ class UniversalScrapeService:
             job.plans = plans
             self._current_job = job
             self.save_job(job)
+            self._running_jobs.add(jid)
             t = threading.Thread(
                 target=self._run_all,
                 args=(plans, job, max_pages),

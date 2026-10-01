@@ -18,9 +18,15 @@ DB_PATH = ROOT / "regulatory.sqlite"
 _lock = threading.Lock()
 
 
+DEFAULT_TITLES = frozenset({"Untitled chat", "New session", "New track", ""})
+
+
 def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 30000;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
     return conn
 
 
@@ -156,6 +162,15 @@ def save_session(session: dict[str, Any]) -> dict[str, Any]:
     with _lock:
         conn = _conn()
         cur = conn.cursor()
+        # Preserve user-customized title if incoming snapshot title is generic/stale
+        if title in DEFAULT_TITLES:
+            cur.execute("SELECT title FROM ui_sessions WHERE id=?", (sid,))
+            existing = cur.fetchone()
+            if existing and existing["title"]:
+                existing_title = str(existing["title"]).strip()
+                if existing_title not in DEFAULT_TITLES:
+                    title = existing_title
+
         cur.execute(
             """UPDATE ui_sessions SET title=?, job_id=?, payload_json=?, updated_at=?
                WHERE id=?""",
@@ -174,6 +189,27 @@ def save_session(session: dict[str, Any]) -> dict[str, Any]:
     if not saved:
         raise RuntimeError("failed to save session")
     return saved
+
+
+def update_session_title(session_id: str, title: str) -> dict[str, Any] | None:
+    """Atomically rename a session without risking payload clobbering."""
+    init_ui_sessions()
+    sid = str(session_id or "").strip()
+    if not sid:
+        return None
+    new_title = str(title or "").strip() or "Untitled chat"
+    now = _now()
+    with _lock:
+        conn = _conn()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE ui_sessions SET title=?, updated_at=? WHERE id=?",
+            (new_title, now, sid),
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    return get_session(sid)
 
 
 def delete_session(session_id: str) -> bool:

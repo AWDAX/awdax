@@ -120,8 +120,11 @@ def _init_db(conn: sqlite3.Connection) -> None:
 
 def _get_db() -> sqlite3.Connection:
     global _DB_INITIALIZED
-    conn = sqlite3.connect(_db_path(), check_same_thread=False)
+    conn = sqlite3.connect(_db_path(), timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 30000;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
     if not _DB_INITIALIZED:
         with _DB_INIT_LOCK:
             if not _DB_INITIALIZED:
@@ -1008,6 +1011,7 @@ class RegulatoryFeedService:
             if not self._workers_started:
                 self.start_background_workers()
                 self._workers_started = True
+            self.is_running = True
             t = threading.Thread(
                 target=self._run_scrape_cycle,
                 args=(max_pages,),
@@ -1247,18 +1251,26 @@ class RegulatoryFeedService:
         try:
             cur.execute("SELECT pdf_text, pdf_url, gazette_id FROM gazettes WHERE id=?", (g_id,))
             row = _as_dict(cur.fetchone())
-            if not row:
-                return
-            pdf_text = (row.get("pdf_text") or "").strip()
-            pdf_url = row.get("pdf_url") or guess_pdf_url(row.get("gazette_id") or "")
-            if len(pdf_text) >= 50:
-                return
-            if not pdf_url:
-                return
-            fetched = download_and_extract_pdf(pdf_url)
-            if not fetched:
-                return
-            fetched = filter_hindi_text(fetched)
+        finally:
+            cur.close()
+            conn.close()
+
+        if not row:
+            return
+        pdf_text = (row.get("pdf_text") or "").strip()
+        pdf_url = row.get("pdf_url") or guess_pdf_url(row.get("gazette_id") or "")
+        if len(pdf_text) >= 50 or not pdf_url:
+            return
+
+        # Fetch PDF over network outside of active database transaction
+        fetched = download_and_extract_pdf(pdf_url)
+        if not fetched:
+            return
+        fetched = filter_hindi_text(fetched)
+
+        conn = _get_db()
+        cur = conn.cursor()
+        try:
             cur.execute(
                 "UPDATE gazettes SET pdf_text=?, pdf_url=?, updated_at=datetime('now') WHERE id=?",
                 (fetched, pdf_url, g_id),
@@ -1275,25 +1287,33 @@ class RegulatoryFeedService:
         try:
             cur.execute("SELECT * FROM gazettes WHERE id=?", (g_id,))
             g = _as_dict(cur.fetchone())
-            if not g:
-                return
-            has_pdf = bool(g.get("pdf_text") and len((g.get("pdf_text") or "").strip()) >= 50)
-            subject = g.get("subject") or "Government Notification"
-            if has_pdf:
-                s = self.ai.generate_summary(g["pdf_text"], subject, g["gazette_id"])
-            else:
-                # Fast fallback tagging when PDF text is not available yet.
-                quick_text = " ".join(
-                    [
-                        str(g.get("subject") or ""),
-                        str(g.get("ministry") or ""),
-                        str(g.get("department") or ""),
-                        str(g.get("office") or ""),
-                    ]
-                ).strip()
-                s = self.ai._fallback(quick_text, subject)
-            importance = self._compute_importance(g, s)
-            industry_payload = self._wrap_industry_tags(s.get("industry_tags", []))
+        finally:
+            cur.close()
+            conn.close()
+
+        if not g:
+            return
+        has_pdf = bool(g.get("pdf_text") and len((g.get("pdf_text") or "").strip()) >= 50)
+        subject = g.get("subject") or "Government Notification"
+        if has_pdf:
+            s = self.ai.generate_summary(g["pdf_text"], subject, g["gazette_id"])
+        else:
+            # Fast fallback tagging when PDF text is not available yet.
+            quick_text = " ".join(
+                [
+                    str(g.get("subject") or ""),
+                    str(g.get("ministry") or ""),
+                    str(g.get("department") or ""),
+                    str(g.get("office") or ""),
+                ]
+            ).strip()
+            s = self.ai._fallback(quick_text, subject)
+        importance = self._compute_importance(g, s)
+        industry_payload = self._wrap_industry_tags(s.get("industry_tags", []))
+
+        conn = _get_db()
+        cur = conn.cursor()
+        try:
             cur.execute(
                 """INSERT INTO gazette_summaries
                    (gazette_id, topic, summary, key_highlights, legal_clauses, states, market_impact, industry_tags, importance)

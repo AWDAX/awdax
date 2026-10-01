@@ -19,5 +19,8 @@ export function groupByDay<T extends Dated>(list: T[], now = new Date()): Histor
   return buckets.filter((b) => b.items.length > 0)
 }
 
-/** The backend names an untouched instance "New track". */
-export const isUntitled = (title: string) => title.trim() === '' || title === 'New track'
+/** The backend names an untouched instance "New track", "Untitled chat", or "New session". */
+export const isUntitled = (title: string) => {
+  const t = title.trim()
+  return !t || t === 'New track' || t === 'Untitled chat' || t === 'New session'
+}

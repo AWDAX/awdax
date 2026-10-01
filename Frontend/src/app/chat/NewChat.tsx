@@ -63,7 +63,7 @@ export default function NewChat() {
         navigate(`/app/f/${res.id}`)
         return
       }
-      const created = await awdax.createInstance()
+      const created = await awdax.createInstance(goal)
       const started = await awdax.startTracking(created.id, goal)
       upsert(started)
       notifyInstancesChanged('create')
