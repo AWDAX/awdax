@@ -92,50 +92,50 @@ export function FuseButton({
 
   const fuseColor = tone === 'danger' ? 'bg-blocked' : 'bg-signal'
 
-  if (phase === 'settled') {
-    return (
-      <span role="status" className={`inline-flex items-center gap-2 rounded-control border-2 border-line px-3 text-small text-ink-3 ${SIZE[size]} ${className}`}>
-        <CheckIcon /> {!iconOnly && doneLabel}
-      </span>
-    )
-  }
+  const isIdle = phase === 'idle'
+  const isArmed = phase === 'armed'
+  const isSettled = phase === 'settled'
 
-  if (phase === 'armed') {
-    return (
-      <button
-        type="button"
-        onClick={undo}
-        onKeyDown={onKeyDown}
-        aria-label={iconOnly ? `${undoLabel}: ${label}` : undefined}
-        title={`${undoLabel} (Esc)`}
-        className={`relative inline-flex items-center gap-2 overflow-hidden rounded-control border-2 border-ink bg-surface font-semibold text-ink transition-colors duration-300 ease-soft hover:bg-sunken focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ink ${SIZE[size]} ${className}`}
-      >
-        <ReplayIcon />
-        {!iconOnly && undoLabel}
-        <span
-          ref={fuseRef}
-          aria-hidden
-          className={`absolute inset-x-0 h-0.5 origin-right ${fusePosition === 'top' ? 'top-0' : 'bottom-0'} ${fuseColor}`}
-        />
-      </button>
-    )
+  let baseClass = `inline-flex text-left items-center justify-center overflow-hidden rounded-control border-2 transition-[background-color,border-color,color,scale] duration-300 ease-soft active:scale-97 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ink ${SIZE[size]} ${className}`
+  if (isSettled) {
+    baseClass = `inline-flex text-left items-center justify-center overflow-hidden rounded-control border-2 border-line text-ink-3 ${SIZE[size]} ${className}`
+  } else if (isArmed) {
+    baseClass = `relative inline-flex text-left items-center justify-center overflow-hidden rounded-control border-2 border-ink bg-surface font-semibold text-ink transition-colors duration-300 ease-soft hover:bg-sunken focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ink ${SIZE[size]} ${className}`
+  } else {
+    baseClass = `inline-flex text-left items-center justify-center overflow-hidden rounded-control border-2 font-semibold transition-[background-color,border-color,color,scale] duration-300 ease-soft active:scale-97 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ink ${tone === 'danger' ? 'border-blocked text-blocked hover:bg-blocked/10' : 'border-ink text-ink hover:bg-sunken'} ${SIZE[size]} ${className}`
   }
 
   return (
     <button
       type="button"
-      disabled={disabled}
-      onClick={arm}
-      aria-label={iconOnly ? label : undefined}
-      title={iconOnly ? label : undefined}
-      className={
-        `inline-flex items-center gap-2 rounded-control border-2 font-semibold transition-[background-color,border-color,color,scale] duration-300 ease-soft active:scale-97 ` +
-        `disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ink ` +
-        `${tone === 'danger' ? 'border-blocked text-blocked hover:bg-blocked/10' : 'border-ink text-ink hover:bg-sunken'} ${SIZE[size]} ${className}`
-      }
+      disabled={disabled || isSettled}
+      onClick={isArmed ? undo : arm}
+      onKeyDown={isArmed ? onKeyDown : undefined}
+      aria-label={iconOnly ? (isArmed ? `${undoLabel}: ${label}` : label) : undefined}
+      title={isArmed ? `${undoLabel} (Esc)` : (iconOnly ? label : undefined)}
+      className={baseClass}
     >
-      {icon ?? <TrashIcon />}
-      {!iconOnly && label}
+      <span className="grid text-left">
+        <span className={`col-start-1 row-start-1 inline-flex items-center gap-2 transition-opacity duration-300 ${isIdle ? 'opacity-100' : 'opacity-0 invisible'}`} aria-hidden={!isIdle}>
+          {icon ?? <TrashIcon />}
+          {!iconOnly && label}
+        </span>
+        <span className={`col-start-1 row-start-1 inline-flex items-center gap-2 transition-opacity duration-300 ${isArmed ? 'opacity-100' : 'opacity-0 invisible'}`} aria-hidden={!isArmed}>
+          <ReplayIcon />
+          {!iconOnly && undoLabel}
+        </span>
+        <span className={`col-start-1 row-start-1 inline-flex items-center gap-2 transition-opacity duration-300 ${isSettled ? 'opacity-100' : 'opacity-0 invisible'}`} aria-hidden={!isSettled}>
+          <CheckIcon />
+          {!iconOnly && doneLabel}
+        </span>
+      </span>
+      {isArmed && (
+        <span
+          ref={fuseRef}
+          aria-hidden
+          className={`absolute inset-x-0 h-0.5 origin-right ${fusePosition === 'top' ? 'top-0' : 'bottom-0'} ${fuseColor}`}
+        />
+      )}
     </button>
   )
 }
