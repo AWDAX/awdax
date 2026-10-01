@@ -56,11 +56,28 @@ export function TourHost() {
       })
     }
 
-    // 1. Scroll: Bring targeted element smoothly into view
+    // 1. Scroll: Bring targeted element smoothly into view with headroom for the tour card in the dimmed area
     const el = document.querySelector(currentStep.target) as HTMLElement | null
     if (el) {
+      const vh = window.innerHeight
+      const cardHeadroom = Math.min(330, Math.max(270, Math.floor(vh * 0.36)))
+      const pref = currentStep.placement ?? 'auto'
+
+      let targetViewportTop: number
+      if (pref === 'top') {
+        // Leave room above the target in the dimmed area for the tour card
+        targetViewportTop = cardHeadroom
+      } else if (pref === 'bottom') {
+        // Place target near the top so dimmed room is below it
+        targetViewportTop = Math.max(30, Math.floor(vh * 0.08))
+      } else {
+        // For auto/center, if the element is tall, default to giving top headroom so cards don't cover content
+        targetViewportTop = el.offsetHeight > vh * 0.45 ? cardHeadroom : Math.max(20, Math.floor((vh - el.offsetHeight) / 2))
+      }
+
+      const offset = -targetViewportTop
+
       if (lenis && document.documentElement.scrollHeight > window.innerHeight) {
-        const offset = -Math.max(20, Math.floor((window.innerHeight - el.offsetHeight) / 2))
         lenis.scrollTo(el, {
           offset,
           duration: 0.65,
@@ -70,7 +87,20 @@ export function TourHost() {
           },
         })
       } else {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+        const hasScroll = document.documentElement.scrollHeight > window.innerHeight
+        if (hasScroll) {
+          const elTop = el.getBoundingClientRect().top + window.scrollY
+          window.scrollTo({
+            top: Math.max(0, elTop + offset),
+            behavior: 'smooth',
+          })
+        } else {
+          el.scrollIntoView({
+            behavior: 'smooth',
+            block: pref === 'top' ? 'end' : pref === 'bottom' ? 'start' : 'center',
+            inline: 'nearest',
+          })
+        }
       }
     }
 

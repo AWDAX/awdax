@@ -168,6 +168,33 @@ export function TourPopover({
     top = Math.max(MARGIN, Math.min(vh - cardHeight - MARGIN, top))
     left = Math.max(MARGIN, Math.min(vw - cardWidth - MARGIN, left))
 
+    // Zero-overlap protection: ensure popover sits in the dimmed area rather than covering the illuminated target
+    const overlapsSpotlight =
+      top < rect.bottom &&
+      top + cardHeight > rect.top &&
+      left < rect.right &&
+      left + cardWidth > rect.left
+
+    if (overlapsSpotlight) {
+      if (spaceAbove >= cardHeight) {
+        top = Math.max(MARGIN, rect.top - cardHeight - GAP)
+      } else if (spaceBelow >= cardHeight) {
+        top = Math.min(vh - cardHeight - MARGIN, rect.bottom + GAP)
+      } else if (spaceRight >= cardWidth) {
+        left = Math.min(vw - cardWidth - MARGIN, rect.right + GAP)
+        top = Math.max(MARGIN, Math.min(vh - cardHeight - MARGIN, rect.top))
+      } else if (spaceLeft >= cardWidth) {
+        left = Math.max(MARGIN, rect.left - cardWidth - GAP)
+        top = Math.max(MARGIN, Math.min(vh - cardHeight - MARGIN, rect.top))
+      } else if (spaceAbove >= spaceBelow) {
+        // Push as far up as possible into the dimmed area above
+        top = MARGIN
+      } else {
+        // Push as far down as possible into the dimmed area below
+        top = Math.min(vh - cardHeight - MARGIN, rect.bottom + GAP)
+      }
+    }
+
     setCoords({ top, left })
   }, [rect, step])
 
