@@ -124,6 +124,12 @@ def post_message(instance_id: str):
     append_message(sess, role="user", content=content)
     sess["goal"] = content
     sess["keep_live"] = True
+    
+    # Auto-rename chat to first prompt if still untitled
+    current_title = str(sess.get("title") or "").strip()
+    if not current_title or current_title in ("Untitled chat", "New session", "Session 1"):
+        sess["title"] = content[:80].strip()
+
     if sess.get("job_id"):
         universal_service.clear_job_dataset(sess["job_id"])
     sess = persist_session(sess)
