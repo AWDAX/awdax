@@ -3,6 +3,8 @@ import { Link, NavLink, useNavigate } from 'react-router'
 import { useAuth } from '../auth/authContext.ts'
 import { DatabaseIcon, LogoutIcon, PlusIcon, ReportIcon, SearchIcon, SidebarIcon } from '../../ui/appIcons.tsx'
 import { buttonClass } from '../../ui/buttonClass.ts'
+import { Tooltip } from '../../ui/Tooltip.tsx'
+import { TourTrigger } from '../../ui/tour/TourTrigger.tsx'
 import { FEATURES } from '../features.ts'
 import { HistoryList } from './HistoryList.tsx'
 
@@ -31,22 +33,31 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
         >
           AWDAX
         </Link>
-        <button
-          type="button"
-          onClick={onCollapse}
-          aria-label="Close sidebar"
-          className="grid size-8 place-items-center rounded-control text-ink-2 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink"
-        >
-          <SidebarIcon />
-        </button>
+        <div className="flex items-center gap-1">
+          <Tooltip content="Workspace Tour" placement="bottom">
+            <TourTrigger tourId="sidebar-tour" iconOnly label="Workspace Tour" />
+          </Tooltip>
+          <Tooltip content="Collapse" placement="bottom-end">
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label="Close sidebar"
+              className="grid size-8 place-items-center rounded-control text-ink-2 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink"
+            >
+              <SidebarIcon />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       <div className="flex flex-col gap-1 px-3 pb-3">
-        <Link to="/app" onClick={onNavigate} className={buttonClass('primary', 'md', 'w-full justify-start')}>
-          <PlusIcon /> New chat
-        </Link>
+        <div data-tour="workspace-sidebar-new">
+          <Link to="/app" onClick={onNavigate} className={buttonClass('primary', 'md', 'w-full justify-start')}>
+            <PlusIcon /> New chat
+          </Link>
+        </div>
         <div className="mt-2 flex flex-col gap-0.5">
-          <NavLink to="/app/projects" onClick={onNavigate} className={navClass}>
+          <NavLink to="/app/projects" onClick={onNavigate} data-tour="workspace-sidebar-projects" className={navClass}>
             <ReportIcon /> Projects report
           </NavLink>
           {FEATURES.askDatabase && (
@@ -57,7 +68,7 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
         </div>
       </div>
 
-      <label className="mx-3 mb-3 flex items-center gap-2 rounded-control border-2 border-line px-2.5 focus-within:border-ink">
+      <label data-tour="workspace-sidebar-search" className="mx-3 mb-3 flex items-center gap-2 rounded-control border-2 border-line px-2.5 focus-within:border-ink">
         <SearchIcon className="shrink-0 text-ink-3" />
         <span className="sr-only">Search chats</span>
         <input
@@ -69,7 +80,7 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
         />
       </label>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pb-4" data-lenis-prevent>
+      <div data-tour="workspace-sidebar-history" className="min-h-0 flex-1 overflow-y-auto pb-4" data-lenis-prevent>
         <HistoryList query={query} onNavigate={onNavigate} />
       </div>
 
@@ -93,7 +104,7 @@ function Account() {
   }
 
   return (
-    <div className="flex items-center gap-2.5 border-t-2 border-ink px-3 py-3">
+    <div data-tour="workspace-sidebar-account" className="flex items-center gap-2.5 border-t-2 border-ink px-3 py-3">
       {avatar ? (
         <img src={avatar} alt="" width={32} height={32} referrerPolicy="no-referrer" className="size-8 shrink-0 rounded-control border-2 border-ink" />
       ) : (
@@ -117,3 +128,4 @@ function Account() {
     </div>
   )
 }
+

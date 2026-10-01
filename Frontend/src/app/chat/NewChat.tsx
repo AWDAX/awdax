@@ -4,9 +4,11 @@ import { Link, useNavigate } from 'react-router'
 import { awdax } from '../../api/awdax.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import { notifyInstancesChanged } from '../../api/instancesSync.ts'
-import { ChartIcon, DatabaseIcon, FileIcon, ReportIcon, SearchIcon, SparkleIcon } from '../../ui/appIcons.tsx'
+import { ChartIcon, CompassIcon, DatabaseIcon, FileIcon, ReportIcon, SearchIcon, SparkleIcon } from '../../ui/appIcons.tsx'
 import { PlayIcon } from '../../ui/icons.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
+import { useTour } from '../../ui/tour/tourContext.ts'
+import { useAutoTour } from '../../ui/tour/useAutoTour.ts'
 import { FEATURES } from '../features.ts'
 import { PromptBox } from '../prompt/PromptBox.tsx'
 import { startFromFile } from './startFromFile.ts'
@@ -45,6 +47,10 @@ export default function NewChat() {
   const navigate = useNavigate()
   const { upsert } = useInstances()
   const { toast } = useToast()
+  const { startTour } = useTour()
+
+  // Automatically triggers guided tour for first-time visitors once page is mounted
+  useAutoTour('new-chat-tour', 900, true)
 
   const submit = async (goal: string, attached: File[]) => {
     setBusy(true)
@@ -77,7 +83,7 @@ export default function NewChat() {
   // Shortcuts on the left, the refresh note on the right, one centred line; on a narrow box the note wraps
   // under the shortcuts, left-aligned, instead of hanging off to the right on its own.
   const strip = (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
+    <div data-tour="new-chat-shortcuts" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-small text-ink-2">
         <button type="button" onClick={pickFile} className={stripItem}>
           <FileIcon /> Upload a file
@@ -93,8 +99,11 @@ export default function NewChat() {
         <Link to="/app/sample" className={stripItem}>
           <PlayIcon /> Watch a sample run
         </Link>
+        <button type="button" onClick={() => startTour('new-chat-tour')} className={`${stripItem} text-signal font-medium hover:text-signal-dark`}>
+          <CompassIcon /> Guided tour
+        </button>
       </div>
-      <span className="hidden font-mono text-micro leading-none tracking-normal text-ink-3 sm:inline">Web requests refresh every 5 min</span>
+      <span data-tour="new-chat-refresh-note" className="hidden font-mono text-micro leading-none tracking-normal text-ink-3 sm:inline">Web requests refresh every 5 min</span>
     </div>
   )
 
@@ -105,23 +114,26 @@ export default function NewChat() {
         Describe it and AWDAX finds it on the web, or drop in a file you already have. Either way you get a dashboard you can shape and question.
       </p>
 
-      <PromptBox
-        label="Your data request"
-        value={text}
-        onChange={setText}
-        onSubmit={(t, f) => void submit(t, f)}
-        busy={busy}
-        size="lg"
-        autoFocus
-        allowFiles
-        files={files}
-        onFilesChange={(f) => setFiles(f.slice(-1))}
-        fileInputId={FILE_INPUT}
-        placeholder={files.length ? 'Ask something about this file (optional), then send' : 'e.g. Track Indian EV sales every month from 2024 to 2026'}
-        footer={strip}
-      />
 
-      <section className="mt-10" aria-labelledby="try-heading">
+      <div data-tour="new-chat-prompt">
+        <PromptBox
+          label="Your data request"
+          value={text}
+          onChange={setText}
+          onSubmit={(t, f) => void submit(t, f)}
+          busy={busy}
+          size="lg"
+          autoFocus
+          allowFiles
+          files={files}
+          onFilesChange={(f) => setFiles(f.slice(-1))}
+          fileInputId={FILE_INPUT}
+          placeholder={files.length ? 'Ask something about this file (optional), then send' : 'e.g. Track Indian EV sales every month from 2024 to 2026'}
+          footer={strip}
+        />
+      </div>
+
+      <section data-tour="new-chat-cards" className="mt-10" aria-labelledby="try-heading">
         <h2 id="try-heading" className="flex items-center gap-2 text-body font-semibold">
           <SparkleIcon /> See what AWDAX can do
         </h2>
@@ -149,3 +161,4 @@ export default function NewChat() {
     </div>
   )
 }
+

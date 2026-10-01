@@ -31,7 +31,8 @@ export function Dashboards() {
 
   return (
     <Section labelledBy="use-title">
-      <Container>
+      <Container data-tour="landing-dashboards">
+
         <SectionHead
           id="use-title"
           index="05"

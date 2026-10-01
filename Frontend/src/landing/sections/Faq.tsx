@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Container } from '../../ui/Container.tsx'
 import { Mark } from '../../ui/Mark.tsx'
 import { Section, SectionHead } from '../SectionHead.tsx'
@@ -46,7 +47,7 @@ const FAQ = [
 export function Faq() {
   return (
     <Section id="faq" labelledBy="faq-title">
-      <Container className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-12 lg:gap-12">
+      <Container data-tour="landing-faq" className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-12 lg:gap-12">
         <SectionHead
           id="faq-title"
           index="07"
@@ -63,25 +64,44 @@ export function Faq() {
 
         <div className="border-b-2 border-ink lg:col-span-8">
           {FAQ.map((item) => (
-            <details key={item.q} className="group border-t-2 border-ink">
-              <summary className="flex cursor-pointer list-none items-baseline justify-between gap-6 py-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink [&::-webkit-details-marker]:hidden">
-                <span className="text-h3 font-bold text-ink">
-                  <Mark on={false} className="group-hover:mark-on group-open:mark-on">
-                    {item.q}
-                  </Mark>
-                </span>
-                <span aria-hidden className="font-mono text-h3 text-ink group-open:hidden">
-                  +
-                </span>
-                <span aria-hidden className="hidden font-mono text-h3 text-ink group-open:inline">
-                  −
-                </span>
-              </summary>
-              <p className="max-w-[62ch] pb-5 text-body text-ink-2">{item.a}</p>
-            </details>
+            <FaqItem key={item.q} q={item.q} a={item.a} />
           ))}
         </div>
       </Container>
     </Section>
   )
 }
+
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="group border-t-2 border-ink">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer list-none items-baseline justify-between gap-6 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+      >
+        <span className="text-h3 font-bold text-ink">
+          <Mark on={open} className="group-hover:mark-on">
+            {q}
+          </Mark>
+        </span>
+        <span aria-hidden className="font-mono text-h3 text-ink select-none">
+          {open ? '−' : '+'}
+        </span>
+      </button>
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-soft ${
+          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <p className="max-w-[62ch] pb-5 text-body text-ink-2 leading-relaxed">{a}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+

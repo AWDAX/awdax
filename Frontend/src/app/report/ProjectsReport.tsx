@@ -5,6 +5,7 @@ import { SearchIcon } from '../../ui/appIcons.tsx'
 import { Select } from '../../ui/Select.tsx'
 import type { SelectOption } from '../../ui/Select.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
+import { TourTrigger } from '../../ui/tour/TourTrigger.tsx'
 import { useAlerts } from '../chat/alerts.ts'
 import { ExportDialog } from '../export/ExportDialog.tsx'
 import { PageHeader } from '../workspace/PageHeader.tsx'
@@ -68,9 +69,12 @@ export default function ProjectsReport() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-6">
-      <PageHeader eyebrow="Workspace" title="Projects report" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <PageHeader eyebrow="Workspace" title="Projects report" />
+        <TourTrigger tourId="projects-tour" label="Report Tour" variant="secondary" />
+      </div>
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <dl data-tour="projects-kpis" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {kpis.map((k) => (
           <div key={k.label} className="rounded-panel border-2 border-ink p-3">
             <dt className="text-micro text-ink-3">{k.label}</dt>
@@ -80,7 +84,7 @@ export default function ProjectsReport() {
       </dl>
 
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div data-tour="projects-search-sort" className="flex flex-wrap items-center gap-2">
           <label className="flex h-10 w-full items-center gap-2 rounded-control border-2 border-line px-3 focus-within:border-ink sm:w-80">
             <SearchIcon className="shrink-0 text-ink-3" />
             <span className="sr-only">Search projects</span>
@@ -91,14 +95,14 @@ export default function ProjectsReport() {
             <Select label="Sort projects" value={sort} options={SORTS} onChange={setSort} className="w-44" />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by status">
+        <div data-tour="projects-filters" className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by status">
           {FILTERS.map((f) => (
             <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)} className={chip(filter === f.key)}>
               {f.label} <span className="font-mono text-micro opacity-70">{projects.filter(f.test).length}</span>
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Quick queries">
+        <div data-tour="projects-quick-queries" className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Quick queries">
           <span className="mr-1 font-mono text-micro text-ink-3">Quick queries</span>
           {QUERIES.map((q) => (
             <button key={q.key} type="button" aria-pressed={query === q.key} onClick={() => setQuery(query === q.key ? null : q.key)} className={chip(query === q.key)}>
@@ -108,7 +112,7 @@ export default function ProjectsReport() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-panel border-2 border-ink" data-lenis-prevent>
+      <div data-tour="projects-table" className="overflow-x-auto rounded-panel border-2 border-ink" data-lenis-prevent>
         <table className="w-full min-w-[56rem] text-small">
           <thead>
             <tr className="border-b-2 border-ink text-left">
@@ -149,3 +153,4 @@ export default function ProjectsReport() {
     </div>
   )
 }
+

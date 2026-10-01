@@ -13,7 +13,7 @@ const POINTS = [
 export function ApprovePlan() {
   return (
     <Section labelledBy="plan-title">
-      <Container>
+      <Container data-tour="landing-plan">
         <SectionHead
           id="plan-title"
           index="02"

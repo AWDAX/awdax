@@ -1,8 +1,9 @@
 import { useRef } from 'react'
-import type { ReactNode } from 'react'
+import type { HTMLAttributes, ReactNode } from 'react'
 import { useSeen } from '../ui/useSeen.ts'
 
-type SectionProps = {
+
+type SectionProps = HTMLAttributes<HTMLElement> & {
   id?: string
   labelledBy: string
   /** Fill one screen below the nav on desktop and centre the content in it. Off for pinned sections. */
@@ -15,14 +16,15 @@ type SectionProps = {
  * Every landing section's frame. On desktop a fitted section is at least one screen tall (minus the
  * nav) with its content centred, so each section reads as one view. On phones it just flows.
  */
-export function Section({ id, labelledBy, fit = true, className = '', children }: SectionProps) {
+export function Section({ id, labelledBy, fit = true, className = '', children, ...rest }: SectionProps) {
   const frame = fit ? 'lg:flex lg:min-h-[calc(100dvh-4rem)] lg:flex-col lg:justify-center lg:py-8' : ''
   return (
-    <section id={id} aria-labelledby={labelledBy} className={`scroll-mt-16 py-16 md:py-24 ${frame} ${className}`}>
+    <section id={id} aria-labelledby={labelledBy} className={`scroll-mt-16 py-16 md:py-24 ${frame} ${className}`} {...rest}>
       {children}
     </section>
   )
 }
+
 
 type HeadProps = {
   id: string

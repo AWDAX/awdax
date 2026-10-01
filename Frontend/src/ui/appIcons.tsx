@@ -206,3 +206,19 @@ export const MinimizeIcon = (p: P) => (
     <path d="M1.5 5.5h4v-4M10.5 1.5v4h4M14.5 10.5h-4v4M5.5 14.5v-4h-4" />
   </Icon>
 )
+
+export const CompassIcon = (p: P) => (
+  <Icon {...p}>
+    <circle cx="8" cy="8" r="6" />
+    <polygon points="10.5,5.5 9,9 5.5,10.5 7,7" fill="currentColor" stroke="none" />
+  </Icon>
+)
+
+export const HelpCircleIcon = (p: P) => (
+  <Icon {...p}>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M6.5 6.5a1.5 1.5 0 0 1 2.8.6c0 .8-.8 1.1-1.3 1.6-.3.3-.5.7-.5 1.3" />
+    <circle cx="7.5" cy="11.5" r="0.6" fill="currentColor" stroke="none" />
+  </Icon>
+)
+
