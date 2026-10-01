@@ -155,8 +155,8 @@ export function ExportDialog({ profile, scope, title, onClose }: Props) {
           <Button onClick={save} loading={busy}>
             <DownloadIcon /> Download .{spec.ext}
           </Button>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
+          <Button variant="secondary" onClick={onClose}>
+            <CloseIcon /> Cancel
           </Button>
         </div>
       </div>
