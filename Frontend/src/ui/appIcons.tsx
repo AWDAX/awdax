@@ -194,3 +194,15 @@ export const MarkdownIcon = (p: P) => (
     <path d="M4.5 10.5V6l1.5 2 1.5-2v4.5M11.5 6v4.5M9.5 8.5l2 2 2-2" />
   </Icon>
 )
+
+export const MaximizeIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M3 6V3h3M10 3h3v3M13 10v3h-3M6 13H3v-3" />
+  </Icon>
+)
+
+export const MinimizeIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M1.5 5.5h4v-4M10.5 1.5v4h4M14.5 10.5h-4v4M5.5 14.5v-4h-4" />
+  </Icon>
+)

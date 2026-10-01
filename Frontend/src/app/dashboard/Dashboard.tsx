@@ -4,7 +4,7 @@ import { filterRows } from '../../analytics/aggregate.ts'
 import type { Filter } from '../../analytics/aggregate.ts'
 import type { TableProfile } from '../../analytics/profile.ts'
 import type { ChartSpec } from '../../analytics/spec.ts'
-import { DownloadIcon, PlusIcon, ReportIcon, TableIcon, ChartIcon, LinkIcon } from '../../ui/appIcons.tsx'
+import { DownloadIcon, PlusIcon, ReportIcon, TableIcon, ChartIcon, LinkIcon, MaximizeIcon, MinimizeIcon } from '../../ui/appIcons.tsx'
 import { Button } from '../../ui/Button.tsx'
 import { FuseButton } from '../../ui/micro/FuseButton.tsx'
 import { ExportDialog } from '../export/ExportDialog.tsx'
@@ -131,7 +131,7 @@ export function Dashboard({ profile, dash, title, sources, graphs, scoring, reco
   }
 
   return (
-    <section ref={section} aria-label="Dashboard" className={`flex flex-col gap-3 ${full ? 'overflow-auto bg-canvas p-4' : ''}`} data-lenis-prevent>
+    <section ref={section} aria-label="Dashboard" className={`flex flex-col transition-all duration-300 ease-out gap-3 ${full ? 'overflow-auto bg-canvas p-4' : ''}`} data-lenis-prevent>
       <div className="flex flex-wrap items-center gap-2">
         <div ref={tablistRef} role="tablist" aria-label="Dashboard view" className="relative flex gap-1 overflow-hidden rounded-panel border-2 border-ink p-0.5">
           <div
@@ -160,7 +160,7 @@ export function Dashboard({ profile, dash, title, sources, graphs, scoring, reco
             <DownloadIcon /> Export
           </Button>
           <Button variant="secondary" onClick={toggleFull} aria-pressed={full}>
-            {full ? 'Exit full screen' : 'Full screen'}
+            {full ? <><MinimizeIcon /> Exit full screen</> : <><MaximizeIcon /> Full screen</>}
           </Button>
           {view === 'report' && <FuseButton label="Reset" undoLabel="Undo" doneLabel="Reset" tone="default" onCommit={dash.reset} />}
         </span>
