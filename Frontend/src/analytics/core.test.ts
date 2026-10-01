@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { runQuery } from './aggregate.ts'
-import { add, div, fromString, median, sum, toString } from './decimal.ts'
+import { add, div, fromString, median, sum, toString, trimmedMean } from './decimal.ts'
 import type { Dec } from './decimal.ts'
 import { evCars, evSales } from './fixtures.ts'
 import { formatCompact, formatDec } from './format.ts'
@@ -46,10 +46,31 @@ test('numbers: missing is not zero, and junk is refused with a reason', () => {
     const r = parseNumber(m)
     assert.ok(!r.ok && r.missing, m)
   }
-  for (const bad of ['10-20', '12,5', 'call for price', '1,23,4']) {
+  for (const bad of ['abc-xyz', '12,5', 'call for price', '1,23,4']) {
     const r = parseNumber(bad)
     assert.ok(!r.ok && !r.missing, bad)
   }
+})
+
+test('numeric ranges: normalizes scraped vehicle ranges to midpoints and cleans noise', () => {
+  assert.equal(toString(num('10-20').value), '15')
+  assert.equal(num('10-20').approx, true)
+  assert.equal(num('10-20').isRangeMidpoint, true)
+  assert.equal(toString(num('Rs. 24.99 - 34.49 Lakh').value), '2974000')
+  assert.equal(num('Rs. 24.99 - 34.49 Lakh').currency, 'INR')
+  assert.equal(toString(num('₹1.95 - ₹2.65 Cr*').value), '23000000')
+  assert.equal(num('₹1.95 - ₹2.65 Cr*').currency, 'INR')
+  assert.equal(toString(num('₹11.45 - ₹26.95 Lakh*').value), '1920000')
+  assert.equal(toString(num('Rs. 13.50 - 20 Lakh*').value), '1675000')
+  assert.equal(toString(num('10 to 15 Lakh').value), '1250000')
+  assert.equal(toString(num('450 - 500 km').value), '475')
+  assert.equal(num('450 - 500 km').suffix, 'km')
+})
+
+test('trimmedMean: eliminates extreme outliers in skewed dynamic datasets', () => {
+  const vals = [d('1000000'), d('1200000'), d('1500000'), d('1800000'), d('75000000')]
+  const trimmed = trimmedMean(vals, 2, 0.2)
+  assert.equal(toString(trimmed!), '1500000')
 })
 
 test('periods sort in time order', () => {

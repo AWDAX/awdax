@@ -114,6 +114,20 @@ export function mean(values: Dec[], scale: number): Dec | null {
   return div(sum(values), fromInt(values.length), scale)
 }
 
+/**
+ * Trimmed mean: drops the top and bottom `trimFraction` (default 5%) of values
+ * before computing the mean. This provides a robust, normalized average that prevents
+ * extreme outliers from distorting dynamically fetched datasets.
+ */
+export function trimmedMean(values: Dec[], scale: number, trimFraction = 0.05): Dec | null {
+  if (values.length === 0) return null
+  if (values.length <= 4) return mean(values, scale)
+  const sorted = [...values].sort(cmp)
+  const k = Math.max(1, Math.floor(sorted.length * trimFraction))
+  const trimmed = sorted.slice(k, sorted.length - k)
+  return mean(trimmed, scale)
+}
+
 /** The median; an even count averages the two middle values exactly (one extra decimal at most). */
 export function median(values: Dec[]): Dec | null {
   if (values.length === 0) return null

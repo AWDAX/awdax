@@ -1,9 +1,10 @@
-import { add, fromInt, fromString, mul, neg, shift } from './decimal.ts'
+import { add, cmp, div, fromInt, fromString, mul, neg, shift } from './decimal.ts'
 import type { Dec } from './decimal.ts'
 
 /**
- * Scraped cells are strings ("₹12.5 lakh", "1,44,879", "(1,200)", "18.4%", "450 km"). This reads them into
- * exact decimals and says what it read, so the UI can show the unit and why a cell was left out.
+ * Scraped cells are strings ("₹12.5 lakh", "1,44,879", "(1,200)", "18.4%", "450 km", "₹11.45 - ₹26.95 Lakh*").
+ * This reads them into exact decimals and says what it read, normalizing ranges to midpoints and cleaning
+ * trailing footnotes/asterisks, so dynamic scraped data remains fully usable in aggregations.
  * A missing value ("N/A", "—") is never read as 0.
  */
 
@@ -17,8 +18,14 @@ export interface ParsedNumber {
   suffix?: string
   /** The scale word that was applied: "lakh" turns 12.5 into 1250000. */
   scaleWord?: string
-  /** Marked "~", "approx." or "about" in the source. */
+  /** The power-of-10 shift applied for this scale (5 for lakh, 7 for crore). */
+  scaleShift?: number
+  /** Marked "~", "approx." or "about" in the source, or a normalized range midpoint. */
   approx?: boolean
+  /** The original bounds when parsed from a range. */
+  range?: { min: Dec; max: Dec }
+  /** True when value represents the normalized midpoint of a range. */
+  isRangeMidpoint?: boolean
 }
 
 export type NumberRead = { ok: true; num: ParsedNumber } | { ok: false; missing: boolean; reason: string }
@@ -77,15 +84,9 @@ function readDigits(body: string): Dec | null {
   return fromString(whole.replace(/[, \u00a0\u202f]/g, '') + (m[2] ?? ''))
 }
 
-/** Reads one cell as a number. */
-export function parseNumber(input: string | number | null | undefined): NumberRead {
-  if (input === null || input === undefined) return { ok: false, missing: true, reason: 'empty' }
-  if (typeof input === 'number') {
-    if (!Number.isFinite(input)) return { ok: false, missing: false, reason: 'not a finite number' }
-    const d = fromString(String(input))
-    return d ? { ok: true, num: { value: d } } : { ok: false, missing: false, reason: 'not a number' }
-  }
-  let s = input.trim()
+/** Reads a single numeric value with its currency, scale, percentage or unit. */
+export function parseSingleNumber(rawText: string): NumberRead {
+  let s = rawText.trim()
   if (isMissingText(s)) return { ok: false, missing: true, reason: 'marked as missing' }
   const num: Partial<ParsedNumber> = {}
 
@@ -93,7 +94,6 @@ export function parseNumber(input: string | number | null | undefined): NumberRe
     num.approx = true
     s = s.replace(/^(~|≈|approx\.?|about|around|circa|ca\.)\s*/i, '')
   }
-  if (/\b(to|and)\b|\d\s*[-–—]\s*\d/i.test(s)) return { ok: false, missing: false, reason: 'a range, not one number' }
 
   let negative = false
   const paren = /^\((.*)\)$/.exec(s)
@@ -134,6 +134,7 @@ export function parseNumber(input: string | number | null | undefined): NumberRe
   if (scale) {
     value = shift(value, scale[1])
     num.scaleWord = scale[2]
+    num.scaleShift = scale[1]
     rest = more.join(' ')
   }
   if (rest) {
@@ -144,6 +145,69 @@ export function parseNumber(input: string | number | null | undefined): NumberRe
     num.suffix = rest.toLowerCase().replace(/\.$/, '')
   }
   return { ok: true, num: { ...num, value: negative ? neg(value) : value } }
+}
+
+/**
+ * Reads one cell as a number or normalizes a numeric range to its representative midpoint.
+ * Cleans scraped noise such as trailing asterisks, footnotes (*, #), and currency notations.
+ */
+export function parseNumber(input: string | number | null | undefined): NumberRead {
+  if (input === null || input === undefined) return { ok: false, missing: true, reason: 'empty' }
+  if (typeof input === 'number') {
+    if (!Number.isFinite(input)) return { ok: false, missing: false, reason: 'not a finite number' }
+    const d = fromString(String(input))
+    return d ? { ok: true, num: { value: d } } : { ok: false, missing: false, reason: 'not a number' }
+  }
+  let s = input.trim()
+  if (isMissingText(s)) return { ok: false, missing: true, reason: 'marked as missing' }
+
+  // Clean trailing footnotes, asterisks, and currency suffixes (e.g. "₹79.60 Lakh*", "Rs. 5,000/-")
+  s = s.replace(/\s*\/-$/, '').replace(/[*#†‡]/g, '').trim()
+
+  // Dynamic range normalization: "A - B", "A – B", "A — B", "A to B"
+  // Avoid capturing signed numbers (e.g. "-10") as ranges.
+  if (!/^[-−+]/.test(s)) {
+    const rangeMatch = /^([^-–—\n]+?)\s*(?:[-–—]|\bto\b)\s*([^-–—\n]+)$/i.exec(s)
+    if (rangeMatch) {
+      const r1 = parseSingleNumber(rangeMatch[1])
+      const r2 = parseSingleNumber(rangeMatch[2])
+      if (r1.ok && r2.ok) {
+        let v1 = r1.num.value
+        let v2 = r2.num.value
+        const s1 = r1.num.scaleShift
+        const s2 = r2.num.scaleShift
+
+        // Propagate scale when specified only once (e.g. "Rs. 24.99 - 34.49 Lakh")
+        if (!s1 && s2) {
+          v1 = shift(v1, s2)
+        } else if (s1 && !s2) {
+          v2 = shift(v2, s1)
+        }
+
+        let low = v1
+        let high = v2
+        if (cmp(low, high) > 0) [low, high] = [high, low]
+
+        // Midpoint normalization: (low + high) / 2
+        const mid = div(add(low, high), fromInt(2), Math.max(low.s, high.s) + 1) ?? low
+        return {
+          ok: true,
+          num: {
+            value: mid,
+            currency: r2.num.currency ?? r1.num.currency,
+            suffix: r2.num.suffix ?? r1.num.suffix,
+            scaleWord: r2.num.scaleWord ?? r1.num.scaleWord,
+            percent: r2.num.percent || r1.num.percent,
+            approx: true,
+            range: { min: low, max: high },
+            isRangeMidpoint: true,
+          },
+        }
+      }
+    }
+  }
+
+  return parseSingleNumber(s)
 }
 
 /** Is this a web address? Scraped "Source" columns usually are. */
