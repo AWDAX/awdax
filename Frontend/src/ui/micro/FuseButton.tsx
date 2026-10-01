@@ -98,7 +98,7 @@ export function FuseButton({
 
   let baseClass = `inline-flex text-left items-center justify-center overflow-hidden rounded-control border-2 transition-[background-color,border-color,color,scale] duration-300 ease-soft active:scale-97 disabled:pointer-events-none disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ink ${SIZE[size]} ${className}`
   if (isSettled) {
-    baseClass = `inline-flex text-left items-center justify-center overflow-hidden rounded-control border-2 border-line text-ink-3 ${SIZE[size]} ${className}`
+    baseClass = `inline-flex text-left items-center justify-center overflow-hidden rounded-control border-2 border-line font-semibold text-ink-3 ${SIZE[size]} ${className}`
   } else if (isArmed) {
     baseClass = `relative inline-flex text-left items-center justify-center overflow-hidden rounded-control border-2 border-ink bg-surface font-semibold text-ink transition-colors duration-300 ease-soft hover:bg-sunken focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ink ${SIZE[size]} ${className}`
   } else {
