@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import { AnimatePresence, m } from 'motion/react'
+import { EASE_SOFT } from '../../../ui/motion.ts'
 import { points as scatterPoints } from '../../../analytics/aggregate.ts'
 import type { Filter, QueryResult } from '../../../analytics/aggregate.ts'
 import { formatCompact, formatFor } from '../../../analytics/format.ts'
@@ -33,51 +35,66 @@ export function ChartView({ spec, profile, filters = [], height, selected, onSel
   const fmt = formattersFor(profile, result)
   const data = series(result)
 
-  if (spec.type === 'scatter') return <ScatterTile spec={spec} profile={profile} filters={filters} height={height} />
-  if (spec.type === 'kpi') {
+  let content
+  if (spec.type === 'scatter') {
+    content = <ScatterTile spec={spec} profile={profile} filters={filters} height={height} />
+  } else if (spec.type === 'kpi') {
     const text = fmt.exact(result.overall)
     // The whole exact number on one line: the type shrinks with the tile's width and height instead of wrapping.
     const px = Math.max(16, Math.round(height * 0.82))
-    return (
+    content = (
       <div className="@container flex items-center" style={{ height }} title={`${measureTitle(profile, result.query)}: ${text}`}>
         <p className="font-display font-wide leading-none font-extrabold whitespace-nowrap text-series tabular-nums" style={{ fontSize: `min(${px}px, 3rem, calc(165cqw / ${Math.max(5, text.length)}))` }}>
           {text}
         </p>
       </div>
     )
-  }
-  if (spec.type === 'table' && spec.query.groupBy === undefined) {
-    return <DataGrid profile={profile} filters={filters} height={height} compact />
-  }
-  if (data.length === 0) {
-    return <p className="grid place-items-center text-small text-ink-3" style={{ height }}>No rows with a value match these filters.</p>
+  } else if (spec.type === 'table' && spec.query.groupBy === undefined) {
+    content = <DataGrid profile={profile} filters={filters} height={height} compact />
+  } else if (data.length === 0) {
+    content = <p className="grid place-items-center text-small text-ink-3" style={{ height }}>No rows with a value match these filters.</p>
+  } else {
+    const common = { data, fmt, height, labels: spec.labels, selected, onSelect }
+    const groupCol = result.query.groupBy !== undefined ? profile.columns[result.query.groupBy] : undefined
+    content = (
+      <>
+        {spec.type === 'column' && <ColumnChart {...common} />}
+        {spec.type === 'bar' && <BarChart {...common} />}
+        {(spec.type === 'line' || spec.type === 'area') && (
+          <TrendChart
+            data={data}
+            fmt={fmt}
+            height={height}
+            area={spec.type === 'area'}
+            labels={spec.labels}
+            positions={groupCol?.kind === 'period' ? data.map((d) => ordinal(d.key)) : undefined}
+            breakGaps={groupCol?.kind === 'period' && ['month', 'quarter', 'year', 'fiscal'].includes(result.query.bucket ?? groupCol.grain ?? '')}
+          />
+        )}
+        {(spec.type === 'donut' || spec.type === 'pie') && <Donut data={data} fmt={fmt} height={height} selected={selected} onSelect={onSelect} pie={spec.type === 'pie'} />}
+        {spec.type === 'table' && <ResultTable result={result} fmt={fmt.exact} groupLabel={groupCol?.label ?? 'Group'} height={height} />}
+        <SrTable
+          caption={spec.title}
+          head={[groupCol?.label ?? 'Group', measureTitle(profile, result.query)]}
+          rows={data.map((d) => [d.label, fmt.exact(d.value)])}
+        />
+      </>
+    )
   }
 
-  const common = { data, fmt, height, labels: spec.labels, selected, onSelect }
-  const groupCol = result.query.groupBy !== undefined ? profile.columns[result.query.groupBy] : undefined
   return (
-    <>
-      {spec.type === 'column' && <ColumnChart {...common} />}
-      {spec.type === 'bar' && <BarChart {...common} />}
-      {(spec.type === 'line' || spec.type === 'area') && (
-        <TrendChart
-          data={data}
-          fmt={fmt}
-          height={height}
-          area={spec.type === 'area'}
-          labels={spec.labels}
-          positions={groupCol?.kind === 'period' ? data.map((d) => ordinal(d.key)) : undefined}
-          breakGaps={groupCol?.kind === 'period' && ['month', 'quarter', 'year', 'fiscal'].includes(result.query.bucket ?? groupCol.grain ?? '')}
-        />
-      )}
-      {(spec.type === 'donut' || spec.type === 'pie') && <Donut data={data} fmt={fmt} height={height} selected={selected} onSelect={onSelect} pie={spec.type === 'pie'} />}
-      {spec.type === 'table' && <ResultTable result={result} fmt={fmt.exact} groupLabel={groupCol?.label ?? 'Group'} height={height} />}
-      <SrTable
-        caption={spec.title}
-        head={[groupCol?.label ?? 'Group', measureTitle(profile, result.query)]}
-        rows={data.map((d) => [d.label, fmt.exact(d.value)])}
-      />
-    </>
+    <AnimatePresence mode="wait">
+      <m.div
+        key={spec.type}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.98 }}
+        transition={{ duration: 0.2, ease: EASE_SOFT }}
+        className="h-full w-full"
+      >
+        {content}
+      </m.div>
+    </AnimatePresence>
   )
 }
 
