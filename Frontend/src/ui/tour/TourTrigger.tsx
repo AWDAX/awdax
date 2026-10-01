@@ -27,7 +27,7 @@ export function TourTrigger({
         disabled={isActive}
         aria-label={label}
         title={label}
-        className={`grid size-8 place-items-center rounded-control border-2 border-line text-ink-2 hover:border-ink hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink ${className}`}
+        className={`grid size-8 place-items-center rounded-control text-ink-2 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink ${className}`}
       >
         <CompassIcon className="size-4" />
       </button>

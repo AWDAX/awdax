@@ -102,7 +102,7 @@ export default function Layout() {
               </Link>
               <span className="ml-2 font-display font-wide text-body font-extrabold">AWDAX</span>
             </div>
-            <TourTrigger tourId="new-chat-tour" iconOnly label="Page Tour" />
+            <TourTrigger tourId="new-chat-tour" iconOnly label="Page Tour" className="size-9" />
           </div>
           {/* Keyed by path so each chat and view starts at the top with fresh state. */}
           <main id="main" key={pathname} className="relative min-h-0 flex-1 overflow-y-auto">
