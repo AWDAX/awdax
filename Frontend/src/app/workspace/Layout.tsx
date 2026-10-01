@@ -80,13 +80,12 @@ export default function Layout() {
         <div className="flex min-w-0 flex-1 flex-col">
           <div
             inert={!bar}
-
-            className={`flex shrink-0 items-center justify-between gap-1 overflow-hidden border-ink px-3 transition-[height,border-bottom-width,opacity] ${slide} ${
-              bar ? 'h-14 border-b-2 opacity-100' : 'h-0 border-b-0 opacity-0'
+            className={`relative z-20 flex shrink-0 items-center justify-between gap-1 border-ink px-3 transition-[height,border-bottom-width,opacity] ${slide} ${
+              bar ? 'h-14 border-b-2 opacity-100 overflow-visible' : 'h-0 border-b-0 opacity-0 overflow-hidden pointer-events-none'
             }`}
           >
             <div className="flex items-center gap-1">
-              <Tooltip content={wide ? 'Expand sidebar' : 'Open menu'} placement="bottom">
+              <Tooltip content={wide ? 'Expand' : 'Open menu'} placement="bottom">
                 <button
                   type="button"
                   onClick={() => (wide ? setCollapsed(false) : setDrawer(true))}
@@ -107,7 +106,7 @@ export default function Layout() {
               </Tooltip>
               <span className="ml-2 font-display font-wide text-body font-extrabold">AWDAX</span>
             </div>
-            <Tooltip content="Page Tour" placement="bottom">
+            <Tooltip content="Page Tour" placement="bottom-end">
               <TourTrigger tourId="new-chat-tour" iconOnly label="Page Tour" className="size-9" />
             </Tooltip>
           </div>

@@ -46,19 +46,27 @@ export function TourHost() {
     let stationaryFrames = 0
     let hasScrolled = false
 
-    // 1. Scroll: Bring targeted element smoothly into view (using Lenis when present to glide past pinned sections)
+    const settle = () => {
+      if (isCancelled) return
+      updateRect()
+      requestAnimationFrame(() => {
+        if (!isCancelled) {
+          setSettledStep(currentStepIndex)
+        }
+      })
+    }
+
+    // 1. Scroll: Bring targeted element smoothly into view
     const el = document.querySelector(currentStep.target) as HTMLElement | null
     if (el) {
-      if (lenis) {
+      if (lenis && document.documentElement.scrollHeight > window.innerHeight) {
         const offset = -Math.max(20, Math.floor((window.innerHeight - el.offsetHeight) / 2))
         lenis.scrollTo(el, {
           offset,
           duration: 0.65,
           lock: true,
           onComplete: () => {
-            if (isCancelled) return
-            updateRect()
-            setSettledStep(currentStepIndex)
+            settle()
           },
         })
       } else {
@@ -76,15 +84,14 @@ export function TourHost() {
       if (Math.abs(currentY - lastY) > 0.5) {
         hasScrolled = true
         stationaryFrames = 0
-      } else if (hasScrolled || elapsed > 150) {
+      } else if (hasScrolled || elapsed > 100) {
         stationaryFrames++
       }
       lastY = currentY
 
-      // Settle as soon as stationary for 5 frames or at safety timeout
-      if ((stationaryFrames >= 5 && elapsed >= 250) || elapsed >= 800) {
-        updateRect()
-        setSettledStep(currentStepIndex)
+      // Settle as soon as stationary for 4 frames after a short delay, or at safety timeout
+      if ((stationaryFrames >= 4 && elapsed >= 120) || elapsed >= 700) {
+        settle()
         return
       }
 
@@ -186,8 +193,10 @@ export function TourHost() {
         settled={settled}
         padding={currentStep.highlightPadding ?? 8}
         radius={currentStep.spotlightRadius ?? 6}
+        smoothTransition={activeTour.id !== 'landing-tour'}
       />
       <TourPopover
+        key={currentStep.id}
         step={currentStep}
         stepIndex={currentStepIndex}
         totalSteps={activeTour.steps.length}

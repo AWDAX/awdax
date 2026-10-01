@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 type TooltipProps = {
   content: ReactNode
   children: ReactNode
-  placement?: 'top' | 'bottom' | 'left' | 'right'
+  placement?: 'top' | 'bottom' | 'left' | 'right' | 'bottom-end' | 'bottom-start'
   className?: string
 }
 
@@ -14,6 +14,8 @@ export function Tooltip({ content, children, placement = 'bottom', className = '
   const placementClass = {
     top: 'bottom-full left-1/2 -translate-x-1/2 mb-1.5',
     bottom: 'top-full left-1/2 -translate-x-1/2 mt-1.5',
+    'bottom-end': 'top-full right-0 mt-1.5',
+    'bottom-start': 'top-full left-0 mt-1.5',
     left: 'right-full top-1/2 -translate-y-1/2 mr-1.5',
     right: 'left-full top-1/2 -translate-y-1/2 ml-1.5',
   }[placement]

@@ -37,7 +37,7 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
           <Tooltip content="Workspace Tour" placement="bottom">
             <TourTrigger tourId="sidebar-tour" iconOnly label="Workspace Tour" />
           </Tooltip>
-          <Tooltip content="Collapse" placement="bottom">
+          <Tooltip content="Collapse" placement="bottom-end">
             <button
               type="button"
               onClick={onCollapse}

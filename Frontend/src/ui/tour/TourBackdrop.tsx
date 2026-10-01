@@ -6,6 +6,7 @@ type Props = {
   padding?: HighlightPadding
   radius?: number
   onClick?: () => void
+  smoothTransition?: boolean
 }
 
 function parsePadding(p: HighlightPadding = 8) {
@@ -27,7 +28,14 @@ function parsePadding(p: HighlightPadding = 8) {
  * Both the cutout mask and highlight outline ring are rendered in the exact same SVG coordinates,
  * ensuring 100% synchronous tracking during scroll and animations without lag.
  */
-export function TourBackdrop({ rect, settled = true, padding = 8, radius = 6, onClick }: Props) {
+export function TourBackdrop({
+  rect,
+  settled = true,
+  padding = 8,
+  radius = 6,
+  onClick,
+  smoothTransition = false,
+}: Props) {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1920
   const vh = typeof window !== 'undefined' ? window.innerHeight : 1080
 
@@ -61,7 +69,16 @@ export function TourBackdrop({ rect, settled = true, padding = 8, radius = 6, on
             {/* White covers entire viewport (scrim is visible) */}
             <rect x="0" y="0" width={vw} height={vh} fill="white" />
             {/* Black cutout creates the transparent spotlight window */}
-            <rect x={left} y={top} width={width} height={height} rx={r} ry={r} fill="black" />
+            <rect
+              x={left}
+              y={top}
+              width={width}
+              height={height}
+              rx={r}
+              ry={r}
+              fill="black"
+              className={smoothTransition ? 'transition-all duration-400 ease-soft' : undefined}
+            />
           </mask>
         </defs>
 
@@ -87,7 +104,9 @@ export function TourBackdrop({ rect, settled = true, padding = 8, radius = 6, on
           fill="none"
           stroke="var(--color-signal)"
           strokeWidth="2.5"
-          className={`transition-opacity duration-300 ease-soft ${settled ? 'opacity-100' : 'opacity-80'}`}
+          className={`${
+            smoothTransition ? 'transition-all duration-400 ease-soft' : 'transition-opacity duration-300 ease-soft'
+          } ${settled ? 'opacity-100' : 'opacity-80'}`}
         />
       </svg>
     </div>
