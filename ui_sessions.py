@@ -90,12 +90,15 @@ def _row_to_session(row: sqlite3.Row) -> dict[str, Any]:
     return out
 
 
-def list_sessions(user_id: str) -> list[dict[str, Any]]:
+def list_sessions(user_id: str | None = None) -> list[dict[str, Any]]:
     init_ui_sessions()
     with _lock:
         conn = _conn()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM ui_sessions WHERE user_id=? ORDER BY updated_at DESC", (user_id,))
+        if user_id:
+            cur.execute("SELECT * FROM ui_sessions WHERE user_id=? ORDER BY updated_at DESC", (user_id,))
+        else:
+            cur.execute("SELECT * FROM ui_sessions ORDER BY updated_at DESC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -103,7 +106,7 @@ def list_sessions(user_id: str) -> list[dict[str, Any]]:
         {
             "id": r["id"],
             "title": r["title"],
-            "job_id": r["job_id"],
+            "job_id":r["job_id"],
             "created_at": r["created_at"],
             "updated_at": r["updated_at"],
             "has_intent": bool(json.loads(r["payload_json"] or "{}").get("intent")),
@@ -113,12 +116,15 @@ def list_sessions(user_id: str) -> list[dict[str, Any]]:
     ]
 
 
-def get_session(session_id: str, user_id: str) -> dict[str, Any] | None:
+def get_session(session_id: str, user_id: str | None = None) -> dict[str, Any] | None:
     init_ui_sessions()
     with _lock:
         conn = _conn()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM ui_sessions WHERE id=? AND user_id=?", (session_id, user_id))
+        if user_id:
+            cur.execute("SELECT * FROM ui_sessions WHERE id=? AND user_id=?", (session_id, user_id))
+        else:
+            cur.execute("SELECT * FROM ui_sessions WHERE id=?", (session_id,))
         row = cur.fetchone()
         cur.close()
         conn.close()
@@ -127,8 +133,15 @@ def get_session(session_id: str, user_id: str) -> dict[str, Any] | None:
     return _row_to_session(row)
 
 
-def create_session(user_id: str, *, title: str = "New session") -> dict[str, Any]:
+def create_session(user_id_or_title: str | None = None, *, user_id: str | None = None, title: str | None = None) -> dict[str, Any]:
     init_ui_sessions()
+    actual_user_id = user_id or "anonymous"
+    actual_title = title or "New session"
+    if user_id_or_title is not None:
+        if user_id is None and title is None:
+            actual_title = user_id_or_title
+        elif user_id is None:
+            actual_user_id = user_id_or_title
     sid = uuid.uuid4().hex[:12]
     now = _now()
     payload = _empty_payload()
@@ -138,16 +151,23 @@ def create_session(user_id: str, *, title: str = "New session") -> dict[str, Any
         cur.execute(
             """INSERT INTO ui_sessions (id, title, job_id, payload_json, created_at, updated_at, user_id)
                VALUES (?,?,?,?,?,?,?)""",
-            (sid, title.strip() or "Ne| session", None, json.dumps(payload), now, now, user_id),
+            (sid, actual_title.strip() or "New session", None, json.dumps(payload), now, now, actual_user_id),
         )
         conn.commit()
         cur.close()
         conn.close()
-    return get_session(sid, user_id) or {"id": sid, "title": title, "user_id": user_id, **_empty_payload()}
+    return get_session(sid, actual_user_id) or {"id": sid, "title": actual_title, "user_id": actual_user_id, **_empty_payload()}
 
 
-def save_session(user_id: str, session: dict[str, Any]) -> dict[str, Any]:
+def save_session(arg1: Any, arg2: dict[str, Any] | None = None) -> dict[str, Any]:
     init_ui_sessions()
+    if arg2 is not None:
+        user_id = str(arg1 or "anonymous")
+        session = arg2
+    else:
+        session = arg1
+        user_id = str(session.get("user_id") or "anonymous")
+
     sid = str(session.get("id") or "")
     if not sid:
         raise ValueError("session id required")
@@ -162,9 +182,9 @@ def save_session(user_id: str, session: dict[str, Any]) -> dict[str, Any]:
         conn = _conn()
         cur = conn.cursor()
         cur.execute(
-            """UPDATE ui_sessions SET title=?, job_id=?, payload_json=?, updated_at=?
-               WHERE id=? AND user_id=?""",
-            (title, job_id, json.dumps(payload), now, sid, user_id),
+            """UPDATE ui_sessions SET title=?, job_id=?, payload_json=?, updated_at=?, user_id=?
+               WHERE id=?""",
+            (title, job_id, json.dumps(payload), now, user_id, sid),
         )
         if cur.rowcount == 0:
             cur.execute(
@@ -181,12 +201,15 @@ def save_session(user_id: str, session: dict[str, Any]) -> dict[str, Any]:
     return saved
 
 
-def delete_session(session_id: str, user_id: str) -> bool:
+def delete_session(session_id: str, user_id: str | None = None) -> bool:
     init_ui_sessions()
     with _lock:
         conn = _conn()
         cur = conn.cursor()
-        cur.execute("DELETE FROM ui_sessions WHERE id=? AND user_id=?", (session_id, user_id))
+        if user_id:
+            cur.execute("DELETE FROM ui_sessions WHERE id=? AND user_id=?", (session_id, user_id))
+        else:
+            cur.execute("DELETE FROM ui_sessions WHERE id=?", (session_id,))
         deleted = cur.rowcount > 0
         conn.commit()
         cur.close()
@@ -194,10 +217,10 @@ def delete_session(session_id: str, user_id: str) -> bool:
     return deleted
 
 
-def ensure_default_session(user_id: str) -> dict[str, Any]:
-    sessions = list_sessions(user_id)
-    if sessions:
-        full = get_session(sessions[0]["id"], user_id)
-        if full:
-            return full
-    return create_session(user_id, title="Session 1")
+def ensure_default_session(user_id: str = "anonymous") -> dict[str, Any]:
+   sessions = list_sessions(user_id)
+   if sessions:
+       full = get_session(sessions[0]["id"], user_id)
+       if full:
+           return full
+   return create_session(user_id=user_id, title="Session 1")

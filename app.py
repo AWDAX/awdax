@@ -54,36 +54,7 @@ from ui_sessions import (  # noqa: E402
 )
 
 
-def get_user_id(req) -> str:
-    import jwt
-    import os
-    import logging
-    
-    auth = req.headers.get("Authorization")
-    if not auth or not auth.startswith("Bearer "):
-        return "anonymous"
-    token = auth.split(" ")[1]
-    
-    secret = os.getenv("SUPABASE_JWT_SECRET")
-    try:
-        if secret:
-            # Cryptographically verify the token signature using the Supabase secret
-            payload = jwt.decode(token, secret, algorithms=["HS256"], options={"verify_aud": False})
-        else:
-            # Fallback for local development if the secret is missing from .env
-            logging.warning("SUPABASE_JWT_SECRET is missing. JWTs are being decoded without signature verification.")
-            payload = jwt.decode(token, options={"verify_signature": False})
-            
-        return payload.get("sub", "anonymous")
-    except jwt.ExpiredSignatureError:
-        logging.warning("JWT token has expired.")
-        return "anonymous"
-    except jwt.InvalidTokenError as e:
-        logging.warning(f"Invalid JWT token: {e}")
-        return "anonymous"
-    except Exception as e:
-        logging.error(f"Unexpected error decoding JWT: {e}")
-        return "anonymous"
+from auth_helper import get_user_id
 
 app = Flask(__name__)
 

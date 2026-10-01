@@ -18,6 +18,7 @@ from awdax_api.sources_stats_graph import (
     rescore_dataset,
 )
 from awdax_api.live_bridge import live_bridge
+from auth_helper import get_user_id
 from scraper import universal_service
 from ui_sessions import create_session, delete_session, get_session, list_sessions, save_session
 
@@ -36,9 +37,10 @@ def ready():
 
 @bp.get("/api/instances")
 def list_instances():
+    uid = get_user_id(request)
     rows = []
-    for meta in list_sessions():
-        full = get_session(meta["id"])
+    for meta in list_sessions(uid):
+        full = get_session(meta["id"], uid)
         if not full:
             continue
         if full.get("archived"):
@@ -49,13 +51,14 @@ def list_instances():
 
 @bp.post("/api/instances")
 def create_instance():
+    uid = get_user_id(request)
     body = request.get_json(silent=True) or {}
     title = str(body.get("title") or "Untitled chat").strip() or "Untitled chat"
     goal = str(body.get("goal") or "").strip()
-    sess = create_session(title=title)
+    sess = create_session(user_id=uid, title=title)
     if goal:
         sess["goal"] = goal
-        sess = save_session(sess)
+        sess = save_session(uid, sess)
     return jsonify(to_awdax_instance(sess)), 201
 
 
@@ -95,7 +98,7 @@ def delete_instance(instance_id: str):
     jid = sess.get("job_id")
     if jid:
         universal_service.stop_live(jid)
-    delete_session(instance_id)
+    delete_session(instance_id, get_user_id(request))
     return ("", 204)
 
 
