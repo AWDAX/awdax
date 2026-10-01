@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { InstancesProvider } from '../../api/InstancesProvider.tsx'
 import { MenuIcon, PlusIcon, SidebarIcon } from '../../ui/appIcons.tsx'
 import { ToastProvider } from '../../ui/toast/ToastHost.tsx'
+import { Tooltip } from '../../ui/Tooltip.tsx'
 import { TourTrigger } from '../../ui/tour/TourTrigger.tsx'
 import { useMediaQuery } from '../../ui/useMediaQuery.ts'
 import { Sidebar } from './Sidebar.tsx'
@@ -85,24 +86,30 @@ export default function Layout() {
             }`}
           >
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => (wide ? setCollapsed(false) : setDrawer(true))}
-                aria-label="Open sidebar"
-                className="grid size-9 place-items-center rounded-control hover:bg-sunken focus-visible:outline-2 focus-visible:outline-ink"
-              >
-                {wide ? <SidebarIcon /> : <MenuIcon />}
-              </button>
-              <Link
-                to="/app"
-                aria-label="New chat"
-                className="grid size-9 place-items-center rounded-control hover:bg-sunken focus-visible:outline-2 focus-visible:outline-ink"
-              >
-                <PlusIcon />
-              </Link>
+              <Tooltip content={wide ? 'Expand sidebar' : 'Open menu'} placement="bottom">
+                <button
+                  type="button"
+                  onClick={() => (wide ? setCollapsed(false) : setDrawer(true))}
+                  aria-label="Open sidebar"
+                  className="grid size-9 place-items-center rounded-control hover:bg-sunken focus-visible:outline-2 focus-visible:outline-ink"
+                >
+                  {wide ? <SidebarIcon /> : <MenuIcon />}
+                </button>
+              </Tooltip>
+              <Tooltip content="New chat" placement="bottom">
+                <Link
+                  to="/app"
+                  aria-label="New chat"
+                  className="grid size-9 place-items-center rounded-control hover:bg-sunken focus-visible:outline-2 focus-visible:outline-ink"
+                >
+                  <PlusIcon />
+                </Link>
+              </Tooltip>
               <span className="ml-2 font-display font-wide text-body font-extrabold">AWDAX</span>
             </div>
-            <TourTrigger tourId="new-chat-tour" iconOnly label="Page Tour" className="size-9" />
+            <Tooltip content="Page Tour" placement="bottom">
+              <TourTrigger tourId="new-chat-tour" iconOnly label="Page Tour" className="size-9" />
+            </Tooltip>
           </div>
           {/* Keyed by path so each chat and view starts at the top with fresh state. */}
           <main id="main" key={pathname} className="relative min-h-0 flex-1 overflow-y-auto">

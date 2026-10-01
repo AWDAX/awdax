@@ -39,48 +39,62 @@ export function TourHost() {
   useEffect(() => {
     if (!isActive || !currentStep) return
 
+    let animId: number
+    let isCancelled = false
+    const startTime = performance.now()
+    let lastY = window.scrollY
+    let stationaryFrames = 0
+    let hasScrolled = false
+
     // 1. Scroll: Bring targeted element smoothly into view (using Lenis when present to glide past pinned sections)
     const el = document.querySelector(currentStep.target) as HTMLElement | null
     if (el) {
       if (lenis) {
         const offset = -Math.max(20, Math.floor((window.innerHeight - el.offsetHeight) / 2))
-        lenis.scrollTo(el, { offset, duration: 0.85, lock: true })
+        lenis.scrollTo(el, {
+          offset,
+          duration: 0.65,
+          lock: true,
+          onComplete: () => {
+            if (isCancelled) return
+            updateRect()
+            setSettledStep(currentStepIndex)
+          },
+        })
       } else {
         el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
       }
     }
 
     // 2. Continuously sample targetRect on each animation frame until scroll velocity reaches 0
-    let animId: number
-    const startTime = performance.now()
-    let lastY = window.scrollY
-    let stationaryFrames = 0
-
     const syncLoop = () => {
+      if (isCancelled) return
       updateRect()
       const currentY = window.scrollY
       const elapsed = performance.now() - startTime
 
-      if (Math.abs(currentY - lastY) < 1) {
-        stationaryFrames++
-      } else {
+      if (Math.abs(currentY - lastY) > 0.5) {
+        hasScrolled = true
         stationaryFrames = 0
+      } else if (hasScrolled || elapsed > 150) {
+        stationaryFrames++
       }
       lastY = currentY
 
-      // Settle only when stationary for at least 8 consecutive frames (~130ms) AND minimum 400ms elapsed,
-      // or at 1000ms max safety timeout
-      if ((stationaryFrames >= 8 && elapsed >= 400) || elapsed >= 1000) {
+      // Settle as soon as stationary for 5 frames or at safety timeout
+      if ((stationaryFrames >= 5 && elapsed >= 250) || elapsed >= 800) {
         updateRect()
         setSettledStep(currentStepIndex)
-      } else {
-        animId = requestAnimationFrame(syncLoop)
+        return
       }
+
+      animId = requestAnimationFrame(syncLoop)
     }
 
     animId = requestAnimationFrame(syncLoop)
 
     return () => {
+      isCancelled = true
       cancelAnimationFrame(animId)
     }
   }, [isActive, currentStep, currentStepIndex, lenis, updateRect])

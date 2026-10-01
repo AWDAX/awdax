@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router'
 import { useAuth } from '../auth/authContext.ts'
 import { DatabaseIcon, LogoutIcon, PlusIcon, ReportIcon, SearchIcon, SidebarIcon } from '../../ui/appIcons.tsx'
 import { buttonClass } from '../../ui/buttonClass.ts'
+import { Tooltip } from '../../ui/Tooltip.tsx'
 import { TourTrigger } from '../../ui/tour/TourTrigger.tsx'
 import { FEATURES } from '../features.ts'
 import { HistoryList } from './HistoryList.tsx'
@@ -33,15 +34,19 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
           AWDAX
         </Link>
         <div className="flex items-center gap-1">
-          <TourTrigger tourId="sidebar-tour" iconOnly label="Workspace Tour" />
-          <button
-            type="button"
-            onClick={onCollapse}
-            aria-label="Close sidebar"
-            className="grid size-8 place-items-center rounded-control text-ink-2 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink"
-          >
-            <SidebarIcon />
-          </button>
+          <Tooltip content="Workspace Tour" placement="bottom">
+            <TourTrigger tourId="sidebar-tour" iconOnly label="Workspace Tour" />
+          </Tooltip>
+          <Tooltip content="Collapse" placement="bottom">
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label="Close sidebar"
+              className="grid size-8 place-items-center rounded-control text-ink-2 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink"
+            >
+              <SidebarIcon />
+            </button>
+          </Tooltip>
         </div>
       </div>
 

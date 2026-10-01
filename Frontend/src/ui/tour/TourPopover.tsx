@@ -40,6 +40,18 @@ export function TourPopover({
 }: Props) {
   const popoverRef = useRef<HTMLDivElement>(null)
   const [coords, setCoords] = useState<Coords>({ top: 100, left: 100 })
+  const [entered, setEntered] = useState(false)
+
+  // Trigger smooth entrance animation on every step change
+  useEffect(() => {
+    setEntered(false)
+    const anim = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setEntered(true)
+      })
+    })
+    return () => cancelAnimationFrame(anim)
+  }, [stepIndex])
 
   const getStepLabel = useCallback(
     (idx: number, s: TourStep) => {
@@ -172,6 +184,7 @@ export function TourPopover({
   }, [computePosition])
 
   const isLast = stepIndex === totalSteps - 1
+  const isVisible = settled && entered
 
   return (
     <aside
@@ -186,10 +199,10 @@ export function TourPopover({
         width: `min(${POPOVER_WIDTH}px, calc(100vw - 32px))`,
         zIndex: 70,
       }}
-      className={`flex flex-col gap-3 rounded-panel border-2 border-ink bg-canvas p-4 text-ink shadow-[4px_4px_0px_var(--color-ink)] transition-all duration-500 ease-soft ${
-        settled
+      className={`flex flex-col gap-3 rounded-panel border-2 border-ink bg-canvas p-4 text-ink shadow-[4px_4px_0px_var(--color-ink)] transition-[transform,opacity] duration-400 ease-soft ${
+        isVisible
           ? 'scale-100 opacity-100 translate-y-0 pointer-events-auto'
-          : 'scale-[0.98] opacity-0 -translate-y-8 pointer-events-none'
+          : 'scale-[0.98] opacity-0 -translate-y-6 pointer-events-none'
       }`}
     >
       {/* Header with step counter, badge, and close button */}
