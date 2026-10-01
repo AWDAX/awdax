@@ -77,9 +77,10 @@ export function ChatData({ instanceId, table, title, sources, view, onViewChange
           />
         ) : undefined}
       />
-      <section aria-labelledby="ask-heading" className="flex max-w-3xl flex-col gap-5 border-t-2 border-ink pt-6">
+      <section data-tour="chat-ask-box" aria-labelledby="ask-heading" className="flex max-w-3xl flex-col gap-5 border-t-2 border-ink pt-6">
         <div>
           <h2 id="ask-heading" className="font-display font-wide text-h3 font-extrabold">
+
             Ask about this data
           </h2>
           <p className="mt-1 text-small text-ink-2">

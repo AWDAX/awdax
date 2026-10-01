@@ -3,8 +3,10 @@ import { Link, Outlet, useLocation } from 'react-router'
 import { InstancesProvider } from '../../api/InstancesProvider.tsx'
 import { MenuIcon, PlusIcon, SidebarIcon } from '../../ui/appIcons.tsx'
 import { ToastProvider } from '../../ui/toast/ToastHost.tsx'
+import { TourTrigger } from '../../ui/tour/TourTrigger.tsx'
 import { useMediaQuery } from '../../ui/useMediaQuery.ts'
 import { Sidebar } from './Sidebar.tsx'
+
 
 const COLLAPSED_KEY = 'awdax.sidebar.collapsed'
 
@@ -77,31 +79,36 @@ export default function Layout() {
         <div className="flex min-w-0 flex-1 flex-col">
           <div
             inert={!bar}
-            className={`flex shrink-0 items-center gap-1 overflow-hidden border-ink px-3 transition-[height,border-bottom-width,opacity] ${slide} ${
+
+            className={`flex shrink-0 items-center justify-between gap-1 overflow-hidden border-ink px-3 transition-[height,border-bottom-width,opacity] ${slide} ${
               bar ? 'h-14 border-b-2 opacity-100' : 'h-0 border-b-0 opacity-0'
             }`}
           >
-            <button
-              type="button"
-              onClick={() => (wide ? setCollapsed(false) : setDrawer(true))}
-              aria-label="Open sidebar"
-              className="grid size-9 place-items-center rounded-control hover:bg-sunken focus-visible:outline-2 focus-visible:outline-ink"
-            >
-              {wide ? <SidebarIcon /> : <MenuIcon />}
-            </button>
-            <Link
-              to="/app"
-              aria-label="New chat"
-              className="grid size-9 place-items-center rounded-control hover:bg-sunken focus-visible:outline-2 focus-visible:outline-ink"
-            >
-              <PlusIcon />
-            </Link>
-            <span className="ml-2 font-display font-wide text-body font-extrabold">AWDAX</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => (wide ? setCollapsed(false) : setDrawer(true))}
+                aria-label="Open sidebar"
+                className="grid size-9 place-items-center rounded-control hover:bg-sunken focus-visible:outline-2 focus-visible:outline-ink"
+              >
+                {wide ? <SidebarIcon /> : <MenuIcon />}
+              </button>
+              <Link
+                to="/app"
+                aria-label="New chat"
+                className="grid size-9 place-items-center rounded-control hover:bg-sunken focus-visible:outline-2 focus-visible:outline-ink"
+              >
+                <PlusIcon />
+              </Link>
+              <span className="ml-2 font-display font-wide text-body font-extrabold">AWDAX</span>
+            </div>
+            <TourTrigger tourId="new-chat-tour" iconOnly label="Page Tour" />
           </div>
           {/* Keyed by path so each chat and view starts at the top with fresh state. */}
           <main id="main" key={pathname} className="relative min-h-0 flex-1 overflow-y-auto">
             <Outlet />
           </main>
+
         </div>
       </div>
       </ToastProvider>
