@@ -4,7 +4,7 @@ import { filterRows } from '../../analytics/aggregate.ts'
 import type { Filter } from '../../analytics/aggregate.ts'
 import type { TableProfile } from '../../analytics/profile.ts'
 import type { ChartSpec } from '../../analytics/spec.ts'
-import { DownloadIcon, PlusIcon } from '../../ui/appIcons.tsx'
+import { DownloadIcon, PlusIcon, ReportIcon, TableIcon, ChartIcon, LinkIcon } from '../../ui/appIcons.tsx'
 import { Button } from '../../ui/Button.tsx'
 import { FuseButton } from '../../ui/micro/FuseButton.tsx'
 import { ExportDialog } from '../export/ExportDialog.tsx'
@@ -99,20 +99,49 @@ export function Dashboard({ profile, dash, title, sources, graphs, scoring, reco
   }, [])
   const toggleFull = () => (document.fullscreenElement ? void document.exitFullscreen() : void section.current?.requestFullscreen?.())
 
-  const tab = (v: View, label: ReactNode) => (
-    <button type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`h-9 rounded-control px-3 text-small ${view === v ? 'bg-ink text-on-ink' : 'hover:bg-sunken'}`}>
-      {label}
-    </button>
-  )
+  const tablistRef = useRef<HTMLDivElement>(null)
+  const [pillStyle, setPillStyle] = useState({ left: 0, width: 0, opacity: 0 })
+
+  useEffect(() => {
+    if (!tablistRef.current) return
+    const activeBtn = tablistRef.current.querySelector('[aria-selected="true"]') as HTMLElement
+    if (activeBtn) {
+      setPillStyle({
+        left: activeBtn.offsetLeft,
+        width: activeBtn.offsetWidth,
+        opacity: 1
+      })
+    }
+  }, [view, sources?.count, profile.rowCount])
+
+  const tab = (v: View, icon: ReactNode, label: ReactNode) => {
+    const active = view === v
+    return (
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active}
+        onClick={() => setView(v)}
+        className={`relative z-10 flex h-9 items-center gap-1.5 rounded-control px-3 text-small transition-colors duration-200 ${active ? 'text-on-ink' : 'text-ink hover:bg-sunken'}`}
+      >
+        <span className={active ? 'opacity-100' : 'opacity-70'}>{icon}</span>
+        <span className="flex items-center gap-1">{label}</span>
+      </button>
+    )
+  }
 
   return (
     <section ref={section} aria-label="Dashboard" className={`flex flex-col gap-3 ${full ? 'overflow-auto bg-canvas p-4' : ''}`} data-lenis-prevent>
       <div className="flex flex-wrap items-center gap-2">
-        <div role="tablist" aria-label="Dashboard view" className="flex gap-1 rounded-panel border-2 border-ink p-0.5">
-          {tab('report', 'Report')}
-          {tab('data', <>Data <span className="font-mono text-micro opacity-70">{profile.rowCount.toLocaleString('en-IN')}</span></>)}
-          {graphs && tab('graphs', 'Graphs')}
-          {sources && tab('sources', <>Sources <span className="font-mono text-micro opacity-70">{sources.count}</span></>)}
+        <div ref={tablistRef} role="tablist" aria-label="Dashboard view" className="relative flex gap-1 overflow-hidden rounded-panel border-2 border-ink p-0.5">
+          <div
+            className="absolute top-0.5 bottom-0.5 rounded-control bg-ink transition-all duration-200 ease-out"
+            style={{ left: pillStyle.left, width: pillStyle.width, opacity: pillStyle.opacity }}
+          />
+          {tab('report', <ReportIcon />, 'Report')}
+          {tab('data', <TableIcon />, <>Data <span className="font-mono text-micro opacity-70">{profile.rowCount.toLocaleString('en-IN')}</span></>)}
+          {graphs && tab('graphs', <ChartIcon />, 'Graphs')}
+          {sources && tab('sources', <LinkIcon />, <>Sources <span className="font-mono text-micro opacity-70">{sources.count}</span></>)}
         </div>
         <span className="ml-auto flex flex-wrap items-center gap-2">
           {view === 'report' && (
