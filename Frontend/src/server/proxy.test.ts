@@ -66,11 +66,11 @@ const env = () => ({ AWDAX_API_ORIGIN: `${backend}/`, SUPABASE_URL: SUPABASE })
 const call = (path: string, init: RequestInit = {}, e: Record<string, string | undefined> = env()) =>
   proxyToBackend(new Request(`https://awdax.pages.dev${path}`, init), e, verify)
 
-test('forwards a signed-in call without the token or cookies', async () => {
+test('forwards a signed-in call with authorization header and no cookies', async () => {
   const token = await sign(user())
   const res = await call('/api/instances?x=1', { method: 'POST', body: '{"title":"t"}', headers: { authorization: `Bearer ${token}`, cookie: 'a=b', 'content-type': 'application/json' } })
   assert.equal(res.status, 200)
-  assert.deepEqual(await res.json(), { method: 'POST', url: '/api/instances?x=1', body: '{"title":"t"}', auth: null, cookie: null })
+  assert.deepEqual(await res.json(), { method: 'POST', url: '/api/instances?x=1', body: '{"title":"t"}', auth: `Bearer ${token}`, cookie: null })
   assert.equal(res.headers.get('set-cookie'), null)
   assert.equal(res.headers.get('cache-control'), 'no-store')
 })

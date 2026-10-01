@@ -18,7 +18,7 @@ export interface ProxyEnv {
 /** EventSource can't send headers, so the live stream carries the token in this cookie (src/api/client.ts). */
 export const STREAM_COOKIE = 'awdax_token'
 
-const FORWARD = ['accept', 'accept-language', 'content-type', 'last-event-id']
+const FORWARD = ['accept', 'accept-language', 'content-type', 'last-event-id', 'authorization']
 const PASS_BACK = ['content-type', 'etag', 'last-modified']
 
 const NOT_SET_UP =
@@ -61,11 +61,17 @@ export async function proxyToBackend(request: Request, env: ProxyEnv, verify?: V
   const allowed = (env.ALLOWED_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
   if (allowed.length > 0 && !allowed.includes(claims.email?.toLowerCase() ?? '')) return reply(403, NOT_LISTED)
 
-  // Only what the backend needs: never the user's token or cookies.
+  // Pass user info and required headers to backend
   const headers = new Headers()
   for (const name of FORWARD) {
     const value = request.headers.get(name)
     if (value) headers.set(name, value)
+  }
+  if (claims.sub) {
+    headers.set('x-user-id', claims.sub)
+  }
+  if (token) {
+    headers.set('authorization', `Bearer ${token}`)
   }
   const url = new URL(request.url)
   let upstream: Response

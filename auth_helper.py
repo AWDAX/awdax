@@ -5,6 +5,11 @@ import os
 import jwt
 
 def get_user_id(req) -> str:
+    # 1. Check for X-User-Id header passed by trusted frontend proxy (Cloudflare Pages)
+    x_user = req.headers.get("X-User-Id")
+    if x_user:
+        return x_user.strip()
+
     auth = req.headers.get("Authorization")
     if not auth or not auth.startswith("Bearer "):
         return "anonymous"
