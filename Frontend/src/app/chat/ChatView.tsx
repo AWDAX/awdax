@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { AnimatePresence, m } from 'motion/react'
+import { EASE_SOFT } from '../../ui/motion.ts'
 import type { ChatMessage } from '../../api/types.ts'
 import type { LiveState } from '../../api/useLiveStream.ts'
 import { profileTable } from '../../analytics/profile.ts'
@@ -57,6 +59,15 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
     setView('sources')
     dashRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+  // Before there is a dashboard, the full source list stays folded away under the strip's Details.
+  const [showPanel, setShowPanel] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const toggleSources = () => {
+    if (table) return openSources()
+    setShowPanel(!showPanel)
+    // Opening brings the list into view; closing leaves the scroll alone.
+    if (!showPanel) requestAnimationFrame(() => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
+  }
 
   return (
 
@@ -77,7 +88,7 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
           column here put the user's bubble in the middle of the page. */}
       <Thread messages={messages} working={working} />
       <div>
-        <LiveRun live={live} onRetry={onRetry} footer={sources.length > 0 ? <SourcesStrip sources={sources} onOpen={table ? openSources : undefined} /> : undefined} />
+        <LiveRun live={live} onRetry={onRetry} footer={sources.length > 0 ? <SourcesStrip sources={sources} onOpen={toggleSources} open={!table && showPanel} /> : undefined} />
       </div>
 
       {table ? (
@@ -99,7 +110,21 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
         </div>
       ) : (
         <>
-          {sources.length > 0 && <div>{panel}</div>}
+          <AnimatePresence initial={false}>
+            {sources.length > 0 && showPanel && (
+              <m.div
+                ref={panelRef}
+                key="sources"
+                className="scroll-mt-4"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.45, ease: EASE_SOFT }}
+              >
+                {panel}
+              </m.div>
+            )}
+          </AnimatePresence>
           <div className="grid min-h-40 place-items-center rounded-panel border-2 border-dashed border-line-strong p-8 text-center text-ink-2">
             <p className="max-w-[46ch]">Your dashboard appears here after the first pass. Charts, filters and questions all work from the rows AWDAX finds.</p>
           </div>

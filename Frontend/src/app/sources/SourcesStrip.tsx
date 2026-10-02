@@ -1,21 +1,26 @@
-import { useState } from 'react'
 import type { SourceView } from './buildSources.ts'
 import { topSources } from './topSources.ts'
 
 const TOP = 3
 
+type Props = {
+  sources: SourceView[]
+  /** Shows the full source list: the panel under the run, or the dashboard's Sources tab. */
+  onOpen?: () => void
+  /** The panel under the run is showing, so the button hides it. */
+  open?: boolean
+}
+
 /**
  * The websites of a run at a glance, for the live run card: only the top three (the one being read now in signal
- * yellow, then the ones that gave the most rows), then "+N more". Details opens the full Sources tab once there
- * is a dashboard; before that it lists every site here.
+ * yellow, then the ones that gave the most rows), then "+N more". Every site, with what was found on each, is one
+ * click away under Details, so the page never lists the sources twice.
  */
-export function SourcesStrip({ sources, onOpen }: { sources: SourceView[]; onOpen?: () => void }) {
-  const [all, setAll] = useState(false)
+export function SourcesStrip({ sources, onOpen, open = false }: Props) {
   if (sources.length === 0) return null
   const ranked = topSources(sources)
-  const shown = all ? ranked : ranked.slice(0, TOP)
+  const shown = ranked.slice(0, TOP)
   const hidden = ranked.length - shown.length
-  const canExpand = !onOpen && ranked.length > TOP
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="mr-1 font-mono text-micro text-ink-3">Sources</span>
@@ -36,14 +41,9 @@ export function SourcesStrip({ sources, onOpen }: { sources: SourceView[]; onOpe
         </a>
       ))}
       {hidden > 0 && <span className="font-mono text-micro text-ink-3">+{hidden} more</span>}
-      {(onOpen || canExpand) && (
-        <button
-          type="button"
-          onClick={onOpen ?? (() => setAll((a) => !a))}
-          aria-expanded={onOpen ? undefined : all}
-          className="ml-1 text-small underline underline-offset-2 hover:text-ink-2"
-        >
-          {!onOpen && all ? 'Show less' : 'Details'}
+      {onOpen && (
+        <button type="button" onClick={onOpen} aria-expanded={open} className="ml-1 text-small underline underline-offset-2 hover:text-ink-2">
+          {open ? 'Hide details' : 'Details'}
         </button>
       )}
     </div>
