@@ -18,6 +18,8 @@ from urllib.parse import urljoin
 import sqlite3
 import requests
 
+from url_guard import safe_get
+
 try:
     import certifi
 except ImportError:
@@ -195,7 +197,8 @@ def _fetch_pdf_bytes(
     last_err: Exception | None = None
     for verify in verify_opts:
         try:
-            resp = sess.get(pdf_url, timeout=timeout, verify=verify)
+            # The URL can come from an LLM-written template or a scraped viewer page: every hop is checked (SSRF).
+            resp = safe_get(pdf_url, session=sess, timeout=timeout, verify=verify)
             if resp.status_code == 200 and len(resp.content) >= 100:
                 return resp.content
             return None

@@ -115,6 +115,13 @@ class TimedOutModelTests(unittest.TestCase):
 
 
 class PageLoadTests(unittest.TestCase):
+    def setUp(self):
+        # load_page now vets the URL (DNS) and the page Chrome landed on (SSRF guard); these tests are about timing.
+        for name in ("check_url", "check_browser_url"):
+            patcher = mock.patch.object(inspector, name)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     def test_a_page_that_never_finishes_loading_is_stopped_and_read_as_is(self):
         driver = mock.Mock()
         driver.get.side_effect = inspector.TimeoutException("slow")

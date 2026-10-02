@@ -14,6 +14,8 @@ from urllib.parse import urlparse, urlunparse
 
 import requests
 
+from url_guard import UnsafeURL, UnresolvableHost, safe_get
+
 from reasoning import ScrapeIntent, gemini_json
 
 logger = __import__("logging").getLogger(__name__)
@@ -116,6 +118,7 @@ def fetch_html(url: str, *, max_chars: int = 200_000) -> dict[str, Any]:
         "html": "",
         "http_status": 0,
         "error": None,
+        "blocked": False,
     }
     if not url.startswith("https://"):
         out["error"] = "invalid url"
@@ -123,12 +126,13 @@ def fetch_html(url: str, *, max_chars: int = 200_000) -> dict[str, Any]:
     last_err: Exception | None = None
     for verify in (_VERIFY, False):
         try:
-            r = requests.get(
+            # The body is read only up to max_bytes (4 bytes per char covers any UTF-8 text), then cut to max_chars as before.
+            r = safe_get(
                 url,
                 timeout=25,
                 verify=verify,
                 headers=_request_headers(),
-                allow_redirects=True,
+                max_bytes=max_chars * 4,
             )
             html = (r.text or "")[:max_chars]
             out["final_url"] = normalize_https(r.url)
@@ -146,6 +150,11 @@ def fetch_html(url: str, *, max_chars: int = 200_000) -> dict[str, Any]:
             out["table_headers_preview"] = [re.sub(r"\s+", " ", h).strip() for h in headers if h.strip()][:25]
             if not out["https_ok"]:
                 out["error"] = f"HTTP {r.status_code}, body={len(html)} bytes"
+            return out
+        except UnsafeURL as e:
+            # Not a fetch failure to retry (the verify=False pass would be refused the same way): a blocked source.
+            out["error"] = str(e)
+            out["blocked"] = not isinstance(e, UnresolvableHost)
             return out
         except Exception as e:
             last_err = e
@@ -165,6 +174,7 @@ def probe_https(url: str) -> dict[str, Any]:
         "table_count": full.get("table_count"),
         "http_status": full.get("http_status"),
         "error": full.get("error"),
+        "blocked": bool(full.get("blocked")),
     }
 
 
