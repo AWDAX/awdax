@@ -1,3 +1,6 @@
+// A proxy can hold a handshake open without ever firing open or close; stop waiting after this long.
+const CONNECT_TIMEOUT_MS = 10_000
+
 /**
  * Live updates over a WebSocket. Repeated failed or short-lived connections
  * hand off to the server-sent event stream instead of flooding the dev proxy.
@@ -16,6 +19,7 @@ export function openLiveSocket(
   let attempts = 0
   let failures = 0
   let timer = 0
+  let watchdog = 0
 
   const connect = () => {
     if (closed || gaveUp) return
@@ -27,7 +31,13 @@ export function openLiveSocket(
       handlers.onFallback()
       return
     }
+    // Hold this attempt's socket: `socket` changes with every reconnect.
+    const current = socket
+    watchdog = window.setTimeout(() => {
+      if (current.readyState === WebSocket.CONNECTING) current.close()
+    }, CONNECT_TIMEOUT_MS)
     socket.addEventListener('open', () => {
+      window.clearTimeout(watchdog)
       openedAt = Date.now()
       attempts = 0
       handlers.onConnection('open')
@@ -40,6 +50,7 @@ export function openLiveSocket(
       }
     })
     socket.addEventListener('close', () => {
+      window.clearTimeout(watchdog)
       socket = null
       if (closed || gaveUp) return
       // Dev proxies can accept the handshake, then abort the stream 10-20 seconds later.
@@ -70,6 +81,7 @@ export function openLiveSocket(
   return () => {
     closed = true
     window.clearTimeout(timer)
+    window.clearTimeout(watchdog)
     socket?.close()
     document.removeEventListener('visibilitychange', onVisibility)
   }
