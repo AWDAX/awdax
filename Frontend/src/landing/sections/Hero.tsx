@@ -11,7 +11,7 @@ export function Hero() {
   const arrived = useArrived()
   return (
     <section aria-labelledby="hero-title" className="pt-12 pb-24 md:pt-16 md:pb-32 lg:pt-20">
-      <Container data-tour="landing-hero">
+      <Container>
         <h1 id="hero-title" className="font-display font-wide text-display font-extrabold">
           <span className="block">Describe the data.</span>
           <span className="block">
