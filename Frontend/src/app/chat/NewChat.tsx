@@ -1,14 +1,12 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { awdax } from '../../api/awdax.ts'
 import { ApiError } from '../../api/client.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import { notifyInstancesChanged } from '../../api/instancesSync.ts'
-import { ChartIcon, ChevronIcon, DatabaseIcon, FileIcon, ReportIcon, SearchIcon, SparkleIcon } from '../../ui/appIcons.tsx'
-import { PlayIcon } from '../../ui/icons.tsx'
+import { ChartIcon, ChevronIcon, FileIcon, SearchIcon, SparkleIcon } from '../../ui/appIcons.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
-import { FEATURES } from '../features.ts'
 import { PromptBox } from '../prompt/PromptBox.tsx'
 import { startFromFile } from './startFromFile.ts'
 
@@ -88,7 +86,7 @@ export default function NewChat() {
     }
   }
 
-  // Real buttons (keyboard-reachable) that open the prompt box's file picker.
+  // The file card opens the prompt box's file picker, like the + inside the box.
   const pickFile = () => (document.getElementById(FILE_INPUT) as HTMLInputElement | null)?.click()
 
   // A card fills the box and puts the caret at the end, ready to edit before sending. It never sends by itself.
@@ -102,34 +100,10 @@ export default function NewChat() {
     })
   }
 
-  const stripItem = 'flex items-center gap-1.5 rounded-sm transition-colors duration-300 ease-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
-  // Shortcuts on the left, the refresh note on the right, one centred line; on a narrow box the note wraps
-  // under the shortcuts, left-aligned, instead of hanging off to the right on its own.
-  const strip = (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-small text-ink-2">
-        <button type="button" onClick={pickFile} className={stripItem}>
-          <FileIcon /> Upload a file
-        </button>
-        <Link to="/app/projects" className={stripItem}>
-          <ReportIcon /> Projects report
-        </Link>
-        {FEATURES.askDatabase && (
-          <Link to="/app/ask" className={stripItem}>
-            <DatabaseIcon /> Ask database
-          </Link>
-        )}
-        <Link to="/app/sample" className={stripItem}>
-          <PlayIcon /> Watch a sample run
-        </Link>
-      </div>
-      <span className="hidden font-mono text-micro leading-none tracking-normal text-ink-3 sm:inline">Web requests refresh every 5 min</span>
-    </div>
-  )
-
   return (
     <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-5 py-8">
-      <h1 className="text-center font-display font-wide text-h2 font-extrabold text-balance">What data do you need?</h1>
+      {/* Normal width, not the landing's 125% display width: at app sizes the wide cut read as stretched. */}
+      <h1 className="text-center font-display text-h2 font-extrabold text-balance">What data do you need?</h1>
       <p className="mx-auto mt-2 mb-7 max-w-[60ch] text-center text-body text-pretty text-ink-2">
         Describe it and AWDAX finds it on the web, or drop in a file you already have. Either way you get a dashboard you can shape and question.
       </p>
@@ -148,7 +122,6 @@ export default function NewChat() {
           onFilesChange={(f) => setFiles(f.slice(-1))}
           fileInputId={FILE_INPUT}
           placeholder={files.length ? 'Ask something about this file (optional), then send' : 'e.g. Track Indian EV sales every month from 2024 to 2026'}
-          footer={strip}
         />
       </div>
 
