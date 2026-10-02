@@ -26,7 +26,7 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
   const [query, setQuery] = useState('')
 
   return (
-    <div className="flex h-full w-72 flex-col border-r-2 border-ink bg-surface">
+    <div className="flex h-full w-full flex-col border-r-2 border-ink bg-surface">
       <div className="flex h-14 shrink-0 items-center justify-between gap-2 px-4">
         <Link
           to="/"

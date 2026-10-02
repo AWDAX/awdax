@@ -77,31 +77,41 @@ export function ChatData({ instanceId, table, title, sources, view, onViewChange
           />
         ) : undefined}
       />
-      <section aria-labelledby="ask-heading" className="flex max-w-3xl flex-col gap-5 border-t-2 border-ink pt-6">
-        <div>
-          <h2 id="ask-heading" className="font-display font-wide text-h3 font-extrabold">
-
-            Ask about this data
-          </h2>
-          <p className="mt-1 text-small text-ink-2">
-            Answered from the {profile.rowCount.toLocaleString('en-IN')} rows above, exactly. Asking never re-scrapes; for new data, start a new chat.
-          </p>
+      {/* A full-width rule closes the dashboard. On wide screens the questions to ask sit in a left column beside
+          the answers and the box, so the section uses the page's width instead of leaving it empty on the right. */}
+      <section aria-labelledby="ask-heading" className="mt-4 grid gap-x-10 gap-y-6 border-t-2 border-ink pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <div className="flex flex-col gap-5 lg:sticky lg:top-6 lg:self-start">
+          <div>
+            <h2 id="ask-heading" className="font-display font-wide text-h3 font-extrabold">
+              Ask about this data
+            </h2>
+            <p className="mt-1 text-small text-ink-2">
+              Answered from the {profile.rowCount.toLocaleString('en-IN')} rows above, exactly. Asking never re-scrapes; for new data, start a new chat.
+            </p>
+          </div>
+          <FollowUps items={fresh} onPick={(f) => answers.add({ question: f.text, intent: f.intent, chart: f.chart, query: f.query })} />
         </div>
-        {answers.items.length > 0 && (
-          <ol className="flex flex-col gap-6">
-            {answers.items.map((a, i) => (
-              <li key={a.id} ref={i === answers.items.length - 1 ? last : undefined}>
-                <AnswerCard profile={profile} saved={a} title={title} onAddToDashboard={dash.add} onRemove={() => answers.remove(a.id)} />
-              </li>
-            ))}
-          </ol>
-        )}
-        <FollowUps items={fresh} onPick={(f) => answers.add({ question: f.text, intent: f.intent, chart: f.chart, query: f.query })} />
-        {/* Pinned to the bottom of the chat while the questions are on screen (answers scroll under it), like
-            ChatGPT's composer; above the questions it sits in place, after the chips. */}
-        <div className="sticky bottom-0 z-10 -mx-1 bg-canvas px-1 pt-2 pb-4">
-          <span aria-hidden className="pointer-events-none absolute inset-x-0 -top-6 h-6 bg-linear-to-b from-transparent to-canvas" />
-          <AskBox profile={profile} onAnswer={answers.add} suggestions={followUps} />
+        <div className="flex min-w-0 flex-col gap-6">
+          {answers.items.length > 0 && (
+            <ol className="flex flex-col gap-6">
+              {answers.items.map((a, i) => (
+                <li key={a.id} ref={i === answers.items.length - 1 ? last : undefined}>
+                  <AnswerCard profile={profile} saved={a} title={title} onAddToDashboard={dash.add} onRemove={() => answers.remove(a.id)} />
+                </li>
+              ))}
+            </ol>
+          )}
+          {/* Pinned to the bottom of the chat while answers are on screen (they scroll under it), like ChatGPT's
+              composer; with no answers yet it sits at the top of its column, level with the heading. */}
+          <div className="sticky bottom-0 z-10 -mx-1 bg-canvas px-1 pt-2 pb-4">
+            <span aria-hidden className="pointer-events-none absolute inset-x-0 -top-6 h-6 bg-linear-to-b from-transparent to-canvas" />
+            <AskBox profile={profile} onAnswer={answers.add} suggestions={followUps} />
+          </div>
+          {answers.items.length === 0 && (
+            <p className="-mt-4 rounded-panel border-2 border-dashed border-line px-6 py-10 text-center text-small text-ink-3">
+              Answers show up here, each with its own chart. Pick a question on the left or type your own.
+            </p>
+          )}
         </div>
       </section>
     </>

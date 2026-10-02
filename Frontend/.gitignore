@@ -25,6 +25,9 @@ dist-ssr
 
 # Browser verification output
 .playwright-mcp
+
+# Raw demo recordings (scripts/record-demo.mjs); the trimmed replays in public/demo/ are what ships
+scripts/recordings/
 .wrangler/
 
 # Local agent tooling (preview config)

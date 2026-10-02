@@ -9,6 +9,8 @@ import { TutorialProvider } from '../../ui/tutorial/TutorialProvider.tsx'
 import { TutorialTrigger } from '../../ui/tutorial/TutorialTrigger.tsx'
 import { useMediaQuery } from '../../ui/useMediaQuery.ts'
 import { Sidebar } from './Sidebar.tsx'
+import { SidebarResizer } from './SidebarResizer.tsx'
+import { browserStorage, readWidth, writeWidth } from './sidebarWidth.ts'
 
 
 const COLLAPSED_KEY = 'awdax.sidebar.collapsed'
@@ -29,6 +31,8 @@ export default function Layout() {
   const wide = useMediaQuery('(min-width: 768px)')
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const [drawer, setDrawer] = useState(false)
+  const [width, setWidth] = useState(() => readWidth(browserStorage()))
+  const [resizing, setResizing] = useState(false)
   const { pathname } = useLocation()
 
   useEffect(() => {
@@ -38,6 +42,14 @@ export default function Layout() {
       // storage blocked: the sidebar just forgets
     }
   }, [collapsed])
+
+  // Saved once a drag ends (or on each keyboard step), not on every pointer move. Only a width that differs from
+  // what's stored is written, so a user who never resized isn't pinned to today's default.
+  useEffect(() => {
+    if (resizing) return
+    const storage = browserStorage()
+    if (width !== readWidth(storage)) writeWidth(storage, width)
+  }, [width, resizing])
 
   // Escape closes the mobile drawer.
   useEffect(() => {
@@ -61,19 +73,25 @@ export default function Layout() {
           scroll: a second scrollbar, and a scrollIntoView sliding the app up over blank space. */}
       <div className="relative flex h-dvh overflow-hidden bg-canvas text-ink" data-lenis-prevent>
         {/* Desktop: the sidebar stays mounted and its column slides shut, so opening and closing glide
-            instead of snapping. `inert` keeps a closed sidebar out of the tab order. */}
+            instead of snapping. `inert` keeps a closed sidebar out of the tab order. Its right edge drags to
+            resize; the width transition is dropped during a drag so the edge stays under the pointer. */}
         {wide && (
-          <div inert={collapsed} className={`h-full shrink-0 overflow-hidden transition-[width] ${slide} ${collapsed ? 'w-0' : 'w-72'}`}>
-            <div className={`h-full w-72 transition-[translate,opacity] ${slide} ${collapsed ? '-translate-x-8 opacity-0' : 'translate-x-0 opacity-100'}`}>
+          <div
+            inert={collapsed}
+            className={`relative h-full shrink-0 overflow-hidden ${resizing ? '' : `transition-[width] ${slide}`}`}
+            style={{ width: collapsed ? 0 : width }}
+          >
+            <div className={`h-full transition-[translate,opacity] ${slide} ${collapsed ? '-translate-x-8 opacity-0' : 'translate-x-0 opacity-100'}`} style={{ width }}>
               <Sidebar onCollapse={() => setCollapsed(true)} />
             </div>
+            {!collapsed && <SidebarResizer width={width} onChange={setWidth} onDragging={setResizing} />}
           </div>
         )}
 
         {/* Phones: a drawer that slides in over a fading scrim. */}
         {!wide && (
           <div inert={!drawer} className={`fixed inset-0 z-40 flex ${drawer ? '' : 'pointer-events-none'}`} role="dialog" aria-modal="true" aria-label="Chats">
-            <div className={`h-full transition-transform ${slide} ${drawer ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className={`h-full w-72 max-w-[85vw] transition-transform ${slide} ${drawer ? 'translate-x-0' : '-translate-x-full'}`}>
               <Sidebar onCollapse={() => setDrawer(false)} onNavigate={() => setDrawer(false)} />
             </div>
             <button type="button" aria-label="Close menu" className={`flex-1 bg-ink/40 transition-opacity ${slide} ${drawer ? 'opacity-100' : 'opacity-0'}`} onClick={() => setDrawer(false)} />

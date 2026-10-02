@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { AnimatePresence, m } from 'motion/react'
+import { EASE_SOFT } from '../../ui/motion.ts'
 import type { ChatMessage } from '../../api/types.ts'
 import type { LiveState } from '../../api/useLiveStream.ts'
 import { profileTable } from '../../analytics/profile.ts'
@@ -9,7 +11,6 @@ import { buildSources, overlaySources } from '../sources/buildSources.ts'
 import type { Visit } from '../sources/buildSources.ts'
 import { SourcesPanel } from '../sources/SourcesPanel.tsx'
 import { SourcesStrip } from '../sources/SourcesStrip.tsx'
-import { TutorialTrigger } from '../../ui/tutorial/TutorialTrigger.tsx'
 import { ChatData } from './ChatData.tsx'
 import { LiveRun } from './LiveRun.tsx'
 import { WORKING } from './phases.ts'
@@ -28,6 +29,12 @@ type Props = {
   onRetry: () => void
   /** Shown above the title, e.g. "Sample run · fictional data". */
   badge?: ReactNode
+  /** Recorded or scripted data (a demo replay): nothing is asked of the backend, so no rescoring. */
+  offline?: boolean
+  /** When the chat's first run started, for the run line's clock. */
+  runStartedAt?: string
+  /** A replay's real elapsed seconds, shown by the run line's clock instead of ticking. */
+  runElapsedSec?: number
 }
 
 /**
@@ -35,7 +42,7 @@ type Props = {
  * the request and replies, the live run with the websites being read, then the one-screen dashboard with its
  * Sources tab, and questions about the rows.
  */
-export function ChatView({ instanceKey, title, meta, messages, live, visits, actions, onRetry, badge }: Props) {
+export function ChatView({ instanceKey, title, meta, messages, live, visits, actions, onRetry, badge, offline = false, runStartedAt, runElapsedSec }: Props) {
   const [view, setView] = useState<DashboardView>('report')
   const dashRef = useRef<HTMLDivElement>(null)
   const working = live.liveEnabled && WORKING.includes(live.status.phase ?? 'idle')
@@ -45,15 +52,25 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
     return null
   }, [messages])
   const profile = useMemo(() => (table ? profileTable(table) : undefined), [table])
-  const remote = instanceKey !== 'sample-run'
+  const remote = !offline && instanceKey !== 'sample-run'
+  // The scripted sample run has no source list (an empty one changes nothing); a recorded replay has the real one.
   const sources = useMemo(
-    () => overlaySources(buildSources({ report, profile, visits, current: live.status.current_source, working }), remote ? live.sources : undefined),
-    [report, profile, visits, live.status.current_source, live.sources, working, remote],
+    () => overlaySources(buildSources({ report, profile, visits, current: live.status.current_source, working }), live.sources),
+    [report, profile, visits, live.status.current_source, live.sources, working],
   )
   const panel = <SourcesPanel sources={sources} report={report} visits={visits} />
   const openSources = () => {
     setView('sources')
     dashRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  // Before there is a dashboard, the full source list stays folded away under the strip's Details.
+  const [showPanel, setShowPanel] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const toggleSources = () => {
+    if (table) return openSources()
+    setShowPanel(!showPanel)
+    // Opening brings the list into view; closing leaves the scroll alone.
+    if (!showPanel) requestAnimationFrame(() => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
   }
 
   return (
@@ -66,18 +83,16 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
           <p className="mt-1 font-mono text-micro text-ink-3">{meta}</p>
         </div>
         {/* Equal boxes: every action is the same height, and on wider screens the same width (the widest one's),
-            so the row reads as one set; on phones they stack full width. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <TutorialTrigger label="Watch tutorial" variant="secondary" />
-          {actions && <div className="grid w-full grid-cols-1 gap-2 *:w-full *:justify-center sm:w-auto sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">{actions}</div>}
-        </div>
+            so the row reads as one set; on phones they stack full width. A real chat has one ⋯ menu here (the
+            tutorial is in it and on the sidebar's compass). */}
+        {actions && <div className="grid w-full grid-cols-1 gap-2 *:w-full *:justify-center sm:w-auto sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">{actions}</div>}
       </header>
 
-      <div className="max-w-3xl">
-        <Thread messages={messages} working={working} />
-      </div>
+      {/* Full width, like a chat: the user's messages sit on the right edge, the replies on the left. A narrower
+          column here put the user's bubble in the middle of the page. */}
+      <Thread messages={messages} working={working} />
       <div>
-        <LiveRun live={live} onRetry={onRetry} footer={sources.length > 0 ? <SourcesStrip sources={sources} onOpen={table ? openSources : undefined} /> : undefined} />
+        <LiveRun live={live} onRetry={onRetry} startedAt={runStartedAt} elapsedSec={runElapsedSec} footer={sources.length > 0 ? <SourcesStrip sources={sources} onOpen={toggleSources} open={!table && showPanel} /> : undefined} />
       </div>
 
       {table ? (
@@ -99,7 +114,21 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
         </div>
       ) : (
         <>
-          {sources.length > 0 && <div>{panel}</div>}
+          <AnimatePresence initial={false}>
+            {sources.length > 0 && showPanel && (
+              <m.div
+                ref={panelRef}
+                key="sources"
+                className="scroll-mt-4"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.45, ease: EASE_SOFT }}
+              >
+                {panel}
+              </m.div>
+            )}
+          </AnimatePresence>
           <div className="grid min-h-40 place-items-center rounded-panel border-2 border-dashed border-line-strong p-8 text-center text-ink-2">
             <p className="max-w-[46ch]">Your dashboard appears here after the first pass. Charts, filters and questions all work from the rows AWDAX finds.</p>
           </div>

@@ -7,15 +7,12 @@ import { useInstances } from '../../api/instancesContext.ts'
 import type { InstanceDetail } from '../../api/types.ts'
 import { useLiveStream } from '../../api/useLiveStream.ts'
 import { createSingleFlight } from '../../api/singleFlight.ts'
-import { PauseIcon, PlayIcon } from '../../ui/icons.tsx'
-import { TrashIcon } from '../../ui/appIcons.tsx'
 import { Button } from '../../ui/Button.tsx'
-import { BellToggle } from '../../ui/micro/BellToggle.tsx'
-import { FuseButton } from '../../ui/micro/FuseButton.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
 import { useVisits } from '../sources/useVisits.ts'
 import { isUntitled } from '../workspace/groupByDay.ts'
 import { markSeen, notify, setWatched, useAlerts } from './alerts.ts'
+import { ChatMenu } from './ChatMenu.tsx'
 import { ChatView } from './ChatView.tsx'
 
 /**
@@ -125,28 +122,17 @@ export default function ChatPage() {
   const raw = chat?.title
   const title = raw && !isUntitled(raw) ? raw : 'Untitled chat'
   const actions = (
-    <>
-      <BellToggle pressed={watched} onChange={(on) => setWatched(id, on, live.rowsTotal)} offLabel="Alert me on new rows" onLabel="Alerts on" />
-      {liveEnabled ? (
-        <FuseButton label="Pause tracking" undoLabel="Undo" doneLabel="Paused" icon={<PauseIcon />} undoWindow={3000} onCommit={() => void setLive(false)} />
-      ) : (
-        <Button variant="secondary" loading={switching} onClick={() => void setLive(true)}>
-          <PlayIcon /> Resume tracking
-        </Button>
-      )}
-      <FuseButton
-        label="Delete chat"
-        undoLabel="Undo"
-        doneLabel="Deleted"
-        tone="danger"
-        icon={<TrashIcon />}
-        onCommit={async () => {
-          // The fuse can commit after the page was left (the user opened another chat): only leave if still here.
-          if (matchPath(pathname, window.location.pathname)) navigate('/app', { replace: true })
-          await remove(id).catch(() => toast({ title: 'Couldn’t delete that chat', tone: 'error' }))
-        }}
-      />
-    </>
+    <ChatMenu
+      watched={watched}
+      onWatch={(on) => setWatched(id, on, live.rowsTotal)}
+      liveEnabled={liveEnabled}
+      switching={switching}
+      onLive={(enabled) => void setLive(enabled)}
+      onDelete={async () => {
+        if (matchPath(pathname, window.location.pathname)) navigate('/app', { replace: true })
+        await remove(id).catch(() => toast({ title: 'Couldn’t delete that chat', tone: 'error' }))
+      }}
+    />
   )
 
   return (
@@ -157,6 +143,7 @@ export default function ChatPage() {
       messages={chat?.messages ?? []}
       live={view}
       visits={visits}
+      runStartedAt={chat?.created_at}
       actions={actions}
       onRetry={async () => {
         await setLive(false)
