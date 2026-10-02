@@ -138,8 +138,35 @@ supabase-js normally resolves with `{ error }`, hence plausible. **Fix:** a `.ca
 - BroadcastChannel: a refresh never re-notifies; the subscriber closes (`api/instancesSync.ts:22`). The posting channel (`:8`) is a throwaway object: hygiene only.
 - `Layout.tsx` keys content by pathname, which already prevents cross-chat retained state. **Keep it.**
 
-Not yet checked line by line: `useCopyToClipboard.ts`, `FuseButton.tsx`, `SmoothScroll.tsx`, tour hooks (`useAutoTour.ts`, `TourHost.tsx`),
-`SwipeToast.tsx`, `AskPage.tsx`, `ExportDialog.tsx`, and the `api/liveSocket.ts` CONNECTING watchdog. Batch F covers them.
+## A9 sweep (2 October 2026, `main` @ `e824f6c`)
+
+The files the first pass left unchecked are now read line by line. No deadlocks. Four findings:
+
+### FE-14: a live socket stuck in CONNECTING never falls back (Medium)
+`api/liveSocket.ts` only counts a failure on `close`. A proxy that accepts TCP but never finishes the WebSocket handshake leaves the
+socket in CONNECTING with no `close` for as long as the browser allows, so the SSE fallback never starts and the live view stops updating
+(the HTTP snapshot still shows old rows). **Fix:** a 10 s watchdog per attempt; if `readyState` is still CONNECTING, `close()` it, which
+fires `close` and goes through the existing failure count and fallback. Clear the watchdog on `open`, `close` and cleanup.
+
+### FE-15: copy-button reset timers overlap and outlive the component (Low)
+`ui/micro/useCopyToClipboard.ts`: two quick copies each set a reset timer in `finally`, but only the second is tracked, so the first
+one flips the tick back to idle early. Nothing clears the timer on unmount. **Fix:** clear before setting in `finally`; clear on unmount.
+
+### FE-16: leaving the page during an undo window silently cancels the action (owner decision)
+`ui/micro/FuseButton.tsx:37`: unmount cancels the fuse animation, so `onCommit` never runs. "Delete chat" and "Pause tracking" in
+`ChatPage.tsx`, "Delete" in `FilePage.tsx` and the row delete in `ProjectRow.tsx` are all dropped if the user navigates away within
+the 3 to 5 s window (the content area is keyed by path, so any navigation unmounts it). The user saw "Deleted" coming and nothing happens.
+Two defensible behaviours: commit on unmount (Gmail's undo-send) or keep today's cancel but say so. **Not changed until the owner picks.**
+
+### FE-17: tour spotlight goes stale inside the workspace scroll area (Medium, tour batch)
+`ui/tour/TourHost.tsx:73`: inside `/app` the page scrolls in `<main>` (Lenis is off there), so the host uses `scrollIntoView` but samples
+`window.scrollY`, which never moves. It settles after ~120 ms while the smooth scroll is still running, and no scroll listener updates the
+rect afterwards, so the spotlight can sit where the target used to be. The branch-only tour commits rewrite this file, so this is fixed
+and browser-verified in the tour batch, not separately.
+
+Also checked and clean: `SmoothScroll.tsx`, `useAutoTour.ts` (timer cleared), `SwipeToast.tsx` (animation cancelled on unmount),
+`AskPage.tsx` (keyed result guards stale loads), `ExportDialog.tsx` (listener cleanup; `Button loading` blocks a double save),
+`Layout.tsx` effects.
 
 ## Preserve while fixing
 
