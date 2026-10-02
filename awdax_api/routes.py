@@ -9,6 +9,7 @@ from flask import Blueprint, Response, jsonify, request, stream_with_context
 from awdax_api.dataset_export import build_dashboard, build_dataset_table
 from awdax_api.errors import detail_response
 from awdax_api.orchestrator import is_running, resume_instance, start_run
+from awdax_api.run_registry import RunLimitError, has_capacity
 from awdax_api.serializers import to_awdax_instance, to_awdax_live_state, to_awdax_messages
 from awdax_api.session_store import append_message, load_instance_session, persist_session
 from awdax_api.sources_stats_graph import (
@@ -28,6 +29,7 @@ bp = Blueprint("awdax_api", __name__)
 MAX_PROMPT_CHARS = 2000
 PROMPT_TOO_LONG = f"Request is too long ({MAX_PROMPT_CHARS} characters max)"
 WS_KEEPALIVE_SECONDS = 15
+RUNS_BUSY = "Too many runs are active right now. Please try again in a few minutes."
 
 
 def _pump(sub, send, timeout: float = WS_KEEPALIVE_SECONDS) -> None:
@@ -145,6 +147,9 @@ def post_message(instance_id: str):
         return detail_response(400, "content is required")
     if len(content) > MAX_PROMPT_CHARS:
         return detail_response(400, PROMPT_TOO_LONG)
+    # Refuse before any side effect: a request turned away must not stop tracking, clear the dataset or save a message.
+    if not has_capacity(instance_id, sess.get("user_id")):
+        return detail_response(429, RUNS_BUSY)
     append_message(sess, role="user", content=content)
     sess["goal"] = content
     sess["keep_live"] = True
@@ -155,12 +160,16 @@ def post_message(instance_id: str):
         sess["title"] = content[:80].strip()
 
     if sess.get("job_id"):
+        # The new run gets a new job id; stop the old live loop or it keeps re-scraping unseen (no-op if not live).
+        universal_service.stop_live(sess["job_id"])
         universal_service.clear_job_dataset(sess["job_id"])
     sess = persist_session(sess)
     max_pages = body.get("max_pages")
     mp = int(max_pages) if max_pages is not None else None
     try:
         start_run(instance_id, content, max_pages=mp)
+    except RunLimitError:
+        return detail_response(429, RUNS_BUSY)
     except RuntimeError as e:
         return detail_response(409, str(e))
     return jsonify(to_awdax_messages(load_instance_session(instance_id, get_user_id(request)) or sess)), 201

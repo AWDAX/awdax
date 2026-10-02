@@ -35,3 +35,12 @@ ffmpeg -i input.mov -c:v libx264 -crf 23 -preset slow -c:a aac -b:a 128k -movfla
 ## Testing the first-run popup
 
 It opens once per user. To see it again, remove the `awdax.tutorial.seen.v1:<user id>` key from localStorage (`awdax.tutorial.seen.v1:anon` in `--mode agent`) and reload `/app`.
+
+## Two encodings (since 2 October 2026)
+
+The player offers `awdax-tutorial.mp4` (H.264, `yuv420p`, High@4.0, fast-start) and falls back to `awdax-tutorial.webm` (VP9) when a browser can't decode the first; the first-run popup probes them the same way. Keep both when replacing the video, and encode with limited-range colour: a full-range (`yuvj420p`) H.264 file was refused by a Windows browser.
+
+```
+ffmpeg -i source.mp4 -vf "scale=out_range=tv,format=yuv420p" -c:v libx264 -profile:v high -level:v 4.0 -preset slow -crf 20 -movflags +faststart awdax-tutorial.mp4
+ffmpeg -i source.mp4 -vf "scale=out_range=tv,format=yuv420p" -c:v libvpx-vp9 -b:v 0 -crf 34 -row-mt 1 awdax-tutorial.webm
+```

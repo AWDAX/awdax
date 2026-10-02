@@ -4,7 +4,8 @@ import { useAuth } from '../../app/auth/authContext.ts'
 import { TutorialContext } from './tutorialContext.ts'
 import { TutorialDialog } from './TutorialDialog.tsx'
 import { hasSeenTutorial, markTutorialSeen } from './tutorialSeen.ts'
-import { TUTORIAL_SRC } from './tutorialSource.ts'
+import { TUTORIAL_SOURCES } from './tutorialSource.ts'
+import { playableSources } from './tutorialSources.ts'
 
 // Reading `localStorage` itself can throw when site data is blocked.
 function getStorage(): Storage | null {
@@ -37,10 +38,18 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     if (!firstVisit) return undefined
     const probe = document.createElement('video')
     probe.preload = 'metadata'
+    // Try each encoding the browser claims to play; the first one whose metadata loads opens the dialog.
+    const queue = playableSources(TUTORIAL_SOURCES, (type) => probe.canPlayType(type))
+    const tryNext = () => {
+      const next = queue.shift()
+      if (next) probe.src = next.src
+    }
     probe.onloadedmetadata = () => setOpen(true)
-    probe.src = TUTORIAL_SRC
+    probe.onerror = tryNext
+    tryNext()
     return () => {
       probe.onloadedmetadata = null
+      probe.onerror = null
       probe.removeAttribute('src')
       probe.load()
     }
