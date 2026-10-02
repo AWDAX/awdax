@@ -53,6 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Confirmed, or Supabase unreachable: keep a session we already had rather than sign someone
       // out over a bad connection.
       setConfirmed(userId)
+    }).catch(() => {
+      // Network failure or a thrown error: same policy as the error branch above, keep the session.
+      if (active) setConfirmed(userId)
     })
     return () => {
       active = false
