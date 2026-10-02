@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Any, Callable
 
 import requests
@@ -29,6 +30,27 @@ _NO_KEY = "No LLM key set: add NVIDIA_API_KEY (or GEMINI_API_KEY) to .env"
 
 # Process-wide: once NVIDIA refuses the key (401/403) we stop calling it.
 _nvidia_key_rejected = False
+# A model that timed out or answered busy (429/5xx) waits out a cooldown, and the model that last answered
+# goes first, so one slow model doesn't cost a full timeout on every call (as on feat/nvidia-llm).
+_cooldown_until: dict[str, float] = {}
+_last_good: str | None = None
+
+
+def _cooldown_seconds() -> float:
+    try:
+        return float(os.getenv("NVIDIA_COOLDOWN_SECONDS") or 300)
+    except ValueError:
+        return 300.0
+
+
+def _ordered(models: list[str], now: float) -> list[str]:
+    """Healthy models first (the last one that answered leads), models in cooldown last as a final resort."""
+    healthy = [m for m in models if _cooldown_until.get(m, 0) <= now]
+    cooling = [m for m in models if m not in healthy]
+    if _last_good in healthy:
+        healthy.remove(_last_good)
+        healthy.insert(0, _last_good)
+    return healthy + cooling
 
 
 def _key(name: str) -> str:
@@ -84,15 +106,15 @@ def _parse_json(text: str) -> Any:
 
 def _nvidia_call(prompt: str, temperature: float, parse: Callable[[str], Any]) -> Any:
     """Try each NVIDIA model in order. Raises RuntimeError (no key text) when all fail."""
-    global _nvidia_key_rejected
-    base = (os.getenv("NVIDIA_API_BASE") or os.getenv("NVIDIA_BASE_URL") or _DEFAULT_BASE).strip().rstrip("/")
+    global _nvidia_key_rejected, _last_good
+    base =(os.getenv("NVIDIA_API_BASE") or os.getenv("NVIDIA_BASE_URL") or _DEFAULT_BASE).strip().rstrip("/")
     try:
         timeout = float(os.getenv("NVIDIA_TIMEOUT_SECONDS") or 90)
     except ValueError:
         timeout = 90.0
     headers = {"Authorization": f"Bearer {_key('NVIDIA_API_KEY')}", "Accept": "application/json"}
     last = "no NVIDIA model answered"
-    for model in _nvidia_models():
+    for model in _ordered(_nvidia_models(), time.monotonic()):
         body = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
@@ -105,10 +127,17 @@ def _nvidia_call(prompt: str, temperature: float, parse: Callable[[str], Any]) -
                 _nvidia_key_rejected = True
                 raise RuntimeError(f"NVIDIA key rejected (HTTP {res.status_code})")
             if res.status_code != 200:
+                if res.status_code == 429 or res.status_code >= 500:
+                    _cooldown_until[model] = time.monotonic() + _cooldown_seconds()
                 raise RuntimeError(f"NVIDIA {model}: HTTP {res.status_code}")
             content = res.json()["choices"][0]["message"]["content"] or ""
-            return parse(content)
+            result = parse(content)
+            _last_good = model
+            _cooldown_until.pop(model, None)
+            return result
         except Exception as exc:  # noqa: BLE001 - every failure moves on to the next model
+            if isinstance(exc, (requests.Timeout, requests.ConnectionError)):
+                _cooldown_until[model] = time.monotonic() + _cooldown_seconds()
             last = f"{type(exc).__name__}: {exc}"
             logger.warning("NVIDIA model %s failed: %s", model, last)
             if _nvidia_key_rejected:

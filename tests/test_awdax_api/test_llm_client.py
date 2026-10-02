@@ -22,10 +22,36 @@ def _resp(status=200, content="", ):
 
 class LlmClientTests(unittest.TestCase):
     def setUp(self):
-        llm_client._nvidia_key_rejected = False
+        self._reset()
 
     def tearDown(self):
+        self._reset()
+
+    @staticmethod
+    def _reset():
         llm_client._nvidia_key_rejected = False
+        llm_client._cooldown_until.clear()
+        llm_client._last_good = None
+
+    def test_timed_out_model_is_skipped_until_its_cooldown_ends(self):
+        import requests
+
+        env = {"NVIDIA_API_KEY": SECRET, "NVIDIA_MODELS": "slow,fast"}
+        replies = [requests.Timeout("t"), _resp(200, '{"n": 1}'), _resp(200, '{"n": 2}')]
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("requests.post", side_effect=replies) as post:
+            self.assertEqual(llm_client.llm_json("p"), {"n": 1})
+            self.assertEqual(llm_client.llm_json("p"), {"n": 2})
+        self.assertEqual([c.kwargs["json"]["model"] for c in post.call_args_list], ["slow", "fast", "fast"])
+
+    def test_busy_model_cools_down_and_cooled_models_are_a_last_resort(self):
+        env = {"NVIDIA_API_KEY": SECRET, "NVIDIA_MODELS": "a,b", "NVIDIA_COOLDOWN_SECONDS": "300"}
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("requests.post", side_effect=[_resp(503), _resp(503), _resp(200, '{"ok": 1}')]) as post:
+            with self.assertRaises(RuntimeError):
+                llm_client.llm_json("p")
+            self.assertEqual(llm_client.llm_json("p"), {"ok": 1})
+        self.assertEqual([c.kwargs["json"]["model"] for c in post.call_args_list], ["a", "b", "a"])
 
     def test_success_strips_think_and_fences(self):
         content = '<think>hmm {"x": 0}</think>\n```json\n{"a": [1, 2]}\n```'
