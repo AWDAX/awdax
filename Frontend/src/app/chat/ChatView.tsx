@@ -9,7 +9,6 @@ import { buildSources, overlaySources } from '../sources/buildSources.ts'
 import type { Visit } from '../sources/buildSources.ts'
 import { SourcesPanel } from '../sources/SourcesPanel.tsx'
 import { SourcesStrip } from '../sources/SourcesStrip.tsx'
-import { TutorialTrigger } from '../../ui/tutorial/TutorialTrigger.tsx'
 import { ChatData } from './ChatData.tsx'
 import { LiveRun } from './LiveRun.tsx'
 import { WORKING } from './phases.ts'
@@ -28,6 +27,8 @@ type Props = {
   onRetry: () => void
   /** Shown above the title, e.g. "Sample run · fictional data". */
   badge?: ReactNode
+  /** Recorded or scripted data (a demo replay): nothing is asked of the backend, so no rescoring. */
+  offline?: boolean
 }
 
 /**
@@ -35,7 +36,7 @@ type Props = {
  * the request and replies, the live run with the websites being read, then the one-screen dashboard with its
  * Sources tab, and questions about the rows.
  */
-export function ChatView({ instanceKey, title, meta, messages, live, visits, actions, onRetry, badge }: Props) {
+export function ChatView({ instanceKey, title, meta, messages, live, visits, actions, onRetry, badge, offline = false }: Props) {
   const [view, setView] = useState<DashboardView>('report')
   const dashRef = useRef<HTMLDivElement>(null)
   const working = live.liveEnabled && WORKING.includes(live.status.phase ?? 'idle')
@@ -45,10 +46,11 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
     return null
   }, [messages])
   const profile = useMemo(() => (table ? profileTable(table) : undefined), [table])
-  const remote = instanceKey !== 'sample-run'
+  const remote = !offline && instanceKey !== 'sample-run'
+  // The scripted sample run has no source list (an empty one changes nothing); a recorded replay has the real one.
   const sources = useMemo(
-    () => overlaySources(buildSources({ report, profile, visits, current: live.status.current_source, working }), remote ? live.sources : undefined),
-    [report, profile, visits, live.status.current_source, live.sources, working, remote],
+    () => overlaySources(buildSources({ report, profile, visits, current: live.status.current_source, working }), live.sources),
+    [report, profile, visits, live.status.current_source, live.sources, working],
   )
   const panel = <SourcesPanel sources={sources} report={report} visits={visits} />
   const openSources = () => {
@@ -66,11 +68,9 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
           <p className="mt-1 font-mono text-micro text-ink-3">{meta}</p>
         </div>
         {/* Equal boxes: every action is the same height, and on wider screens the same width (the widest one's),
-            so the row reads as one set; on phones they stack full width. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <TutorialTrigger label="Watch tutorial" variant="secondary" />
-          {actions && <div className="grid w-full grid-cols-1 gap-2 *:w-full *:justify-center sm:w-auto sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">{actions}</div>}
-        </div>
+            so the row reads as one set; on phones they stack full width. A real chat has one ⋯ menu here (the
+            tutorial is in it and on the sidebar's compass). */}
+        {actions && <div className="grid w-full grid-cols-1 gap-2 *:w-full *:justify-center sm:w-auto sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">{actions}</div>}
       </header>
 
       {/* Full width, like a chat: the user's messages sit on the right edge, the replies on the left. A narrower

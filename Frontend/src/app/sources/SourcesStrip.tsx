@@ -1,12 +1,21 @@
+import { useState } from 'react'
 import type { SourceView } from './buildSources.ts'
+import { topSources } from './topSources.ts'
+
+const TOP = 3
 
 /**
- * The websites of a run at a glance, for the live run card: the one being read now in signal yellow, the ones
- * that gave rows with their exact counts, rejected ones struck through.
+ * The websites of a run at a glance, for the live run card: only the top three (the one being read now in signal
+ * yellow, then the ones that gave the most rows), then "+N more". Details opens the full Sources tab once there
+ * is a dashboard; before that it lists every site here.
  */
 export function SourcesStrip({ sources, onOpen }: { sources: SourceView[]; onOpen?: () => void }) {
+  const [all, setAll] = useState(false)
   if (sources.length === 0) return null
-  const shown = sources.slice(0, 8)
+  const ranked = topSources(sources)
+  const shown = all ? ranked : ranked.slice(0, TOP)
+  const hidden = ranked.length - shown.length
+  const canExpand = !onOpen && ranked.length > TOP
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <span className="mr-1 font-mono text-micro text-ink-3">Sources</span>
@@ -26,10 +35,15 @@ export function SourcesStrip({ sources, onOpen }: { sources: SourceView[]; onOpe
           {s.rows > 0 && <span className="text-ink-2">{s.rows.toLocaleString('en-IN')}</span>}
         </a>
       ))}
-      {sources.length > shown.length && <span className="font-mono text-micro text-ink-3">+{sources.length - shown.length}</span>}
-      {onOpen && (
-        <button type="button" onClick={onOpen} className="ml-1 text-small underline underline-offset-2 hover:text-ink-2">
-          Details
+      {hidden > 0 && <span className="font-mono text-micro text-ink-3">+{hidden} more</span>}
+      {(onOpen || canExpand) && (
+        <button
+          type="button"
+          onClick={onOpen ?? (() => setAll((a) => !a))}
+          aria-expanded={onOpen ? undefined : all}
+          className="ml-1 text-small underline underline-offset-2 hover:text-ink-2"
+        >
+          {!onOpen && all ? 'Show less' : 'Details'}
         </button>
       )}
     </div>
