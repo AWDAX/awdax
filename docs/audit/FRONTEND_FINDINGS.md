@@ -31,6 +31,12 @@ The real problems are **races** (stale responses overwriting newer state) and **
 | FE-12 | Dictation loses its auto-stop after a quick restart | Low | Plausible | S |
 | N4 | Proxy: parallel JWKS fetches, no timeouts | Low | Plausible | S |
 | N5 | Sign-in gate could spin forever on "Checking your sign-in…" | Low | Plausible | S |
+| FE-14 | A pending delete silently un-happens: the struck-through row snaps back, or leaving the page cancels it | Medium | Confirmed | S |
+| FE-15 | Fuse commit runs the handler from the render that armed it | Low | Latent (no current call site affected) | S |
+| FE-16 | Copy button flips back to "idle" early after two quick copies | Low | Confirmed, cosmetic | S |
+| N6 | Live view sits on "connecting" if the WebSocket handshake hangs | Low | Plausible | S |
+
+FE-01 to FE-13, N4 and N5 were fixed on `fix/stability-pass` (merged in PR #4). FE-14 to FE-16 and N6 come from the A9 sweep on `main` @ `e824f6c`.
 
 ## FE-01: stale list responses overwrite newer state
 
@@ -130,6 +136,42 @@ Sign-out (`app/auth/AuthProvider.tsx:74`–`:75`) clears none of it. On a shared
 `app/auth/AuthProvider.tsx:46`: `getUser().then(...)` without `.catch`. If it ever rejects, `confirmed` never sets and the gate spins.
 supabase-js normally resolves with `{ error }`, hence plausible. **Fix:** a `.catch` that keeps the existing session (same policy as `:53`–`:55`).
 
+## FE-14: an undo-window delete is cancelled when its component unmounts
+
+Both fuses commit from an animation's `onfinish` and call `anim.cancel()` in effect cleanup: `ui/micro/FuseButton.tsx:73`–`:78` and
+`app/workspace/HistoryItem.tsx:60`–`:65`. Unmounting during the window therefore drops the delete with no message. Reachable paths:
+- **Sidebar regroup.** `HistoryList.tsx:43` keys sections by day label, so a chat that moves group remounts its `HistoryItem` and `phase` resets to `idle`.
+  The list refreshes every 5 s (`api/InstancesProvider.tsx:12`, `:47`) and on window focus. A chat from yesterday with a running track gets a new
+  `updated_at`, moves to "Today" and loses its pending delete within the 4 s window. The row snaps back un-struck. The same happens at midnight
+  and when the sidebar search filters the row out.
+- **Leaving the page.** "Delete chat" (`app/chat/ChatPage.tsx:125`) and "Delete" (`app/chat/FilePage.tsx:62`) live inside `<main key={pathname}>`
+  (`Layout.tsx:114`). Opening another chat within the 5 s window unmounts the button, and the chat is never deleted.
+- **Project report.** A `ProjectRow` filtered or paged out of `ProjectsReport.tsx:133` cancels its delete the same way.
+
+**Fix (needs the owner's choice of behaviour):** (a) **recommended:** an armed fuse that unmounts commits immediately, since pressing Delete was the
+intent and Undo/Escape are the only explicit cancels. That is one ref in each cleanup. Alternatively, (b) lift pending deletes into `InstancesProvider`
+(`pending: Set<id>` plus one timer per id), so a remounted row shows its struck-through state again. (b) is more code but keeps the visible undo.
+
+## FE-15: FuseButton reads `onCommit` from the render that armed it
+
+`ui/micro/FuseButton.tsx:66`–`:80` disables `exhaustive-deps`, so `onfinish` calls the `onCommit` captured when `phase` became `armed`.
+`HistoryItem.tsx:51`–`:56` already avoids this with a latest-value ref (`delRef`). No current call site is wrong: each closes over values that
+stay fixed for the mount, because pages remount per pathname. A future call site whose handler depends on changing state would commit stale data.
+**Fix:** the same latest-ref pattern as `delRef`, applied to `onCommit` (and `onUndo`). Do it together with FE-14, since it touches the same effect.
+
+## FE-16: overlapping copies leak a reset timer
+
+`ui/micro/useCopyToClipboard.ts:19`–`:29` clears the timer at the start of `copy`, but sets it in `finally` after the `await`. Two copies inside one
+clipboard write both pass the clear, both set a timer, and the first one's id is overwritten, so the label resets early. The timer is not cleared on
+unmount either (harmless in React 18+). **Fix:** clear inside `finally` before setting, plus an unmount cleanup. Cosmetic: do it only when touching the file.
+
+## N6: no watchdog for a WebSocket stuck in CONNECTING
+
+`api/liveSocket.ts:20`–`:57` counts failures only on `close`. A handshake that a proxy holds open never fires `open` or `close`, so the page waits
+for the browser's own timeout before the SSE fallback (`:48`–`:51`). `onVisibility` (`:60`–`:66`) doesn't help because `socket` is non-null.
+Plausible: it depends on the proxy. **Fix:** a 10 s timer started in `connect()`, cleared on `open`. If it fires while
+`readyState === CONNECTING`, call `socket.close()`, and the existing `close` path counts the failure.
+
 ## Checked and clean
 
 - Auth: the `onAuthStateChange` callback only sets state and the stream cookie. No Supabase call is awaited inside it, so it has no lock cycle.
@@ -138,35 +180,13 @@ supabase-js normally resolves with `{ error }`, hence plausible. **Fix:** a `.ca
 - BroadcastChannel: a refresh never re-notifies; the subscriber closes (`api/instancesSync.ts:22`). The posting channel (`:8`) is a throwaway object: hygiene only.
 - `Layout.tsx` keys content by pathname, which already prevents cross-chat retained state. **Keep it.**
 
-## A9 sweep (2 October 2026, `main` @ `e824f6c`)
-
-The files the first pass left unchecked are now read line by line. No deadlocks. Four findings:
-
-### FE-14: a live socket stuck in CONNECTING never falls back (Medium)
-`api/liveSocket.ts` only counts a failure on `close`. A proxy that accepts TCP but never finishes the WebSocket handshake leaves the
-socket in CONNECTING with no `close` for as long as the browser allows, so the SSE fallback never starts and the live view stops updating
-(the HTTP snapshot still shows old rows). **Fix:** a 10 s watchdog per attempt; if `readyState` is still CONNECTING, `close()` it, which
-fires `close` and goes through the existing failure count and fallback. Clear the watchdog on `open`, `close` and cleanup.
-
-### FE-15: copy-button reset timers overlap and outlive the component (Low)
-`ui/micro/useCopyToClipboard.ts`: two quick copies each set a reset timer in `finally`, but only the second is tracked, so the first
-one flips the tick back to idle early. Nothing clears the timer on unmount. **Fix:** clear before setting in `finally`; clear on unmount.
-
-### FE-16: leaving the page during an undo window silently cancels the action (owner decision)
-`ui/micro/FuseButton.tsx:37`: unmount cancels the fuse animation, so `onCommit` never runs. "Delete chat" and "Pause tracking" in
-`ChatPage.tsx`, "Delete" in `FilePage.tsx` and the row delete in `ProjectRow.tsx` are all dropped if the user navigates away within
-the 3 to 5 s window (the content area is keyed by path, so any navigation unmounts it). The user saw "Deleted" coming and nothing happens.
-Two defensible behaviours: commit on unmount (Gmail's undo-send) or keep today's cancel but say so. **Not changed until the owner picks.**
-
-### FE-17: tour spotlight goes stale inside the workspace scroll area (Medium, tour batch)
-`ui/tour/TourHost.tsx:73`: inside `/app` the page scrolls in `<main>` (Lenis is off there), so the host uses `scrollIntoView` but samples
-`window.scrollY`, which never moves. It settles after ~120 ms while the smooth scroll is still running, and no scroll listener updates the
-rect afterwards, so the spotlight can sit where the target used to be. The branch-only tour commits rewrite this file, so this is fixed
-and browser-verified in the tour batch, not separately.
-
-Also checked and clean: `SmoothScroll.tsx`, `useAutoTour.ts` (timer cleared), `SwipeToast.tsx` (animation cancelled on unmount),
-`AskPage.tsx` (keyed result guards stale loads), `ExportDialog.tsx` (listener cleanup; `Button loading` blocks a double save),
-`Layout.tsx` effects.
+- A9 sweep (`main` @ `e824f6c`), no race found:
+  - `SmoothScroll.tsx` and `useAutoTour.ts` clean up their timers.
+  - `TourHost.tsx`: every rAF loop and the Lenis `onComplete` check `isCancelled`, and every listener is removed.
+  - `AskPage.tsx` has an `alive` guard and only shows a table whose key matches the selected project.
+  - `ExportDialog.tsx`: a late `setBusy` after close is harmless.
+  - `Layout.tsx`: storage write and Escape listener are fine.
+  - `SwipeToast.tsx` uses the same arm-time closure as FE-15, but `onDismiss(id)` comes from the toast host and its `id` is fixed per toast.
 
 ## Preserve while fixing
 
