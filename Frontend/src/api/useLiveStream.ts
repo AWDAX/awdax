@@ -7,7 +7,9 @@ import { applyPatch, asRows, EMPTY_LIVE, isRecord, mergeSources, type LiveState 
 import { canMerge, mergeStreamedRows } from './mergeRows.ts'
 import { runActivityChanged, shouldPoll } from './pollGate.ts'
 import { createSnapshotGate } from './snapshotGate.ts'
-import type { DatasetTable, LiveStreamPayload, ResearchSource, RunEvent, StreamedRows } from './types.ts'
+import { attachStreamListeners } from './sseStream.ts'
+import { createSseSupervisor } from './sseSupervisor.ts'
+import type { DatasetTable, LiveSnapshot, LiveStreamPayload, ResearchSource, RunEvent, StreamedRows } from './types.ts'
 
 export type { LiveState } from './liveState.ts'
 
@@ -34,7 +36,6 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
     let closed = false
     let poll: number | undefined
     let liveRefresh: number | undefined
-    let source: EventSource | null = null
     let stopSocket: (() => void) | null = null
     const datasetRef = { current: null as DatasetTable | null }
     const gate = createSnapshotGate()
@@ -69,10 +70,10 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
       if (chatUpdated) handlersRef.current.onChatUpdated?.()
     }
 
-    const applyLive = (state: AwdaxpLiveState) => {
-      const snap = mapLiveSnapshot(state)
+    const applySnapshot = (snap: LiveSnapshot) => {
       publish({ status: { ...snap.status }, liveEnabled: snap.live_enabled, rowsTotal: snap.rows_total })
     }
+    const applyLive = (state: AwdaxpLiveState) => applySnapshot(mapLiveSnapshot(state))
 
     const applyRows = (message: StreamedRows) => {
       const mergeable = loaded.current && canMerge(datasetRef.current)
@@ -204,55 +205,58 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
       }
     }
 
-    const startPolling = () => {
-      if (poll === undefined) {
-        poll = window.setInterval(() => {
-          if (shouldPoll(document.visibilityState === 'visible', current.status.phase)) void loadFull()
-        }, POLL_MS)
+    const sse = createSseSupervisor({
+      open: () => {
+        const source = new EventSource(awdax.streamUrl(id))
+        attachStreamListeners(source, {
+          onLive: applyLive,
+          onEvent: (event) => update((s) => ({ ...s, events: [...s.events, event].slice(-12) })),
+          onSource: (value) => onMessage({ type: 'source', source: value }),
+        })
+        return source
+      },
+      schedule: (fn, ms) => window.setTimeout(fn, ms),
+      cancel: (handle) => window.clearTimeout(handle),
+      onError: () => update((s) => ({ ...s, connected: false })),
+    })
+    const statusLoading = { current: false }
+    // With the stream down (503 on a restart, 401) the tick must fetch status itself: the phase gate below
+    // would otherwise stay on a stale phase forever.
+    const tick = async (force: boolean) => {
+      if (closed || document.visibilityState !== 'visible') return
+      let changed = false
+      if (!sse.isOpen() && !statusLoading.current) {
+        statusLoading.current = true
+        try {
+          const before = current.status.phase
+          applySnapshot(await awdax.getLive(id))
+          changed = loaded.current && runActivityChanged(before, current.status.phase)
+        } catch {
+          // Asked again next tick.
+        } finally {
+          statusLoading.current = false
+        }
       }
+      // A phase change already fetched the table inside update().
+      if (!closed && !changed && (force || shouldPoll(true, current.status.phase))) void loadFull()
     }
-    // Back on the tab while polling: catch up once instead of waiting for the next tick.
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && poll !== undefined) void loadFull()
+    const startPolling = () => {
+      if (poll === undefined) poll = window.setInterval(() => void tick(false), POLL_MS)
     }
+    // Back on the tab while polling: catch up now instead of at the next tick.
+    const onVisible = () => poll !== undefined && void tick(true)
     document.addEventListener('visibilitychange', onVisible)
     const stopPolling = () => {
       window.clearInterval(poll)
       poll = undefined
     }
     const stopSse = () => {
-      source?.close()
-      source = null
+      sse.stop()
       stopPolling()
     }
     const startSse = () => {
-      if (closed || source) return
-      source = new EventSource(awdax.streamUrl(id))
-      const take = (raw: string) => {
-        try {
-          const parsed = JSON.parse(raw) as unknown
-          if (isRecord(parsed) && 'enabled' in parsed && 'latest_run' in parsed) applyLive(parsed as unknown as AwdaxpLiveState)
-          else if (isRecord(parsed) && parsed.phase) {
-            update((s) => ({ ...s, events: [...s.events, parsed as unknown as RunEvent].slice(-12) }))
-          }
-        } catch {
-          // ignore
-        }
-      }
-      source.addEventListener('status', (event) => take(event.data))
-      source.addEventListener('run_event', (event) => take(event.data))
-      source.addEventListener('source', (event) => {
-        try {
-          onMessage({ type: 'source', source: JSON.parse(event.data) as unknown })
-        } catch {
-          // An invalid source frame does not stop the stream.
-        }
-      })
-      source.onmessage = (event) => take(event.data)
-      source.onerror = () => {
-        update((s) => ({ ...s, connected: false }))
-        startPolling()
-      }
+      if (closed) return
+      sse.start()
       startPolling()
     }
     const stopAll = () => {
