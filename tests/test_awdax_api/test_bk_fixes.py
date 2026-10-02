@@ -142,9 +142,9 @@ class AccessTests(_TempDb):
 
     def test_proxy_secret(self):
         with mock.patch.dict(os.environ, {"PROXY_SHARED_SECRET": "s3"}, clear=True):
+            # Strict mode (BE-01): a user header without the proxy's secret is refused, not downgraded.
             wrong = self.client.post("/api/instances", json={}, headers={"X-User-Id": "A", "X-Proxy-Secret": "bad"})
-            self.assertEqual(wrong.status_code, 201)
-            self.assertNotEqual(ui_sessions.get_session(wrong.get_json()["id"])["user_id"], "A")
+            self.assertEqual(wrong.status_code, 401)
             ok = self.client.post("/api/instances", json={}, headers={"X-User-Id": "A", "X-Proxy-Secret": "s3"})
             self.assertEqual(ui_sessions.get_session(ok.get_json()["id"])["user_id"], "A")
 

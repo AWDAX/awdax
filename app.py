@@ -58,6 +58,10 @@ from auth_helper import get_user_id
 
 app = Flask(__name__)
 
+from awdax_api import legacy_guard  # noqa: E402
+
+legacy_guard.install(app)  # first before_request: hides the old per-user-unsafe routes below unless AWDAX_LEGACY_API=1
+
 from awdax_api import init_awdax_api  # noqa: E402
 
 init_awdax_api(app)
