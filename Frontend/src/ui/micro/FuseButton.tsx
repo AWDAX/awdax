@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { TrashIcon } from '../appIcons.tsx'
 import { CheckIcon, ReplayIcon } from '../icons.tsx'
+import { createFuseLatch } from './fuseLatch.ts'
 
 export type FuseButtonSize = 'sm' | 'md'
 export type FuseCommitOn = 'press' | 'fuseEnd'
@@ -51,13 +52,22 @@ export function FuseButton({
   const fuseRef = useRef<HTMLSpanElement>(null)
   const animRef = useRef<Animation | null>(null)
 
+  // The latest onCommit, read when the fuse ends or the button unmounts, not the one from the render that armed it.
+  const commitRef = useRef(onCommit)
+  useEffect(() => {
+    commitRef.current = onCommit
+  })
+  const [latch] = useState(createFuseLatch)
+
   const arm = () => {
     if (disabled || phase !== 'idle') return
     setPhase('armed')
     if (commitOn === 'press') onCommit?.()
+    else latch.arm()
   }
   const undo = () => {
     if (phase !== 'armed') return
+    latch.undo()
     animRef.current?.cancel()
     onUndo?.()
     setPhase('idle')
@@ -71,13 +81,20 @@ export function FuseButton({
       fill: 'forwards',
     })
     anim.onfinish = () => {
-      if (commitOn === 'fuseEnd') onCommit?.()
+      if (latch.finish()) commitRef.current?.()
       setPhase('settled')
     }
     animRef.current = anim
     return () => anim.cancel()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, undoWindow, commitOn])
+  }, [phase, undoWindow, latch])
+
+  // Once armed, leaving the page (or the row) before the fuse ends must not drop the action.
+  useEffect(
+    () => () => {
+      if (latch.unmount()) commitRef.current?.()
+    },
+    [latch],
+  )
 
   // The "done" tick shows briefly, then the button is ready again (a Reset can be used more than once).
   useEffect(() => {

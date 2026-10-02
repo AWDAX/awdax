@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, matchPath, useLocation, useNavigate, useParams } from 'react-router'
 import { timeAgo } from '../../api/dates.ts'
 import { FileIcon, TrashIcon } from '../../ui/appIcons.tsx'
 import { AssistantOrb } from '../../ui/micro/AssistantOrb.tsx'
@@ -16,6 +16,7 @@ import { ChatData } from './ChatData.tsx'
 export default function FilePage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [project, setProject] = useState<LocalProject | null | undefined>(undefined)
 
   useEffect(() => {
@@ -66,7 +67,8 @@ export default function FilePage() {
           tone="danger"
           icon={<TrashIcon />}
           onCommit={async () => {
-            navigate('/app', { replace: true })
+            // The fuse can commit after the page was left (the user opened another chat): only leave if still here.
+            if (matchPath(pathname, window.location.pathname)) navigate('/app', { replace: true })
             await deleteLocal(project.id)
           }}
         />

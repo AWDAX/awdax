@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { NavLink, useMatch, useNavigate } from 'react-router'
+import { NavLink, matchPath, useMatch, useNavigate } from 'react-router'
 import { useInstances } from '../../api/instancesContext.ts'
 import { useToast } from '../../ui/toast/toastContext.ts'
 import { EditIcon, FileIcon, MoreIcon, TrashIcon } from '../../ui/appIcons.tsx'
+import { createFuseLatch } from '../../ui/micro/fuseLatch.ts'
 import { Popover } from '../../ui/Popover.tsx'
 import { useFocusTrap } from '../../ui/useFocusTrap.ts'
 import { deleteLocal, renameLocal } from '../files/localProjects.ts'
@@ -40,7 +41,7 @@ export function HistoryItem({ item: chat, onNavigate }: { item: Entry; onNavigat
   const close = useCallback(() => setOpen(false), [])
 
   const del = async () => {
-    if (active) navigate('/app', { replace: true })
+    if (matchPath(path, window.location.pathname)) navigate('/app', { replace: true })
     try {
       await (chat.kind === 'file' ? deleteLocal(chat.id) : remove(chat.id))
     } catch {
@@ -48,21 +49,32 @@ export function HistoryItem({ item: chat, onNavigate }: { item: Entry; onNavigat
     }
   }
 
-  // The latest del(), read when the fuse ends: the user may have opened another chat during the undo window,
-  // and a stale `active` would then send them back to New chat.
+  // The latest del(), read when the fuse ends or the row unmounts. It checks the location as it runs: the user
+  // may have opened another chat during the undo window, and then must not be sent back to New chat.
   const delRef = useRef(del)
   useEffect(() => {
     delRef.current = del
   })
+  const [latch] = useState(createFuseLatch)
 
   // The undo window: a thin line burns down along the row, then the chat is deleted. The row itself is the
   // armed state (struck through, with Undo), so this is FuseButton's fuse without FuseButton's button.
   useEffect(() => {
     if (phase !== 'deleting' || !fuse.current) return undefined
     const anim = fuse.current.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], { duration: UNDO_MS, easing: 'linear', fill: 'forwards' })
-    anim.onfinish = () => void delRef.current()
+    anim.onfinish = () => {
+      if (latch.finish()) void delRef.current()
+    }
     return () => anim.cancel()
-  }, [phase])
+  }, [phase, latch])
+
+  // A row that moves to another day group, or is filtered out, remounts: its pending delete must still happen.
+  useEffect(
+    () => () => {
+      if (latch.unmount()) void delRef.current()
+    },
+    [latch],
+  )
 
   useEffect(() => {
     if (phase === 'renaming') input.current?.select()
@@ -114,8 +126,16 @@ export function HistoryItem({ item: chat, onNavigate }: { item: Entry; onNavigat
           <button
             type="button"
             autoFocus
-            onClick={() => setPhase('idle')}
-            onKeyDown={(e) => e.key === 'Escape' && setPhase('idle')}
+            onClick={() => {
+              latch.undo()
+              setPhase('idle')
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                latch.undo()
+                setPhase('idle')
+              }
+            }}
             className="shrink-0 rounded-control px-2 py-0.5 text-micro font-semibold text-ink transition-colors duration-200 ease-soft hover:bg-surface focus-visible:outline-2 focus-visible:outline-ink"
           >
             Undo
@@ -172,6 +192,7 @@ export function HistoryItem({ item: chat, onNavigate }: { item: Entry; onNavigat
           className={`${item} text-blocked hover:bg-blocked/10 focus-visible:bg-blocked/10`}
           onClick={() => {
             setOpen(false)
+            latch.arm()
             setPhase('deleting')
           }}
         >

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, matchPath, useLocation, useNavigate, useParams } from 'react-router'
 import { awdax } from '../../api/awdax.ts'
 import { ApiError } from '../../api/client.ts'
 import { timeAgo } from '../../api/dates.ts'
@@ -25,6 +25,7 @@ import { ChatView } from './ChatView.tsx'
 export default function ChatPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { remove, upsert, list, loading: listLoading, listOk } = useInstances()
   const { toast } = useToast()
   const [chat, setChat] = useState<InstanceDetail | null>(null)
@@ -140,7 +141,8 @@ export default function ChatPage() {
         tone="danger"
         icon={<TrashIcon />}
         onCommit={async () => {
-          navigate('/app', { replace: true })
+          // The fuse can commit after the page was left (the user opened another chat): only leave if still here.
+          if (matchPath(pathname, window.location.pathname)) navigate('/app', { replace: true })
           await remove(id).catch(() => toast({ title: 'Couldn’t delete that chat', tone: 'error' }))
         }}
       />
