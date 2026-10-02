@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router'
+import { setStreamToken } from '../../api/client.ts'
 import { useAuth } from '../auth/authContext.ts'
 import { DatabaseIcon, LogoutIcon, PlusIcon, ReportIcon, SearchIcon, SidebarIcon } from '../../ui/appIcons.tsx'
 import { buttonClass } from '../../ui/buttonClass.ts'
@@ -99,6 +100,8 @@ function Account() {
 
   // Leave first: once the session is gone, RequireAuth would send this page to /login instead.
   const leave = async () => {
+    // AuthProvider unmounts on navigate, before SIGNED_OUT can clear the stream cookie, so clear it here.
+    setStreamToken(null)
     navigate('/', { replace: true })
     await signOut()
   }
