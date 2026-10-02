@@ -8,6 +8,8 @@ export type Instances = {
   loading: boolean
   /** The last load error, e.g. the backend is down. Cleared by the next good load. */
   error: string | null
+  /** True after the latest accepted list read succeeded; false after a failed read and before the first. */
+  listOk: boolean
   refresh: () => Promise<void>
   /** Adds or updates one chat in the list without waiting for a refresh. */
   upsert: (item: InstanceSummary) => void

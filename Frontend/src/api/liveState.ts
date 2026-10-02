@@ -46,6 +46,17 @@ export function mergeSources(current: ResearchSource[], incoming: ResearchSource
   return [...byUrl.values()]
 }
 
+/** Apply a live patch: sources merge by url, status merges shallowly, `connected` defaults to true. */
+export function applyPatch(s: LiveState, patch: Partial<LiveState>): LiveState {
+  return {
+    ...s,
+    ...patch,
+    sources: patch.sources ? mergeSources(s.sources, patch.sources) : s.sources,
+    status: patch.status ? { ...s.status, ...patch.status } : s.status,
+    connected: patch.connected ?? true,
+  }
+}
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
 }

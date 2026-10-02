@@ -56,7 +56,7 @@ const server = createServer((req, res) => {
   req.on('data', (c) => (body += c))
   req.on('end', () => {
     res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': 'x=1' })
-    res.end(JSON.stringify({ method: req.method, url: req.url, body, auth: req.headers.authorization ?? null, cookie: req.headers.cookie ?? null }))
+    res.end(JSON.stringify({ method: req.method, url: req.url, body, auth: req.headers.authorization ?? null, cookie: req.headers.cookie ?? null, secret: req.headers['x-proxy-secret'] ?? null }))
   })
 })
 before(() => new Promise<void>((done) => server.listen(0, '127.0.0.1', () => ((backend = `http://127.0.0.1:${(server.address() as AddressInfo).port}`), done()))))
@@ -70,9 +70,37 @@ test('forwards a signed-in call with authorization header and no cookies', async
   const token = await sign(user())
   const res = await call('/api/instances?x=1', { method: 'POST', body: '{"title":"t"}', headers: { authorization: `Bearer ${token}`, cookie: 'a=b', 'content-type': 'application/json' } })
   assert.equal(res.status, 200)
-  assert.deepEqual(await res.json(), { method: 'POST', url: '/api/instances?x=1', body: '{"title":"t"}', auth: `Bearer ${token}`, cookie: null })
+  assert.deepEqual(await res.json(), { method: 'POST', url: '/api/instances?x=1', body: '{"title":"t"}', auth: `Bearer ${token}`, cookie: null, secret: null })
   assert.equal(res.headers.get('set-cookie'), null)
   assert.equal(res.headers.get('cache-control'), 'no-store')
+})
+
+test('PROXY_SHARED_SECRET is sent upstream when set, absent when unset, and never taken from the client', async () => {
+  const token = await sign(user())
+  const headers = { authorization: `Bearer ${token}` }
+  const withSecret = await call('/api/instances', { headers }, { ...env(), PROXY_SHARED_SECRET: 's3cret' })
+  assert.equal((await withSecret.json()).secret, 's3cret')
+  const empty = await call('/api/instances', { headers }, { ...env(), PROXY_SHARED_SECRET: '' })
+  assert.equal((await empty.json()).secret, null)
+  const unset = await call('/api/instances', { headers })
+  assert.equal((await unset.json()).secret, null)
+  const spoofed = await call('/api/instances', { headers: { ...headers, 'x-proxy-secret': 'forged' } })
+  assert.equal((await spoofed.json()).secret, null, 'client value is not forwarded')
+  const overridden = await call('/api/instances', { headers: { ...headers, 'x-proxy-secret': 'forged' } }, { ...env(), PROXY_SHARED_SECRET: 's3cret' })
+  assert.equal((await overridden.json()).secret, 's3cret')
+})
+
+test('concurrent cold verifications share one JWKS load', async () => {
+  let loads = 0
+  const v = createVerifier(SUPABASE, async () => {
+    loads++
+    await new Promise((r) => setTimeout(r, 20))
+    return [jwk]
+  })
+  const token = await sign(user())
+  const results = await Promise.all(Array.from({ length: 10 }, () => v(token)))
+  assert.ok(results.every((c) => c?.sub === 'u1'))
+  assert.equal(loads, 1)
 })
 
 test('the live stream authenticates by cookie and streams', async () => {

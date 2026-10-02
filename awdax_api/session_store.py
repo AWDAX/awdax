@@ -26,8 +26,8 @@ def ensure_awdax_defaults(sess: dict[str, Any]) -> dict[str, Any]:
     return sess
 
 
-def load_instance_session(instance_id: str) -> dict[str, Any] | None:
-    sess = get_session(instance_id)
+def load_instance_session(instance_id: str, user_id: str | None = None) -> dict[str, Any] | None:
+    sess = get_session(instance_id, user_id)
     if not sess:
         return None
     return ensure_awdax_defaults(sess)

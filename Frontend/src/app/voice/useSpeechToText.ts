@@ -104,6 +104,7 @@ export function useSpeechToText({ onFinal }: Options = {}) {
       }
 
       recognition.onresult = (e) => {
+        if (recognitionRef.current !== recognition) return
         let finalText = ''
         let interimText = ''
         for (let i = e.resultIndex; i < e.results.length; i += 1) {
@@ -160,7 +161,13 @@ export function useSpeechToText({ onFinal }: Options = {}) {
   useEffect(
     () => () => {
       window.clearTimeout(timerRef.current)
-      recognitionRef.current?.abort()
+      const recognition = recognitionRef.current
+      recognitionRef.current = null
+      if (!recognition) return
+      recognition.onresult = null
+      recognition.onerror = null
+      recognition.onend = null
+      recognition.abort()
     },
     [],
   )

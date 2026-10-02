@@ -29,7 +29,7 @@ function json(part: string): Record<string, unknown> | null {
 }
 
 export async function fetchJwks(supabaseUrl: string): Promise<Jwk[]> {
-  const res = await fetch(`${supabaseUrl}/auth/v1/.well-known/jwks.json`)
+  const res = await fetch(`${supabaseUrl}/auth/v1/.well-known/jwks.json`, { signal: AbortSignal.timeout(5000) })
   if (!res.ok) throw new Error(`JWKS ${res.status}`)
   const body = (await res.json()) as { keys?: Jwk[] }
   return body.keys ?? []
@@ -46,12 +46,19 @@ export function createVerifier(
 ): Verify {
   const issuer = `${supabaseUrl}/auth/v1`
   let cache: { at: number; keys: Jwk[] } = { at: -Infinity, keys: [] }
+  let inflight: Promise<void> | null = null
 
   const keyFor = async (kid: string): Promise<CryptoKey | null> => {
     const age = now() - cache.at
     if (age > KEYS_TTL_MS || (!cache.keys.some((k) => k.kid === kid) && age > RETRY_MS)) {
-      // A failed fetch keeps the old keys and waits RETRY_MS before trying again.
-      cache = { at: now(), keys: await loadKeys().catch(() => cache.keys) }
+      // Concurrent callers share one fetch. A failed fetch keeps the old keys and waits RETRY_MS before trying again.
+      inflight ??= loadKeys()
+        .catch(() => cache.keys)
+        .then((keys) => {
+          cache = { at: now(), keys }
+          inflight = null
+        })
+      await inflight
     }
     const jwk = cache.keys.find((k) => k.kid === kid)
     if (!jwk || jwk.kty !== 'EC' || jwk.crv !== 'P-256' || !jwk.x || !jwk.y) return null

@@ -363,7 +363,7 @@ def api_events():
                 sent = False
                 for sub in subs:
                     try:
-                        event = sub.get(timeout=0.05)
+                        event = sub.get(timeout=1.0)
                         yield f"data: {json.dumps(event, default=str)}\n\n"
                         sent = True
                     except queue.Empty:
@@ -735,5 +735,10 @@ def api_scrape_run():
 
 
 if __name__ == "__main__":
+    from awdax_api.orchestrator import recover_interrupted_runs
+
+    # No run thread exists yet, so a session still marked running was cut off by the last restart.
+    recover_interrupted_runs()
     port = int(os.getenv("PORT", "8000"))
-    app.run(host="127.0.0.1", port=port, debug=True, use_reloader=False)
+    # The Werkzeug debugger must never face the tunnel; FLASK_DEBUG=1 turns it on for local debugging only.
+    app.run(host="127.0.0.1", port=port, debug=os.getenv("FLASK_DEBUG") == "1", use_reloader=False, threaded=True)

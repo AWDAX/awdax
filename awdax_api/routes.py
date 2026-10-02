@@ -53,7 +53,7 @@ def list_instances():
 def create_instance():
     uid = get_user_id(request)
     body = request.get_json(silent=True) or {}
-    title = str(body.get("title") or "Untitled chat").strip() or "Untitled chat"
+    title = str(body.get("title") or "Untitled chat")[:80].strip() or "Untitled chat"
     goal = str(body.get("goal") or "").strip()
     sess = create_session(user_id=uid, title=title)
     if goal:
@@ -64,7 +64,7 @@ def create_instance():
 
 @bp.get("/api/instances/<instance_id>")
 def get_instance(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(to_awdax_instance(sess))
@@ -72,7 +72,7 @@ def get_instance(instance_id: str):
 
 @bp.patch("/api/instances/<instance_id>")
 def patch_instance(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     body = request.get_json(silent=True) or {}
@@ -92,7 +92,7 @@ def patch_instance(instance_id: str):
 
 @bp.delete("/api/instances/<instance_id>")
 def delete_instance(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     jid = sess.get("job_id")
@@ -104,7 +104,7 @@ def delete_instance(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/messages")
 def get_messages(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(to_awdax_messages(sess))
@@ -112,7 +112,7 @@ def get_messages(instance_id: str):
 
 @bp.post("/api/instances/<instance_id>/messages")
 def post_message(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     if is_running(instance_id):
@@ -139,12 +139,12 @@ def post_message(instance_id: str):
         start_run(instance_id, content, max_pages=mp)
     except RuntimeError as e:
         return detail_response(409, str(e))
-    return jsonify(to_awdax_messages(load_instance_session(instance_id) or sess)), 201
+    return jsonify(to_awdax_messages(load_instance_session(instance_id, get_user_id(request)) or sess)), 201
 
 
 @bp.get("/api/instances/<instance_id>/dataset")
 def get_dataset(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     try:
@@ -160,7 +160,7 @@ def get_dataset(instance_id: str):
 
 @bp.delete("/api/instances/<instance_id>/dataset")
 def delete_dataset(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     if is_running(instance_id):
@@ -175,7 +175,7 @@ def delete_dataset(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/dashboard")
 def get_dashboard(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(build_dashboard(sess))
@@ -183,7 +183,7 @@ def get_dashboard(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/live")
 def get_live(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(to_awdax_live_state(sess))
@@ -191,7 +191,7 @@ def get_live(instance_id: str):
 
 @bp.patch("/api/instances/<instance_id>/live")
 def patch_live(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     body = request.get_json(silent=True) or {}
@@ -206,7 +206,7 @@ def patch_live(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/live/stream")
 def live_stream(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
 
@@ -242,7 +242,7 @@ def live_stream(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/sources")
 def get_sources(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(build_sources_response(sess))
@@ -250,7 +250,7 @@ def get_sources(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/dataset/stats")
 def get_stats(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(build_dataset_stats(sess))
@@ -258,7 +258,7 @@ def get_stats(instance_id: str):
 
 @bp.post("/api/instances/<instance_id>/dataset/rescore")
 def post_rescore(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     try:
@@ -269,7 +269,7 @@ def post_rescore(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/graph/parameters")
 def get_graph_parameters(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     include_partial = request.args.get("include_partial", "false").lower() == "true"
@@ -278,7 +278,7 @@ def get_graph_parameters(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/graph")
 def get_graph(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     include_partial = request.args.get("include_partial", "false").lower() == "true"
@@ -290,7 +290,7 @@ def get_graph(instance_id: str):
 def register_websocket(sock) -> None:
     @sock.route("/api/instances/<instance_id>/live/ws")
     def live_ws(ws, instance_id: str):
-        sess = load_instance_session(instance_id)
+        sess = load_instance_session(instance_id, get_user_id(request))
         if not sess:
             ws.send(json.dumps({"type": "error", "detail": "Instance not found"}))
             return

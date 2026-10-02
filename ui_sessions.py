@@ -16,16 +16,24 @@ ROOT = Path(__file__).resolve().parent
 DB_PATH = ROOT / "regulatory.sqlite"
 
 _lock = threading.Lock()
+# DB file whose DDL has already run in this process (re-runs if DB_PATH is repointed, e.g. in tests).
+_initialized: Path | None = None
 
 
 def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
     return conn
 
 
 def init_ui_sessions() -> None:
+    global _initialized
     with _lock:
+        if _initialized == DB_PATH:
+            return
         conn = _conn()
         cur = conn.cursor()
         cur.execute(
@@ -47,6 +55,7 @@ def init_ui_sessions() -> None:
         conn.commit()
         cur.close()
         conn.close()
+        _initialized = DB_PATH
 
 
 def _now() -> str:

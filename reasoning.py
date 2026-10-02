@@ -66,19 +66,10 @@ def _gemini_model_name() -> str:
 
 
 def gemini_json(prompt: str, *, temperature: float = 0.2) -> Any:
-    if not GEMINI_AVAILABLE:
-        raise RuntimeError("google-generativeai is not installed")
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is not set")
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(_gemini_model_name())
-    resp = model.generate_content(prompt)
-    text = (resp.text or "").strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    return json.loads(text)
+    """Kept for its 12 call sites; routes through llm_client (NVIDIA first, then Gemini)."""
+    from llm_client import llm_json
+
+    return llm_json(prompt, temperature=temperature)
 
 
 def parse_prompt(raw: str, *, job_id: str | None = None) -> ScrapeIntent:
@@ -100,6 +91,7 @@ def parse_prompt(raw: str, *, job_id: str | None = None) -> ScrapeIntent:
 
 Be specific. If regulatory/government data, prefer official sources in constraints.
 
+Set pipeline to "regulatory_feed" ONLY when the user explicitly mentions eGazette, egazette.gov.in or gazette notifications; otherwise "universal".
 If the user wants Indian eGazette / egazette.gov.in notifications (latest gazettes, ministry notifications):
 - set pipeline to "regulatory_feed"
 - set max_sources to 1
