@@ -38,6 +38,16 @@ def persist_session(sess: dict[str, Any]) -> dict[str, Any]:
     return save_session(sess, allow_insert=False)
 
 
+USER_OWNED_FIELDS = ("title", "keep_live", "archived")
+
+
+def persist_run_state(sess: dict[str, Any]) -> dict[str, Any]:
+    """Write from a background run/live writer. The fields a user edits (title, keep_live, archived) are re-read
+    from the stored row under the write lock, so a PATCH landing mid-run is never reverted. Never inserts."""
+    ensure_awdax_defaults(sess)
+    return save_session(sess, allow_insert=False, preserve=USER_OWNED_FIELDS)
+
+
 def append_message(sess: dict[str, Any], *, role: str, content: str) -> dict[str, Any]:
     msgs = list(sess.get("messages") or [])
     msgs.append(

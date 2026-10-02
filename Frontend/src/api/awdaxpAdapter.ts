@@ -21,7 +21,8 @@ export interface AwdaxpInstance {
   live_enabled: boolean
   created_at: string
   updated_at: string
-  dataset_row_count: number
+  /** Present on the single-instance response only; the list omits it. */
+  dataset_row_count?: number
 }
 
 export interface AwdaxpMessage {

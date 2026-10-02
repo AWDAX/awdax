@@ -20,6 +20,7 @@ from awdax_api.session_store import (
     append_message,
     append_run_event,
     load_instance_session,
+    persist_run_state,
     persist_session,
     set_awdax_run,
 )
@@ -37,7 +38,7 @@ def _on_progress(instance_id: str, phase: str, detail: str) -> None:
         return
     set_awdax_run(sess, phase=phase, detail=detail, status="running")
     append_run_event(sess, phase=phase, detail=detail)
-    persist_session(sess)
+    persist_run_state(sess)
     live_bridge.notify_instance(instance_id, {"type": "run_event", "event": (sess.get("run_events") or [])[-1]})
     live_bridge.notify_instance(instance_id, {"type": "status", "state": to_awdax_live_state(sess)})
 
@@ -65,7 +66,7 @@ def _on_source(instance_id: str, source: dict[str, Any]) -> None:
     }
     current = [old for old in sess.get("discovery_sources") or [] if old.get("url") != item["url"]]
     sess["discovery_sources"] = [*current, item]
-    persist_session(sess)
+    persist_run_state(sess)
     live_bridge.notify_instance(instance_id, {"type": "source", "source": item})
 
 
@@ -75,7 +76,7 @@ def _on_job(instance_id: str, job_id: str) -> None:
     sess = load_instance_session(instance_id)
     if sess:
         sess["job_id"] = job_id
-        persist_session(sess)
+        persist_run_state(sess)
 
 
 def _wait_regulatory(instance_id: str, timeout: float = 3600) -> None:
@@ -142,7 +143,7 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
         sess["awdax_run"] = None
         set_awdax_run(sess, status="running", phase="queued", detail="Starting…", rows_total=0, rows_added=0)
         sess["run_active"] = True
-        persist_session(sess)
+        persist_run_state(sess)
         sess = run_pipeline_for_session(sess, goal, on_progress=_on_progress, on_source=_on_source, on_job=_on_job, max_pages=max_pages)
         intent = ScrapeIntent.from_dict(sess["intent"]) if sess.get("intent") else None
         job_id = sess.get("job_id")
@@ -182,7 +183,7 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
             rows_added=rows,
         )
         sess["run_active"] = False
-        persist_session(sess)
+        persist_run_state(sess)
         live_bridge.notify_instance(instance_id, {"type": "batch_complete"})
         live_bridge.notify_instance(instance_id, {"type": "status", "state": to_awdax_live_state(sess)})
     except InstanceDeleted:
@@ -193,7 +194,7 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
         append_message(sess, role="assistant", content=f"**Run failed:** {e}")
         set_awdax_run(sess, status="failed", phase="failed", detail=str(e))
         sess["run_active"] = False
-        persist_session(sess)
+        persist_run_state(sess)
         live_bridge.notify_instance(instance_id, {"type": "status", "state": to_awdax_live_state(sess)})
     finally:
         jid = sess.get("job_id") if sess else None
