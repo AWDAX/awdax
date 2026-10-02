@@ -21,9 +21,32 @@ const DB = 'awdax'
 const STORE = 'projects'
 const listeners = new Set<() => void>()
 
+// Before files were per account, every account on this browser shared the 'awdax' database. The first account to sign in
+// after that change keeps it as is (nothing is copied or deleted); every other account gets a database of its own.
+const OWNER_KEY = 'awdax.files.owner'
+
+/** The database for this account's files. Pure apart from `store`, so it is tested without a browser. */
+export function filesDbName(account: string, store: Pick<Storage, 'getItem' | 'setItem'>): string {
+  try {
+    const recorded = store.getItem(OWNER_KEY)
+    if (recorded === null) {
+      store.setItem(OWNER_KEY, account)
+      return DB
+    }
+    if (recorded === account) return DB
+  } catch {
+    // Storage is blocked, so this account can't be recorded: it must not get the shared database.
+  }
+  return `${DB}.${account}`
+}
+
+let owner: string | null = null
+
 function open(): Promise<IDBDatabase> {
+  if (owner === null) return Promise.reject(new Error('Sign in to use uploaded files'))
+  const account = owner
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1)
+    const req = indexedDB.open(filesDbName(account, localStorage), 1)
     req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' })
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -57,6 +80,13 @@ export function onLocalChange(l: () => void) {
   return () => {
     listeners.delete(l)
   }
+}
+
+/** Called by the auth layer once an account is confirmed. Lists re-read when it changes. */
+export function setFilesOwner(account: string | null) {
+  if (account === owner) return
+  owner = account
+  changed()
 }
 
 export async function listLocal(): Promise<LocalMeta[]> {
