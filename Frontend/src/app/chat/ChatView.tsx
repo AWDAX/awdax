@@ -73,9 +73,9 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
         </div>
       </header>
 
-      <div className="max-w-3xl">
-        <Thread messages={messages} working={working} />
-      </div>
+      {/* Full width, like a chat: the user's messages sit on the right edge, the replies on the left. A narrower
+          column here put the user's bubble in the middle of the page. */}
+      <Thread messages={messages} working={working} />
       <div>
         <LiveRun live={live} onRetry={onRetry} footer={sources.length > 0 ? <SourcesStrip sources={sources} onOpen={table ? openSources : undefined} /> : undefined} />
       </div>
