@@ -1079,6 +1079,7 @@ class UniversalScrapeService:
             job.plans = plans
             self._current_job = job
             self.save_job(job)
+            self._running_jobs.add(jid)
             t = threading.Thread(
                 target=self._run_all,
                 args=(plans, job, max_pages),
@@ -1086,7 +1087,11 @@ class UniversalScrapeService:
                 daemon=True,
                 name=f"scrape-{jid[:8]}",
             )
-            t.start()
+            try:
+                t.start()
+            except Exception:
+                self._running_jobs.discard(jid)
+                raise
             return {"started": True, "sources": len(plans), "job_id": jid, **self.get_scrape_status(jid)}
 
     def _run_single(self, plan: ScrapePlan, job: ScrapeJob, max_pages: int) -> int:

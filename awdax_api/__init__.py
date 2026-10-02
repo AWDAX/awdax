@@ -3,6 +3,10 @@ from awdax_api.live_bridge import live_bridge
 
 
 def init_awdax_api(app) -> None:
+    from auth_helper import AuthError
+    from awdax_api.errors import detail_response
+
+    app.register_error_handler(AuthError, lambda exc: detail_response(401, str(exc)))
     app.register_blueprint(bp)
     live_bridge.start()
     try:

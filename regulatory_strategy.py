@@ -13,7 +13,7 @@ from typing import Any, Callable
 
 from reasoning import ScrapeIntent
 
-_EGAZETTE_RE = re.compile(r"\b(e[\-\s]?gazette|egazz?et)\b|egazette\.gov", re.I)
+_EGAZETTE_RE = re.compile(r"\b(e[\-\s]?gazette|egazz?et|gazette)s?\b|egazette\.gov", re.I)
 
 
 def _intent_blob(intent: ScrapeIntent) -> str:
@@ -32,14 +32,16 @@ def _intent_blob(intent: ScrapeIntent) -> str:
 def intent_uses_regulatory_feed(intent: ScrapeIntent | None) -> bool:
     if not intent:
         return False
-    if (intent.pipeline or "").strip() == "regulatory_feed":
-        return True
-    return bool(_EGAZETTE_RE.search(_intent_blob(intent)))
+    # Only the user's own words decide; model-written fields (pipeline, named_sites, ...) are ignored.
+    user_text = (intent.raw_prompt or "").strip() or (intent.topic or "")
+    return bool(_EGAZETTE_RE.search(user_text))
 
 
 def enrich_intent_for_execution(intent: ScrapeIntent) -> ScrapeIntent:
     """Rule-based overrides after Gemini parse — aligns AI routing with RegulatoryFeed."""
     if not intent_uses_regulatory_feed(intent):
+        if (intent.pipeline or "").strip() == "regulatory_feed":
+            intent.pipeline = "universal"
         return intent
     intent.pipeline = "regulatory_feed"
     intent.max_sources = 1

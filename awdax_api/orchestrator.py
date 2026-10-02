@@ -132,7 +132,7 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
 
         latest = load_instance_session(instance_id)
         if latest:
-            for key in ("messages", "run_events", "awdax_run", "discovery_sources"):
+            for key in ("messages", "run_events", "awdax_run", "discovery_sources", "title", "archived", "keep_live"):
                 sess[key] = latest.get(key)
         report = format_discovery_report(sess, goal=goal)
         summary = f"**Run complete.**\n\n{report}"
