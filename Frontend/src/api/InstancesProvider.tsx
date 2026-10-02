@@ -9,7 +9,7 @@ import type { Instances } from './instancesContext.ts'
 import { notifyInstancesChanged, subscribeInstancesChanged } from './instancesSync.ts'
 import type { InstanceSummary } from './types.ts'
 
-const REFRESH_MS = 5_000
+const REFRESH_MS = 30_000
 
 const byUpdated = (a: InstanceSummary, b: InstanceSummary) => apiTime(b.updated_at) - apiTime(a.updated_at)
 
@@ -44,7 +44,9 @@ export function InstancesProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const first = window.setTimeout(refresh, 0)
-    const timer = window.setInterval(refresh, REFRESH_MS)
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'hidden') void refresh()
+    }, REFRESH_MS)
     const onFocus = () => void refresh()
     window.addEventListener('focus', onFocus)
     const stopSync = subscribeInstancesChanged(() => void refresh())
