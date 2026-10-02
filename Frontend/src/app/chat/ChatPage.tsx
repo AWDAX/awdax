@@ -6,6 +6,7 @@ import { timeAgo } from '../../api/dates.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import type { InstanceDetail } from '../../api/types.ts'
 import { useLiveStream } from '../../api/useLiveStream.ts'
+import { createSingleFlight } from '../../api/singleFlight.ts'
 import { PauseIcon, PlayIcon } from '../../ui/icons.tsx'
 import { TrashIcon } from '../../ui/appIcons.tsx'
 import { Button } from '../../ui/Button.tsx'
@@ -51,7 +52,9 @@ export default function ChatPage() {
     return () => window.clearTimeout(t)
   }, [refetch])
 
-  const live = useLiveStream(id, {
+  const gone = missing || (!listLoading && listOk && !!id && !list.some((instance) => instance.id === id))
+  // A chat known to be gone is not streamed: pass no id so no socket or dataset request is made for it.
+  const live = useLiveStream(gone ? null : id, {
     onChatUpdated: refetch,
     onPayload: (p) => {
       setOverride(null)
@@ -73,16 +76,24 @@ export default function ChatPage() {
     if (live.rowsTotal > 0) markSeen(id, live.rowsTotal)
   }, [id, live.rowsTotal])
 
+  const flight = useRef(createSingleFlight())
+  const [switching, setSwitching] = useState(false)
   const setLive = async (enabled: boolean) => {
-    try {
-      const detail = await awdax.setLive(id, enabled)
-      setOverride(detail.live_enabled)
-    } catch (err) {
-      toast({ title: enabled ? 'Couldn’t resume' : 'Couldn’t pause', description: err instanceof Error ? err.message : String(err), tone: 'error' })
-    }
+    // A second click while a pause/resume is pending is ignored.
+    await flight.current.run(async () => {
+      setSwitching(true)
+      try {
+        const snapshot = await awdax.setLive(id, enabled)
+        setOverride(snapshot.live_enabled)
+      } catch (err) {
+        toast({ title: enabled ? 'Couldn’t resume' : 'Couldn’t pause', description: err instanceof Error ? err.message : String(err), tone: 'error' })
+      } finally {
+        setSwitching(false)
+      }
+    })
   }
 
-  if (missing || live.missing || (!listLoading && listOk && !!id && !list.some((instance) => instance.id === id))) {
+  if (gone || live.missing) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
         <h1 className="font-display font-wide text-h2 font-extrabold">This chat no longer exists.</h1>
@@ -118,7 +129,7 @@ export default function ChatPage() {
       {liveEnabled ? (
         <FuseButton label="Pause tracking" undoLabel="Undo" doneLabel="Paused" icon={<PauseIcon />} undoWindow={3000} onCommit={() => void setLive(false)} />
       ) : (
-        <Button variant="secondary" onClick={() => void setLive(true)}>
+        <Button variant="secondary" loading={switching} onClick={() => void setLive(true)}>
           <PlayIcon /> Resume tracking
         </Button>
       )}

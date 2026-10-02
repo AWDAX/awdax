@@ -39,7 +39,7 @@ export function Receipts() {
 
   return (
     <Section labelledBy="receipts-title">
-      <Container data-tour="landing-receipts">
+      <Container>
 
         <SectionHead
           id="receipts-title"

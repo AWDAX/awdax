@@ -4,7 +4,8 @@ import { InstancesProvider } from '../../api/InstancesProvider.tsx'
 import { MenuIcon, PlusIcon, SidebarIcon } from '../../ui/appIcons.tsx'
 import { ToastProvider } from '../../ui/toast/ToastHost.tsx'
 import { Tooltip } from '../../ui/Tooltip.tsx'
-import { TourTrigger } from '../../ui/tour/TourTrigger.tsx'
+import { TutorialProvider } from '../../ui/tutorial/TutorialProvider.tsx'
+import { TutorialTrigger } from '../../ui/tutorial/TutorialTrigger.tsx'
 import { useMediaQuery } from '../../ui/useMediaQuery.ts'
 import { Sidebar } from './Sidebar.tsx'
 
@@ -53,6 +54,7 @@ export default function Layout() {
   return (
     <InstancesProvider>
       <ToastProvider>
+      <TutorialProvider>
       {/* `relative` on the frame and on <main> matters: screen-reader-only copies of charts (sr-only, absolute)
           would otherwise position against the page, not the scroll area they sit in, and make the whole page
           scroll: a second scrollbar, and a scrollIntoView sliding the app up over blank space. */}
@@ -106,8 +108,8 @@ export default function Layout() {
               </Tooltip>
               <span className="ml-2 font-display font-wide text-body font-extrabold">AWDAX</span>
             </div>
-            <Tooltip content="Page Tour" placement="bottom-end">
-              <TourTrigger tourId="new-chat-tour" iconOnly label="Page Tour" className="size-9" />
+            <Tooltip content="Watch tutorial" placement="bottom-end">
+              <TutorialTrigger iconOnly label="Watch tutorial" className="size-9" />
             </Tooltip>
           </div>
           {/* Keyed by path so each chat and view starts at the top with fresh state. */}
@@ -117,6 +119,7 @@ export default function Layout() {
 
         </div>
       </div>
+      </TutorialProvider>
       </ToastProvider>
     </InstancesProvider>
   )

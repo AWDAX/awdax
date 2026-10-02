@@ -43,7 +43,7 @@ export function HowItWorks() {
       <div ref={pinRef} className="mt-12 md:mt-16 lg:mt-4 lg:h-[400vh]">
         <div className="lg:sticky lg:top-16 lg:flex lg:h-[calc(100dvh-4rem)] lg:flex-col lg:justify-center lg:py-8">
           <Container className="lg:h-full">
-            <ol data-tour="landing-how" className="flex flex-col border-b-2 border-ink lg:h-full">
+            <ol className="flex flex-col border-b-2 border-ink lg:h-full">
               {STEPS.map((step, i) => (
                 <StepRow key={step.key} step={step} index={i} active={active} wide={wide} />
               ))}

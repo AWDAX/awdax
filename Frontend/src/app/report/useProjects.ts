@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { isFresh, runPool } from './pollPool.ts'
 import { awdax } from '../../api/awdax.ts'
+import { sortedIdKey } from '../../api/singleFlight.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import type { LiveSnapshot, LivePhase } from '../../api/types.ts'
 import { WORKING } from '../chat/phases.ts'
@@ -48,7 +49,7 @@ export function useProjects() {
   const { list, loading } = useInstances()
   const local = useLocalProjects()
   const [snaps, setSnaps] = useState<Record<string, LiveSnapshot>>({})
-  const ids = list.map((i) => i.id).join(',')
+  const ids = sortedIdKey(list)
   // When each project was last changed by hand (pause/resume); older in-flight polls must not undo it.
   const changedAt = useRef<Record<string, number>>({})
 
@@ -57,6 +58,7 @@ export function useProjects() {
     let alive = true
     let running = false
     const load = async () => {
+      if (document.visibilityState === 'hidden') return
       if (running) return // the last cycle is still in flight
       running = true
       try {

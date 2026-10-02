@@ -47,7 +47,7 @@ const FAQ = [
 export function Faq() {
   return (
     <Section id="faq" labelledBy="faq-title">
-      <Container data-tour="landing-faq" className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-12 lg:gap-12">
+      <Container className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-12 lg:gap-12">
         <SectionHead
           id="faq-title"
           index="07"

@@ -6,7 +6,6 @@ import { ButtonLink } from '../ui/Button.tsx'
 import { Mark } from '../ui/Mark.tsx'
 import { useSignedInHint } from './useSignedInHint.ts'
 
-import { TourTrigger } from '../ui/tour/TourTrigger.tsx'
 
 const links = [
   { href: '#how', label: 'How it works' },
@@ -68,9 +67,6 @@ export function Nav() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          {/* max-sm:hidden, not "hidden sm:inline-flex": buttonClass already sets inline-flex, which overrides a plain
-              hidden, and on phones the button pushed Sign in off the screen. */}
-          <TourTrigger tourId="landing-tour" label="Visual Tour" variant="secondary" className="max-sm:hidden" />
           {signedIn ? <ButtonLink to="/app">Open the app</ButtonLink> : <ButtonLink to="/login">Sign in</ButtonLink>}
         </div>
       </Container>

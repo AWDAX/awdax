@@ -77,11 +77,11 @@ export const awdax = {
   },
 
   setLive: async (id: string, enabled: boolean) => {
-    await request<AwdaxpLiveState>(`${at(id)}/live`, {
+    const raw = await request<AwdaxpLiveState>(`${at(id)}/live`, {
       method: 'PATCH',
       body: JSON.stringify({ enabled }),
     })
-    return loadInstance(id)
+    return mapLiveSnapshot(raw) as LiveSnapshot
   },
 
   getDashboard: async (id: string) => {

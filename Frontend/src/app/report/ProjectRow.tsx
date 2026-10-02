@@ -1,5 +1,7 @@
+import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { timeAgo } from '../../api/dates.ts'
+import { createSingleFlight } from '../../api/singleFlight.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import { domainOf } from '../../domain/format.ts'
 import { DownloadIcon, FileIcon } from '../../ui/appIcons.tsx'
@@ -40,6 +42,18 @@ type Props = {
 export function ProjectRow({ p, watched, newRows, onExport, onLive }: Props) {
   const { remove } = useInstances()
   const { toast } = useToast()
+  const flight = useRef(createSingleFlight())
+  const [switching, setSwitching] = useState(false)
+  // A second click while a pause/resume is pending is ignored.
+  const toggleLive = () =>
+    void flight.current.run(async () => {
+      setSwitching(true)
+      try {
+        await onLive(!p.liveEnabled)
+      } finally {
+        setSwitching(false)
+      }
+    })
   const title = isUntitled(p.title) ? 'Untitled chat' : p.title
   const source = p.kind === 'web' && /^https?:/i.test(p.source) ? domainOf(p.source) : p.source
 
@@ -74,8 +88,10 @@ export function ProjectRow({ p, watched, newRows, onExport, onLive }: Props) {
                 type="button"
                 aria-label={p.liveEnabled ? `Pause ${title}` : `Resume ${title}`}
                 title={p.liveEnabled ? 'Pause tracking' : 'Resume tracking'}
-                onClick={() => void onLive(!p.liveEnabled)}
-                className="grid size-7 place-items-center rounded-control hover:bg-surface"
+                disabled={switching}
+                aria-busy={switching || undefined}
+                onClick={toggleLive}
+                className="grid size-7 place-items-center rounded-control hover:bg-surface disabled:opacity-50"
               >
                 {p.liveEnabled ? <PauseIcon /> : <PlayIcon />}
               </button>

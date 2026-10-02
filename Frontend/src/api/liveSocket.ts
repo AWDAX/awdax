@@ -1,3 +1,6 @@
+const CONNECT_TIMEOUT_MS = 10_000
+const CONNECTING = 0
+
 /**
  * Live updates over a WebSocket. Repeated failed or short-lived connections
  * hand off to the server-sent event stream instead of flooding the dev proxy.
@@ -16,30 +19,35 @@ export function openLiveSocket(
   let attempts = 0
   let failures = 0
   let timer = 0
+  let watchdog = 0
 
   const connect = () => {
     if (closed || gaveUp) return
     let openedAt = 0
+    let ws: WebSocket
     try {
-      socket = new WebSocket(url)
+      ws = new WebSocket(url)
+      socket = ws
     } catch {
       gaveUp = true
       handlers.onFallback()
       return
     }
-    socket.addEventListener('open', () => {
+    ws.addEventListener('open', () => {
+      window.clearTimeout(watchdog)
       openedAt = Date.now()
       attempts = 0
       handlers.onConnection('open')
     })
-    socket.addEventListener('message', (event) => {
+    ws.addEventListener('message', (event) => {
       try {
         handlers.onMessage(JSON.parse(String(event.data)))
       } catch {
         // A malformed frame is skipped; the next one still applies.
       }
     })
-    socket.addEventListener('close', () => {
+    ws.addEventListener('close', () => {
+      window.clearTimeout(watchdog)
       socket = null
       if (closed || gaveUp) return
       // Dev proxies can accept the handshake, then abort the stream 10-20 seconds later.
@@ -55,6 +63,11 @@ export function openLiveSocket(
       const delay = Math.min(30_000, 1000 * 2 ** Math.min(attempts, 5))
       timer = window.setTimeout(connect, delay)
     })
+    // A handshake that hangs may not fire `close` for minutes; closing it here feeds the
+    // normal failure/fallback path above.
+    watchdog = window.setTimeout(() => {
+      if (ws.readyState === CONNECTING) ws.close()
+    }, CONNECT_TIMEOUT_MS)
   }
 
   const onVisibility = () => {
@@ -70,6 +83,7 @@ export function openLiveSocket(
   return () => {
     closed = true
     window.clearTimeout(timer)
+    window.clearTimeout(watchdog)
     socket?.close()
     document.removeEventListener('visibilitychange', onVisibility)
   }

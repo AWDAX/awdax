@@ -109,6 +109,7 @@ export function PromptBox({
           onKeyDown={onKey}
           onPaste={onPaste}
           rows={big ? 2 : 1}
+          maxLength={2000}
           disabled={busy}
           autoFocus={autoFocus}
           placeholder={placeholder}

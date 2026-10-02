@@ -5,6 +5,7 @@ import { ApiError } from './client.ts'
 import { openLiveSocket } from './liveSocket.ts'
 import { applyPatch, asRows, EMPTY_LIVE, isRecord, mergeSources, type LiveState } from './liveState.ts'
 import { canMerge, mergeStreamedRows } from './mergeRows.ts'
+import { runActivityChanged, shouldPoll } from './pollGate.ts'
 import { createSnapshotGate } from './snapshotGate.ts'
 import type { DatasetTable, LiveStreamPayload, ResearchSource, RunEvent, StreamedRows } from './types.ts'
 
@@ -47,8 +48,12 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
 
     const filterKey = () => (includePartial.current ? 'partial' : 'accepted')
     const update = (fn: (s: LiveState) => LiveState) => {
+      const before = current
       current = fn(current)
       setTagged({ ...current, forId: id })
+      // A run started or finished: fetch the table now (the first load is already in flight). The end matters on
+      // the event-stream fallback, which never announces the final re-merged, re-scored table.
+      if (loaded.current && runActivityChanged(before.status.phase, current.status.phase)) void loadFull()
     }
 
     const publish = (patch: Partial<LiveState>, chatUpdated = false) => {
@@ -200,8 +205,17 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
     }
 
     const startPolling = () => {
-      if (poll === undefined) poll = window.setInterval(() => void loadFull(), POLL_MS)
+      if (poll === undefined) {
+        poll = window.setInterval(() => {
+          if (shouldPoll(document.visibilityState === 'visible', current.status.phase)) void loadFull()
+        }, POLL_MS)
+      }
     }
+    // Back on the tab while polling: catch up once instead of waiting for the next tick.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && poll !== undefined) void loadFull()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     const stopPolling = () => {
       window.clearInterval(poll)
       poll = undefined
@@ -270,6 +284,7 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
 
     return () => {
       closed = true
+      document.removeEventListener('visibilitychange', onVisible)
       gate.reset()
       stopAll()
     }
