@@ -80,15 +80,20 @@
 
 ## Fix status
 
+All batches below are merged on `integration/oct-02-hardening`: 151 frontend tests, 165 backend tests, lint clean, build passes,
+and the real backend was exercised over HTTP in strict mode (forged token, user header without or with a wrong secret, no identity: 401;
+another user's chat: 404; old routes: 404; valid proxy headers: 200/201; over-long prompt: 400).
+
 | Batch | Items | Branch | State |
 |---|---|---|---|
-| P1 | BE-01, BE-02, BE-03 | `fix/p1-auth` | in progress |
-| P2 | BE-06, BE-07 | `fix/p2-runs` | in progress |
-| P3 | BE-04 | `fix/p3-ssrf` | in progress |
-| F1 | FX-01, FX-02 | `fix/f1-boundary` | in progress |
-| F2 | FX-03 | `fix/f2-sse` | in progress |
-| F3 | FX-04 | `fix/f3-answers` | in progress |
-| — | BE-05 (live opt-in) | | needs an owner decision: it changes the product |
-| — | BE-08, BE-09 | | larger or deployment changes; not started |
+| P1 | BE-01, BE-02, BE-03 | `fix/p1-auth` | done. **BE-01 only takes effect once `PROXY_SHARED_SECRET` is set on the backend and on Pages.** |
+| P2 | BE-06, BE-07 | `fix/p2-runs` | done (cap 4 total / 2 per user, 429 before any side effect) |
+| P3 | BE-04 | `fix/p3-ssrf` | done. Limits: DNS rebinding; Chrome navigations after the first load are checked on the final URL only. Local scraping of localhost needs `AWDAX_ALLOW_PRIVATE_URLS=1`. |
+| F1 | FX-01, FX-02 | `fix/f1-boundary` | done. `vite:preloadError` is unit-tested only; verify once on a production build. |
+| F2 | FX-03 | `fix/f2-sse` | done |
+| F3 | FX-04 | `fix/f3-answers` | done |
+| — | BE-05 (live mode on by default) | | open: changes the product, needs an owner decision |
+| — | BE-08, BE-09 | | open: larger performance change; deployment change (gunicorn with one worker, pinned versions) |
+| — | Medium and Low items | | open |
 
 **Not verified:** what production actually runs (whether `PROXY_SHARED_SECRET` or `ALLOWED_EMAILS` is set, whether the backend origin is publicly reachable, which branch Pages deploys), the regulatory-feed internals beyond SSRF, and behaviour under load. BE-01 and BE-02 are exploitable either way.
