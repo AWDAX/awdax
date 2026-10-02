@@ -13,6 +13,8 @@ export interface ProxyEnv {
   SUPABASE_URL?: string
   /** Optional comma-separated emails allowed through. Unset: any signed-in Google account. */
   ALLOWED_EMAILS?: string
+  /** Optional. When set, sent upstream as `x-proxy-secret` so the backend can refuse calls that skip this proxy. */
+  PROXY_SHARED_SECRET?: string
 }
 
 /** EventSource can't send headers, so the live stream carries the token in this cookie (src/api/client.ts). */
@@ -73,6 +75,7 @@ export async function proxyToBackend(request: Request, env: ProxyEnv, verify?: V
   if (token) {
     headers.set('authorization', `Bearer ${token}`)
   }
+  if (env.PROXY_SHARED_SECRET) headers.set('x-proxy-secret', env.PROXY_SHARED_SECRET)
   const url = new URL(request.url)
   let upstream: Response
   try {
