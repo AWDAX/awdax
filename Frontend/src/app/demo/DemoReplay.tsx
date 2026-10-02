@@ -74,6 +74,7 @@ export default function DemoReplay() {
       messages={state.messages}
       live={state.live}
       visits={state.visits}
+      runElapsedSec={(rec.steps[Math.min(step, rec.steps.length - 1)]?.t ?? 0) / 1000}
       onRetry={() => undefined}
       actions={
         <>

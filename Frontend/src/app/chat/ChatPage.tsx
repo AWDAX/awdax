@@ -143,6 +143,7 @@ export default function ChatPage() {
       messages={chat?.messages ?? []}
       live={view}
       visits={visits}
+      runStartedAt={chat?.created_at}
       actions={actions}
       onRetry={async () => {
         await setLive(false)

@@ -31,6 +31,10 @@ type Props = {
   badge?: ReactNode
   /** Recorded or scripted data (a demo replay): nothing is asked of the backend, so no rescoring. */
   offline?: boolean
+  /** When the chat's first run started, for the run line's clock. */
+  runStartedAt?: string
+  /** A replay's real elapsed seconds, shown by the run line's clock instead of ticking. */
+  runElapsedSec?: number
 }
 
 /**
@@ -38,7 +42,7 @@ type Props = {
  * the request and replies, the live run with the websites being read, then the one-screen dashboard with its
  * Sources tab, and questions about the rows.
  */
-export function ChatView({ instanceKey, title, meta, messages, live, visits, actions, onRetry, badge, offline = false }: Props) {
+export function ChatView({ instanceKey, title, meta, messages, live, visits, actions, onRetry, badge, offline = false, runStartedAt, runElapsedSec }: Props) {
   const [view, setView] = useState<DashboardView>('report')
   const dashRef = useRef<HTMLDivElement>(null)
   const working = live.liveEnabled && WORKING.includes(live.status.phase ?? 'idle')
@@ -88,7 +92,7 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
           column here put the user's bubble in the middle of the page. */}
       <Thread messages={messages} working={working} />
       <div>
-        <LiveRun live={live} onRetry={onRetry} footer={sources.length > 0 ? <SourcesStrip sources={sources} onOpen={toggleSources} open={!table && showPanel} /> : undefined} />
+        <LiveRun live={live} onRetry={onRetry} startedAt={runStartedAt} elapsedSec={runElapsedSec} footer={sources.length > 0 ? <SourcesStrip sources={sources} onOpen={toggleSources} open={!table && showPanel} /> : undefined} />
       </div>
 
       {table ? (

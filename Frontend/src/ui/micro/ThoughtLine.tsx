@@ -1,124 +1,258 @@
-import { useEffect, useRef, useState } from 'react'
-import { m, useReducedMotion } from 'motion/react'
-import { ChevronIcon } from '../appIcons.tsx'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { animate, useReducedMotion } from 'motion/react'
+import { ChevronIcon, SparkleIcon } from '../appIcons.tsx'
 import { CheckIcon } from '../icons.tsx'
-import { EASE_SOFT } from '../motion.ts'
+import { EASE_DRAW, EASE_SOFT } from '../motion.ts'
+import './ThoughtLine.css'
 
 export type ThoughtLineProps = {
+  /** The working line. It shimmers, and it is the spoken text. */
   label?: string
+  /** The settled line; the frozen time follows it when `showTimer` is on. */
   doneLabel?: string
+  glyph?: 'sparkle' | 'dot' | 'none' | ReactNode
+  /** The trace beneath the line. The last step is current while working; earlier ones tick. */
   steps?: string[]
-  working?: boolean
-  /** Fixed elapsed seconds (e.g. loaded from history). Ticks up on its own when omitted. */
-  elapsed?: number
-  showTimer?: boolean
+  /** The line toggles the trace, with a chevron. */
   collapsible?: boolean
+  collapseOnSettle?: boolean
+  fontSize?: number
+  breathPeriod?: number
+  breathDepth?: number
+  shimmer?: boolean
+  shimmerDuration?: number
+  settleDuration?: number
+  settleBlur?: number
+  working?: boolean
+  /** Controlled seconds: the internal clock never runs. */
+  elapsed?: number
+  /** Wall-clock start (epoch ms) for the internal clock, so a page opened mid-run shows the real time. */
+  startedAt?: number
+  showTimer?: boolean
   onSettle?: (seconds: number) => void
   className?: string
+  style?: CSSProperties
 }
 
-function formatSeconds(s: number) {
-  if (s < 60) return `${s.toFixed(1)}s`
-  return `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`
-}
+const GLYPH_DONE = 0.55
+const EMPTY: string[] = []
 
-/** The live "working" line in a chat: a shimmering label while a step runs, settling to a done
- * label with an elapsed time. `steps` lists the trace shown underneath, collapsible once done. */
+const fmt = (ds: number) => (ds < 600 ? `${(ds / 10).toFixed(1)}s` : `${Math.floor(ds / 600)}m ${((ds % 600) / 10).toFixed(1)}s`)
+const spoken = (ds: number) =>
+  ds < 600 ? `${(ds / 10).toFixed(1)} seconds` : `${Math.floor(ds / 600)} minutes ${((ds % 600) / 10).toFixed(1)} seconds`
+
+/**
+ * The "working" line of an agent: a breathing sparkle and a shimmering label with a live clock, settling into a
+ * sentence with the frozen time ("Finished in 3.5s"), and a trace of steps beneath it (ticked, the current one
+ * pulsing) that folds away when it settles. React Bits' ThoughtLine; see CREDITS.md for what changed.
+ */
 export function ThoughtLine({
-  label = 'Searching sources…',
+  label = 'Thinking…',
   doneLabel = 'Done',
-  steps = [],
+  glyph = 'sparkle',
+  steps = EMPTY,
+  collapsible = true,
+  collapseOnSettle = true,
+  fontSize = 16,
+  breathPeriod = 1.6,
+  breathDepth = 0.45,
+  shimmer = true,
+  shimmerDuration = 1.8,
+  settleDuration = 350,
+  settleBlur = 2,
   working = true,
   elapsed,
+  startedAt,
   showTimer = true,
-  collapsible = true,
   onSettle,
   className = '',
+  style,
 }: ThoughtLineProps) {
-  const reduceMotion = useReducedMotion()
-  const hasSteps = steps.length > 0
+  const reduce = useReducedMotion() ?? false
+  const hasTrace = steps.length > 0
+  const depth = reduce ? Math.min(breathDepth, 0.2) : breathDepth
+  const period = reduce ? breathPeriod * 1.5 : breathPeriod
+  const trough = 1 - depth
+  const sheen = shimmer && !reduce
 
-  // Internal ticking clock, only used when the caller doesn't pass a fixed `elapsed`. Freezes at
-  // its last value once `working` goes false, because the interval is cleared.
-  const [tickSeconds, setTickSeconds] = useState(0)
-  useEffect(() => {
-    if (elapsed != null || !working) return undefined
-    const startedAt = performance.now()
-    const id = window.setInterval(() => setTickSeconds((performance.now() - startedAt) / 1000), 100)
-    return () => window.clearInterval(id)
-  }, [working, elapsed])
-  const seconds = elapsed ?? tickSeconds
+  const glyphRef = useRef<HTMLSpanElement>(null)
+  const breathRef = useRef<HTMLSpanElement>(null)
+  const timerRef = useRef<HTMLSpanElement>(null)
+  const stackRef = useRef<HTMLSpanElement>(null)
+  const workRef = useRef<HTMLSpanElement>(null)
+  const doneRef = useRef<HTMLSpanElement>(null)
+  const prevWorking = useRef(working)
 
-  // Auto-collapses the trace when work settles; expanded again if it restarts. A manual toggle
-  // (below) can still override this until the next transition. Derived during render, not an
-  // effect, per React's "adjusting state when a prop changes" pattern.
+  // Open while working, folded once it settles (unless told not to). Adjusted during render, not in an effect.
   const [open, setOpen] = useState(true)
-  const [prevWorking, setPrevWorking] = useState(working)
-  if (working !== prevWorking) {
-    setPrevWorking(working)
-    setOpen(working || !collapsible || !hasSteps)
+  const [seen, setSeen] = useState(working)
+  if (working !== seen) {
+    setSeen(working)
+    if (working) setOpen(true)
+    else if (collapseOnSettle) setOpen(false)
   }
 
-  const settledRef = useRef(false)
+  // The clock, in tenths: from `startedAt` (or the moment work began) while working, frozen once it settles.
+  const [tick, setTick] = useState(0)
   useEffect(() => {
-    if (working) {
-      settledRef.current = false
-      return
+    if (elapsed != null || !working) return undefined
+    const origin = startedAt ?? Date.now()
+    const paint = () => setTick(Math.max(0, Math.floor((Date.now() - origin) / 100)))
+    const first = window.setTimeout(paint, 0)
+    const id = window.setInterval(paint, 100)
+    return () => {
+      window.clearTimeout(first)
+      window.clearInterval(id)
     }
-    if (settledRef.current) return
-    settledRef.current = true
-    onSettle?.(seconds)
-  }, [working, seconds, onSettle])
+  }, [working, elapsed, startedAt])
+  const ds = elapsed != null ? Math.round(elapsed * 10) : tick
 
-  const doneText = showTimer ? `${doneLabel} in ${formatSeconds(seconds)}` : doneLabel
-  const toggle = collapsible && hasSteps
+  // The breath: the glyph (and the label, when it doesn't shimmer) dims and returns; settling dims the glyph.
+  useEffect(() => {
+    const glyphEl = glyphRef.current
+    const breathEl = breathRef.current
+    if (!breathEl) return undefined
+    const loop = (el: HTMLElement, delay: number) =>
+      animate(el, { opacity: [trough, 1, trough] }, { duration: period, ease: EASE_DRAW, repeat: Infinity, delay })
+    let cancelled = false
+    const running: ReturnType<typeof animate>[] = []
+    if (working && depth > 0) {
+      if (sheen) running.push(animate(breathEl, { opacity: 1 }, { duration: 0.2, ease: EASE_SOFT }))
+      if (glyphEl) {
+        const lead = animate(glyphEl, { opacity: trough }, { duration: 0.2, ease: EASE_SOFT })
+        running.push(lead)
+        void lead.then(() => {
+          if (cancelled) return
+          running.push(loop(glyphEl, 0))
+          if (!sheen) running.push(loop(breathEl, 0.14))
+        })
+      } else if (!sheen) running.push(loop(breathEl, 0.14))
+    } else {
+      const s = working ? 0.2 : settleDuration / 1000
+      if (glyphEl) running.push(animate(glyphEl, { opacity: working ? 1 : GLYPH_DONE }, { duration: s, ease: EASE_SOFT }))
+      running.push(animate(breathEl, { opacity: 1 }, { duration: s, ease: EASE_SOFT }))
+    }
+    return () => {
+      cancelled = true
+      running.forEach((a) => a.stop())
+    }
+  }, [working, period, depth, trough, settleDuration, glyph, sheen])
+
+  // The timer sits after whichever label is showing, and glides across when the line settles.
+  useLayoutEffect(() => {
+    const t = timerRef.current
+    const stack = stackRef.current
+    if (!t || !stack) return undefined
+    const place = (glide: boolean) => {
+      const active = working ? workRef.current : doneRef.current
+      if (!active) return
+      if (!glide) t.style.transition = 'none'
+      t.style.transform = `translateX(${active.offsetWidth - stack.offsetWidth}px)`
+      if (!glide) {
+        void t.offsetWidth
+        t.style.transition = ''
+      }
+    }
+    place(prevWorking.current !== working)
+    prevWorking.current = working
+    const ro = new ResizeObserver(() => place(false))
+    if (workRef.current) ro.observe(workRef.current)
+    if (doneRef.current) ro.observe(doneRef.current)
+    return () => ro.disconnect()
+  }, [working, label, doneLabel, fontSize, showTimer])
+
+  const latestDs = useRef(ds)
+  const latestSettle = useRef(onSettle)
+  useEffect(() => {
+    latestDs.current = ds
+    latestSettle.current = onSettle
+  })
+  useEffect(() => {
+    if (!working) latestSettle.current?.(latestDs.current / 10)
+  }, [working])
+
+  const toggle = hasTrace && collapsible
+  const announce = working ? label : showTimer ? `${doneLabel} ${spoken(ds)}` : doneLabel
+  const head = (
+    <>
+      {glyph !== 'none' && (
+        <span ref={glyphRef} className="thought-line__glyph" aria-hidden="true">
+          {glyph === 'sparkle' ? <SparkleIcon /> : glyph === 'dot' ? <span className="thought-line__dot" /> : glyph}
+        </span>
+      )}
+      <span ref={stackRef} className="thought-line__label" aria-hidden="true">
+        <span ref={workRef} className="thought-line__text" data-active={working ? '' : undefined}>
+          <span ref={breathRef} className="thought-line__breath" data-shimmer={sheen ? '' : undefined}>
+            {label}
+          </span>
+        </span>
+        <span ref={doneRef} className="thought-line__text thought-line__text--done" data-active={working ? undefined : ''}>
+          {doneLabel}
+        </span>
+      </span>
+      {showTimer && (
+        <span ref={timerRef} className="thought-line__timer" data-done={working ? undefined : ''} aria-hidden="true">
+          {fmt(ds)}
+        </span>
+      )}
+      {collapsible && (
+        <span className="thought-line__chevron" data-on={hasTrace ? '' : undefined} aria-hidden="true">
+          <ChevronIcon width="1em" height="1em" />
+        </span>
+      )}
+      <span className="sr-only" role="status">
+        {announce}
+      </span>
+    </>
+  )
+
+  const vars = {
+    '--tl-font': `${fontSize}px`,
+    '--tl-settle': `${settleDuration}ms`,
+    '--tl-blur': `${settleBlur}px`,
+    '--tl-shimmer': `${shimmerDuration}s`,
+  } as CSSProperties
 
   return (
-    <div className={`flex flex-col items-start gap-1 font-sans text-small text-ink ${className}`}>
-      <button
-        type="button"
-        disabled={!toggle}
-        onClick={() => toggle && setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 disabled:cursor-default"
-      >
-        {working ? (
-          <m.span
-            animate={reduceMotion ? undefined : { opacity: [0.55, 1, 0.55] }}
-            transition={reduceMotion ? undefined : { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-            className="text-ink"
-          >
-            {label}
-          </m.span>
-        ) : (
-          <span className="text-ink-2">{doneText}</span>
-        )}
-        {toggle && (
-          <ChevronIcon className={`text-ink-3 transition-transform duration-300 ease-soft ${open ? 'rotate-90' : ''}`} />
-        )}
-        <span className="sr-only" role="status">
-          {working ? label : doneText}
-        </span>
-      </button>
-
-      {hasSteps && (
-        <div
-          style={{ transitionTimingFunction: `cubic-bezier(${EASE_SOFT.join(',')})` }}
-          className={`grid overflow-hidden pl-4 transition-[grid-template-rows] duration-500 ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+    <div
+      className={`thought-line${className ? ` ${className}` : ''}`}
+      data-working={working ? '' : undefined}
+      data-open={open && hasTrace ? '' : undefined}
+      style={{ ...vars, ...style }}
+    >
+      {collapsible ? (
+        <button
+          type="button"
+          className="thought-line__head"
+          data-toggle={toggle ? '' : undefined}
+          aria-expanded={toggle ? open : undefined}
+          tabIndex={toggle ? 0 : -1}
+          onClick={() => toggle && setOpen((v) => !v)}
         >
-          <div className="flex min-h-0 flex-col gap-1.5 overflow-hidden pt-1">
-            {steps.map((step, i) => {
-              const done = !working || i < steps.length - 1
-              return (
-                <div key={`${i}-${step}`} className="flex items-center gap-2 text-micro text-ink-3">
-                  {done ? (
-                    <CheckIcon className="shrink-0" />
-                  ) : (
-                    <span aria-hidden className="size-1.5 shrink-0 animate-pulse rounded-full bg-ink" />
-                  )}
-                  <span className={done ? '' : 'text-ink'}>{step}</span>
-                </div>
-              )
-            })}
+          {head}
+        </button>
+      ) : (
+        <div className="thought-line__head">{head}</div>
+      )}
+      {hasTrace && (
+        <div className="thought-line__trace" data-open={open ? '' : undefined} aria-hidden={!open}>
+          <div className="thought-line__fold">
+            <div className="thought-line__steps">
+              {steps.map((text, i) => {
+                const done = !working || i < steps.length - 1
+                return (
+                  <div key={`${i}-${text}`} className="thought-line__step" data-done={done ? '' : undefined}>
+                    <span className="thought-line__mark" aria-hidden="true">
+                      {done ? <CheckIcon width="1em" height="1em" /> : <i className="thought-line__pulse" />}
+                    </span>
+                    <span className="thought-line__step-text" title={text}>
+                      {text}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
