@@ -63,12 +63,15 @@ export interface AwdaxpDashboard {
   } | null
 }
 
-const PHASE: Record<string, LivePhase> = {
+export const PHASE: Record<string, LivePhase> = {
   queued: 'idle',
   planning: 'discovery',
   discovery: 'discovery',
   rendering: 'inspect',
   extracting: 'extract',
+  scraping: 'extract',
+  // Live mode between refreshes ("next check in…"), same as a finished cycle.
+  live: 'sleep',
   scoring: 'extract',
   merging: 'merge',
   complete: 'sleep',

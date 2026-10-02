@@ -37,6 +37,9 @@ export function setChatTitle(id: string, title: string) {
   write(next)
 }
 
+// Duck-typed (ApiError carries `status`): client.ts reads import.meta.env, which Node tests can't import.
+const isNotFound = (err: unknown) => typeof err === 'object' && err !== null && (err as { status?: unknown }).status === 404
+
 /** One-time migration: push any browser-only titles to the backend, then drop local overrides. */
 export async function migrateLocalTitlesToBackend(
   save: (id: string, title: string) => Promise<void>,
@@ -50,9 +53,9 @@ export async function migrateLocalTitlesToBackend(
     }
     try {
       await save(id, t)
-    } catch {
-      // keep local title until the next session if the backend was down
-      continue
+    } catch (err) {
+      // 404: the chat is gone or not ours, so retrying every load is pointless. Else keep it for the next session.
+      if (!isNotFound(err)) continue
     }
     forgetChatTitle(id)
   }
