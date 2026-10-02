@@ -1,3 +1,57 @@
+# Handoff: UI polish, demo replays, faster discovery (3 October 2026)
+
+`feat/new-chat-compact` was merged as PR #23 (up to `39f10d3`). Branch `fix/polish-and-run-speed` holds the rest:
+`dcc8308` (phones demo card, pushed after #23 merged), `80f7a22`, `c76358b` and this handoff.
+
+## Done
+
+| Area | What changed | Commit |
+|---|---|---|
+| App | New chat fits a 1536×735 laptop without scrolling; resizable sidebar (220–420 px, remembered) | 67b6f9e |
+| App | No shortcut strip; + upload button inside the prompt box; normal-width headline | 2ca6297 |
+| Chat | User message on the right edge; ⋯ menu (two-step delete); top-3 sources; full-width ask section | b587a21, 0a369a3, 588c100 |
+| Chat | Run card is one ThoughtLine (live clock shown only when true); replays paced at 2 s+ per beat | a88b474, 39f10d3 |
+| Live | `starting` / `live_scraping` phases no longer read "Waiting to start" | fb90f4b |
+| Landing | Hero's sample run reaches its first source page ~2.5 s sooner (design unchanged) | 3ef8df5 |
+| Demo | Sample cards replay real recorded runs (`/app/demo/<slug>`, `public/demo/*.json`): phones 9 rows, cars 29 rows | e7d2249, dcc8308 |
+| App | Audit fixes: working placeholder, `/app/sample` removed, no stale "Reading now", plain headings, phone layout | 80f7a22 |
+| Backend | Discovery inspects 3 sources at a time; default source cap 10 → 6 | c76358b |
+
+## Verified (3 Oct)
+
+- Frontend `verify.mjs` PASS (lint, types, build, 176 tests); no raw hex outside `tokens.css`. Backend: 172 unittest OK.
+- Browser (Playwright): 9 routes × 1536×735 and 375×812, 0 console errors, no sideways scroll; `/app/sample` redirects to `/app`.
+- Real runs, local, NVIDIA + Chrome, same prompt: schema at 268 s (was ~742 s); first pass complete at 732 s with 27 sourced
+  rows (was: up to date at 1503 s, never "complete" in 30 min). A 2.5-min smoke run on the final code inspected 3 sites at once.
+
+## Needs attention (3 Oct)
+
+1. **Merge and deploy** `fix/polish-and-run-speed`. It carries `dcc8308` (phones card), which is not in `main` yet. Restart the
+   backend for the faster discovery.
+2. **Server load.** A run now uses up to 3 headless Chromes and 3 parallel LLM calls (`DISCOVERY_INSPECT_WORKERS`, default 3). On a
+   small host, or with several users at once, that can run out of memory or hit NVIDIA 429s (a 300 s cooldown per model). Set it to 2
+   or 1 there.
+3. **Dead `.env` names.** `MIN_VALIDATED_SOURCES`, `MAX_SOURCES_TO_INSPECT`, `MAX_DISCOVERY_SEARCH_ROUNDS`,
+   `MAX_DISCOVERY_ATTEMPTS`, `MAX_TOTAL_URLS_INSPECTED`, `BROWSER_TIMEOUT_MS`, `BROWSER_MAX_RELATED_LINKS`,
+   `LIVE_REFRESH_INTERVAL_SECONDS` and `LIVE_ERROR_RETRY_SECONDS` are read nowhere. The real knobs: `DISCOVERY_MAX_SOURCES` (6),
+   `DISCOVERY_INSPECT_WORKERS` (3), `DISCOVERY_MAX_INSPECT_ATTEMPTS` (40) and `NVIDIA_TIMEOUT_SECONDS` (90).
+4. **Runs still take ~12 min.** The scrape still visits sources one at a time (about 6 min of a run). It is the next speed win, but it
+   writes to the database as it goes, so it needs care.
+5. **Result quality.**
+   - "Reference" rows (a model name, every other column blank) inflate counts: 55 of 82 in the speed test.
+   - History and time-series prompts come back thin or junk: EV monthly sales gave model names as months; RBI repo rate gave 1 row.
+   - Runs are flaky: the phones prompt gave 0 rows once, then 9.
+6. **Demo replays** were recorded locally on 3 Oct. They show real times with no "recorded" label (owner's choice). To re-record, run
+   `Frontend/scripts/record-demo.mjs`, then `build-replay.mjs`. Check the rows before shipping.
+7. **Tutorial video** still shows the old start screen. Re-record it with a real voice-over (owner: later).
+8. **Small leftovers.**
+   - A chat's heading reads "Untitled chat" for a moment while it loads (pre-existing).
+   - The source cap ignores `intent.max_sources`.
+   - `CallChip` is now used only by the dev gallery.
+9. Old item 4 below (the landing page scrolling sideways at 375 px) did not reproduce on 3 Oct.
+
+---
+
 # Handoff: stability pass (2 October 2026)
 
 Branch `fix/stability-pass` (from `main` @ `6fc90ba`). Read `AGENTS.md`, then `docs/audit/README.md`.
