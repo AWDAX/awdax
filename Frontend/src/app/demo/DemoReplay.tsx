@@ -4,7 +4,7 @@ import { timeAgo } from '../../api/dates.ts'
 import { Button } from '../../ui/Button.tsx'
 import { PlayIcon, ReplayIcon } from '../../ui/icons.tsx'
 import { ChatView } from '../chat/ChatView.tsx'
-import { replayAt, schedule } from './replay.ts'
+import { beats, replayAt } from './replay.ts'
 import type { Recording } from './replay.ts'
 
 /**
@@ -20,7 +20,8 @@ export default function DemoReplay() {
   const handed = (useLocation().state as { prompt?: string } | null)?.prompt
   const [rec, setRec] = useState<Recording | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [step, setStep] = useState(0)
+  // Which beat is on screen (see beats() in replay.ts), and a counter that restarts the clock on Replay.
+  const [beat, setBeat] = useState(0)
   const [run, setRun] = useState(0)
 
   useEffect(() => {
@@ -34,13 +35,14 @@ export default function DemoReplay() {
     }
   }, [slug])
 
-  const at = useMemo(() => (rec ? schedule(rec) : []), [rec])
+  const plan = useMemo(() => (rec ? beats(rec) : []), [rec])
   useEffect(() => {
-    if (!rec || step >= at.length - 1) return
-    const t = window.setTimeout(() => setStep((s) => s + 1), at[step + 1] - at[step])
+    if (beat >= plan.length - 1) return
+    const t = window.setTimeout(() => setBeat((b) => b + 1), plan[beat + 1].at - plan[beat].at)
     return () => window.clearTimeout(t)
-  }, [rec, at, step, run])
+  }, [plan, beat, run])
 
+  const step = plan[Math.min(beat, plan.length - 1)]?.step ?? 0
   const state = useMemo(() => (rec ? replayAt(rec, step) : null), [rec, step])
 
   if (error) {
@@ -63,7 +65,7 @@ export default function DemoReplay() {
   }
   if (!rec || !state) return <p className="px-5 py-16 text-center text-ink-2">Loading…</p>
 
-  const finished = step >= at.length - 1
+  const finished = beat >= plan.length - 1
   const rows = state.live.rowsTotal
   return (
     <ChatView
@@ -74,19 +76,19 @@ export default function DemoReplay() {
       messages={state.messages}
       live={state.live}
       visits={state.visits}
-      runElapsedSec={(rec.steps[Math.min(step, rec.steps.length - 1)]?.t ?? 0) / 1000}
+      runElapsedSec={(rec.steps[step]?.t ?? 0) / 1000}
       onRetry={() => undefined}
       actions={
         <>
           {!finished && (
-            <Button variant="secondary" onClick={() => setStep(at.length - 1)}>
+            <Button variant="secondary" onClick={() => setBeat(plan.length - 1)}>
               Skip to the result
             </Button>
           )}
           <Button
             variant="secondary"
             onClick={() => {
-              setStep(0)
+              setBeat(0)
               setRun((r) => r + 1)
             }}
           >

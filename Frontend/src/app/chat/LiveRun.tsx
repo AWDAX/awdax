@@ -68,6 +68,10 @@ export function LiveRun({ live, onRetry, footer, startedAt, elapsedSec }: Props)
           startedAt={Number.isFinite(origin) ? origin : undefined}
           showTimer={timed}
           fontSize={15}
+          // Slower than React Bits' defaults (1.6 s / 1.8 s / 350 ms), on the owner's slow-and-soft scale.
+          breathPeriod={2.4}
+          shimmerDuration={2.8}
+          settleDuration={500}
           className="min-w-0 max-w-full"
         />
         <span className="font-mono text-micro text-ink-3">

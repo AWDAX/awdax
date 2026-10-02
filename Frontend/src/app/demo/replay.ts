@@ -25,21 +25,29 @@ export interface Recording {
 }
 
 /** A replay plays the whole run in about this long, whatever the real run took. */
-export const REPLAY_MS = 25_000
-const MIN_GAP = 120
-const MAX_GAP = 2_500
+export const REPLAY_MS = 45_000
+/** The least time one moment stays on screen, so its step and log lines can be read. */
+export const READ_MS = 2_000
+const MAX_GAP = 4_000
 
-/** When each step shows: the real gaps scaled down to fit REPLAY_MS, each clamped so nothing flashes or stalls. */
-export function schedule(rec: Recording): number[] {
+/**
+ * The moments the replay shows, and when. The run is sped up to about REPLAY_MS (a long wait shortened to
+ * MAX_GAP); steps that land within READ_MS of the last shown moment show together at the next one (each state
+ * already includes the earlier steps), so nothing flickers past unread. The first and last steps always show.
+ */
+export function beats(rec: Recording): { step: number; at: number }[] {
+  const n = rec.steps.length
+  if (n === 0) return []
   const scale = REPLAY_MS / Math.max(rec.durationMs, 1)
-  const out: number[] = []
-  let prev = rec.steps[0]?.t ?? 0
+  const out = [{ step: 0, at: 0 }]
   let at = 0
-  for (const [i, step] of rec.steps.entries()) {
-    if (i > 0) at += Math.min(MAX_GAP, Math.max(MIN_GAP, (step.t - prev) * scale))
-    prev = step.t
-    out.push(Math.round(at))
+  for (let i = 1; i < n; i++) {
+    at += Math.min(MAX_GAP, (rec.steps[i].t - rec.steps[i - 1].t) * scale)
+    const last = out[out.length - 1]
+    if (at - last.at >= READ_MS) out.push({ step: i, at: Math.round(at) })
   }
+  const last = out[out.length - 1]
+  if (last.step !== n - 1) out.push({ step: n - 1, at: Math.round(Math.max(at, last.at + READ_MS)) })
   return out
 }
 

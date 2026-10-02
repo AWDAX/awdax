@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { Recording } from './replay.ts'
-import { REPLAY_MS, replayAt, schedule } from './replay.ts'
+import { READ_MS, REPLAY_MS, beats, replayAt } from './replay.ts'
 
 const live = (phase: string, status: string, rows: number, detail = '') => ({
   enabled: true,
@@ -37,12 +37,26 @@ const rec: Recording = {
   },
 }
 
-test('schedule keeps order, starts at 0 and fits about REPLAY_MS', () => {
-  const at = schedule(rec)
-  assert.equal(at.length, rec.steps.length)
-  assert.equal(at[0], 0)
-  for (let i = 1; i < at.length; i++) assert.ok(at[i] >= at[i - 1])
-  assert.ok(at.at(-1)! <= REPLAY_MS + 1_000, `ends at ${at.at(-1)}`)
+test('beats start at 0, end on the last step, and each stays up long enough to read', () => {
+  const b = beats(rec)
+  assert.deepEqual(b[0], { step: 0, at: 0 })
+  assert.equal(b.at(-1)!.step, rec.steps.length - 1)
+  for (let i = 1; i < b.length; i++) {
+    assert.ok(b[i].step > b[i - 1].step, 'steps move forward')
+    assert.ok(b[i].at - b[i - 1].at >= READ_MS, `beat ${i} held ${b[i].at - b[i - 1].at} ms`)
+  }
+  assert.ok(b.at(-1)!.at <= REPLAY_MS + READ_MS, `ends at ${b.at(-1)!.at}`)
+})
+
+test('a burst of steps shows as one beat, not a flicker', () => {
+  const burst: Recording = {
+    ...rec,
+    durationMs: 10_000,
+    steps: Array.from({ length: 50 }, (_, i) => ({ t: i * 200, kind: 'event' as const, event: { id: i + 1, run_id: 'r1', phase: 'rendering', detail: `line ${i}`, created_at: '' } })),
+  }
+  const b = beats(burst)
+  assert.ok(b.length < 50, `${b.length} beats for 50 steps`)
+  assert.equal(b.at(-1)!.step, 49)
 })
 
 test('the start shows only the user request, no rows, and a live run waiting to start', () => {
