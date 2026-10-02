@@ -1,30 +1,23 @@
 import { CompassIcon } from '../appIcons.tsx'
 import { buttonClass, type ButtonVariant } from '../buttonClass.ts'
-import { useTour } from './tourContext.ts'
+import { useTutorial } from './tutorialContext.ts'
 
 type Props = {
-  tourId: string
   label?: string
   variant?: ButtonVariant
   iconOnly?: boolean
   className?: string
 }
 
-export function TourTrigger({
-  tourId,
-  label = 'Take a Tour',
-  variant = 'secondary',
-  iconOnly = false,
-  className = '',
-}: Props) {
-  const { startTour, isActive } = useTour()
+/** Opens the tutorial video. Icon-only for toolbars, labelled for page headers. */
+export function TutorialTrigger({ label = 'Watch tutorial', variant = 'secondary', iconOnly = false, className = '' }: Props) {
+  const { openTutorial } = useTutorial()
 
   if (iconOnly) {
     return (
       <button
         type="button"
-        onClick={() => startTour(tourId)}
-        disabled={isActive}
+        onClick={openTutorial}
         aria-label={label}
         title={label}
         className={`grid size-8 place-items-center rounded-control text-ink-2 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink ${className}`}
@@ -35,12 +28,7 @@ export function TourTrigger({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => startTour(tourId)}
-      disabled={isActive}
-      className={buttonClass(variant, 'md', `gap-1.5 ${className}`)}
-    >
+    <button type="button" onClick={openTutorial} className={buttonClass(variant, 'md', `gap-1.5 ${className}`)}>
       <CompassIcon className="size-4" />
       <span>{label}</span>
     </button>
