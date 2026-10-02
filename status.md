@@ -2,6 +2,7 @@
 
 **Date:** 2 October 2026 · **Branch:** `integration/oct-02-hardening` (not yet merged to `main`, not yet deployed)
 **Tests:** 155 frontend and 165 backend pass; lint clean; build passes. Real backend checked over HTTP in strict mode.
+**Owner check (local, 2 Oct):** tutorial video plays; a real run from an example card ("Try") completed. Other prompts and production still to check.
 Full audit: `docs/audit/PRODUCTION_AUDIT.md` · Detailed status: `docs/SITE_STATUS.md`
 
 ---
@@ -114,7 +115,7 @@ Back in the open tab, navigate to another page. It should reload once and work, 
 
 1. Open a pull request from `integration/oct-02-hardening` into `main` (`main` gained one commit today, so let GitHub show any conflict).
 2. After merging: set the secret (above), deploy the frontend, restart the backend on the new code.
-3. Do **one real end-to-end run** (a real prompt, real AI keys) and confirm it reaches "Run complete". This is the one thing nobody has seen yet.
+3. On production, run two or three different prompts (one example card, one table-heavy prompt, one unusual prompt) and confirm each reaches "Run complete". One example-card run already completed locally.
 
 ### 2. BE-05: live mode (decide, then small change)
 
