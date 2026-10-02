@@ -86,6 +86,31 @@ Options: (1) **recommended:** namespace IndexedDB and `localStorage` keys by Sup
 Read `useCopyToClipboard.ts`, `FuseButton.tsx`, `SmoothScroll.tsx`, `useAutoTour.ts`, `TourHost.tsx`, `SwipeToast.tsx`, `AskPage.tsx`,
 `ExportDialog.tsx`, `Layout.tsx` effects and the `liveSocket.ts` CONNECTING watchdog. File anything new into FRONTEND_FINDINGS.md before fixing it.
 
+## After PR #4: status and A9 follow-ups
+
+A1–A6 and A8 shipped in PR #4 (`fix/stability-pass`). A7 still waits for the owner. The A9 sweep found the issues below
+(FRONTEND_FINDINGS.md FE-14 to FE-16, N6).
+
+| Batch | Fixes | Files (under `Frontend/src/`) | Depends on | Risk |
+|---|---|---|---|---|
+| A10 | FE-14, FE-15 | `ui/micro/FuseButton.tsx`, `app/workspace/HistoryItem.tsx` | **owner picks (a) or (b)** | Low for (a), Medium for (b) |
+| A11 | N6, FE-16 | `api/liveSocket.ts`, `ui/micro/useCopyToClipboard.ts` | — | Low |
+
+### A10: undo-window deletes survive unmount
+- (a) `FuseButton` and `HistoryItem` hold the latest commit handler in a ref (FE-15). A `committed` ref is set in `onfinish` and by Undo.
+  Cleanup calls `anim.cancel()`, then calls the handler if the fuse was armed and has neither committed nor been undone.
+  `ChatPage`/`FilePage` already `navigate` first, so a commit fired after the page has unmounted still deletes. Check that its `navigate('/app')`
+  doesn't pull the user back from the chat they just opened, and skip the navigate when the commit came from unmount.
+- Tests: no React Testing Library. Extract the "armed → unmount → commit once" rule into a tiny pure state helper with a Node test (Undo, then
+  unmount: no commit; finish, then unmount: one commit; unmount while armed: one commit).
+- Browser: delete a chat, open another chat within 5 s → the first chat is gone from the list and you stay on the second. Delete a sidebar chat that
+  has a running track from yesterday → it is gone after 4 s, even after the 5 s refresh regroups it.
+
+### A11: socket watchdog and copy timer
+- `liveSocket.ts`: a CONNECTING timer (10 s) that closes the socket so the existing failure count and SSE fallback run. Extend the existing tests if
+  `liveSocket` has any; otherwise use a fake `WebSocket` class in a Node test.
+- `useCopyToClipboard.ts`: `clearTimeout` in `finally` before setting the timer, plus an unmount cleanup.
+
 ## Track B: backend (read-only for agents: owner approval or the backend owner)
 
 Listed by urgency. This plan does not change any backend file.
@@ -115,6 +140,9 @@ Listed by urgency. This plan does not change any backend file.
 4. **Where we work:** this clone lives at `X:\Hackathons\Codecubicle\awdax-audit`, outside your single `awdax\` folder. Keep it, or move it into `awdax\`?
    Note `awdax\Frontend` (repo AWDAX/Frontend) is now 87 files behind the monorepo's `Frontend/`. Which repo deploys production?
 5. **Production:** how is `awdax.synapical.com` built and hosted, and does it call the backend through `/api` (the Pages proxy) or a direct `VITE_API_BASE_URL`?
+
+6. **A10:** when a pending delete's button disappears (page left, row regrouped), should the delete go through (a, recommended) or keep its undo
+   window in a shared store (b)?
 
 ## Suggested order
 
