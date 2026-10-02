@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { answer } from '../../analytics/answer.ts'
+import { answer, STALE_MESSAGE } from '../../analytics/answer.ts'
 import type { TableProfile } from '../../analytics/profile.ts'
 import type { ChartSpec } from '../../analytics/spec.ts'
 import { ChartIcon, DownloadIcon, TrashIcon } from '../../ui/appIcons.tsx'
 import { AssistantOrb } from '../../ui/micro/AssistantOrb.tsx'
 import { CopyButton } from '../../ui/micro/CopyButton.tsx'
+import { isStaleAnswer } from '../chat/answerStore.ts'
 import type { SavedAnswer } from '../chat/useAnswers.ts'
 import { ChartView } from '../dashboard/charts/ChartView.tsx'
 import { PrecisionNote } from '../dashboard/PrecisionNote.tsx'
@@ -21,8 +22,37 @@ type Props = {
 
 const action = 'inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-micro text-ink-2 hover:bg-sunken hover:text-ink'
 
+/** One question answered from the table, or, when its columns are gone, a note saying so (and the way to remove it). */
+export function AnswerCard(props: Props) {
+  return isStaleAnswer(props.saved, props.profile) ? <StaleAnswer saved={props.saved} onRemove={props.onRemove} /> : <LiveAnswer {...props} />
+}
+
+/** Kept, not deleted: the table may get its columns back, and only the user decides to drop a question. */
+function StaleAnswer({ saved, onRemove }: Pick<Props, 'saved' | 'onRemove'>) {
+  return (
+    <article className="flex flex-col gap-3">
+      <p className="ml-auto max-w-[85%] rounded-panel border-2 border-ink bg-signal-soft px-3 py-2 text-small">{saved.question}</p>
+      <div className="flex gap-3">
+        <AssistantOrb size="md" className="mt-0.5 shrink-0" />
+        <div className="min-w-0 flex-1 rounded-panel border-2 border-line p-4">
+          <p role="status" className="text-small text-ink-2">
+            {STALE_MESSAGE} The table's columns changed since you asked. Ask again to get a current answer.
+          </p>
+          {onRemove && (
+            <div className="mt-2 flex">
+              <button type="button" onClick={onRemove} className={`${action} ml-auto hover:text-blocked`} aria-label="Remove this answer">
+                <TrashIcon />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
+  )
+}
+
 /** One question answered from the table: the exact sentence, a small chart, what was counted, and actions. */
-export function AnswerCard({ profile, saved, title, onAddToDashboard, onRemove }: Props) {
+function LiveAnswer({ profile, saved, title, onAddToDashboard, onRemove }: Props) {
   const a = useMemo(() => answer(profile, saved.question, saved.intent, saved.query, saved.chart), [profile, saved])
   const [exporting, setExporting] = useState(false)
   const [added, setAdded] = useState(false)

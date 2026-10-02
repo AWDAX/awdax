@@ -37,7 +37,7 @@ type Props = {
 export function ChatData({ instanceId, table, title, sources, view, onViewChange, remote, stats = null, includePartial, onIncludePartial, onRefresh }: Props) {
   const profile = useMemo(() => profileTable(table), [table])
   const dash = useDashboard(instanceId, profile)
-  const answers = useAnswers(instanceId)
+  const answers = useAnswers(instanceId, profile)
   const followUps = useMemo(() => suggestFollowUps(profile), [profile])
   const asked = new Set(answers.items.map((a) => a.question))
   const fresh = followUps.filter((f) => !asked.has(f.text))

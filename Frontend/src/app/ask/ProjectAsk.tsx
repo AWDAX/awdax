@@ -19,7 +19,7 @@ type Props = { table: DatasetTable; title: string; instanceKey: string; path: st
 /** Questions about one project's table. Answers and pinned charts are the same ones its chat shows. */
 export function ProjectAsk({ table, title, instanceKey, path }: Props) {
   const profile = useMemo(() => profileTable(table), [table])
-  const answers = useAnswers(instanceKey)
+  const answers = useAnswers(instanceKey, profile)
   const dash = useDashboard(instanceKey, profile)
   const followUps = useMemo(() => suggestFollowUps(profile), [profile])
   const asked = new Set(answers.items.map((a) => a.question))
