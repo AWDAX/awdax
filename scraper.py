@@ -24,6 +24,7 @@ from discovery import SourceCandidate
 from inspector import ScrapePlan, egazette_preset_plan, load_page, page_load_seconds
 from reasoning import ScrapeIntent, parse_prompt
 from table_merge import merge_records
+from url_guard import UnresolvableHost, UnsafeURL, check_url
 
 logger = logging.getLogger(__name__)
 
@@ -318,6 +319,20 @@ def _should_exhaust_listing(url: str, intent: ScrapeIntent) -> bool:
     )
 
 
+def guard_detail_url(url: str) -> str:
+    """A detail/PDF URL built from an LLM-written template: dropped (empty) when it points somewhere not allowed."""
+    if not url:
+        return ""
+    try:
+        check_url(url)
+    except UnresolvableHost:
+        pass  # same as before: the download will simply fail
+    except UnsafeURL:
+        logger.warning("Dropped a detail URL that is not allowed")
+        return ""
+    return url
+
+
 def fill_url_template(template: str, row: dict[str, Any], id_field: str) -> str:
     ext_id = str(row.get(id_field) or row.get("Gazette ID") or "")
     num_m = re.search(r"-(\d+)\s*$", ext_id)
@@ -529,7 +544,9 @@ class PlanDrivenScraper:
 
             pdf_url = ""
             if self.plan.detail_mode == "url_template" and self.plan.direct_url_template:
-                pdf_url = fill_url_template(self.plan.direct_url_template, row, self.plan.id_field)
+                pdf_url = guard_detail_url(
+                    fill_url_template(self.plan.direct_url_template, row, self.plan.id_field)
+                )
             elif self.plan.detail_mode == "none" and self.fast_mode:
                 pdf_url = guess_pdf_url(str(ext))
 
