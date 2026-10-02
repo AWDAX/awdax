@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { InstancesProvider } from '../../api/InstancesProvider.tsx'
 import { MenuIcon, PlusIcon, SidebarIcon } from '../../ui/appIcons.tsx'
+import { ErrorBoundary } from '../../ui/ErrorBoundary.tsx'
 import { ToastProvider } from '../../ui/toast/ToastHost.tsx'
 import { Tooltip } from '../../ui/Tooltip.tsx'
 import { TutorialProvider } from '../../ui/tutorial/TutorialProvider.tsx'
@@ -114,7 +115,9 @@ export default function Layout() {
           </div>
           {/* Keyed by path so each chat and view starts at the top with fresh state. */}
           <main id="main" key={pathname} className="relative min-h-0 flex-1 overflow-y-auto">
-            <Outlet />
+            <ErrorBoundary scope="page" resetKey={pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </main>
 
         </div>
