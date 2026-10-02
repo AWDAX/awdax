@@ -2,6 +2,9 @@ import { useState } from 'react'
 import type { DatasetStats, RecordMeta } from '../../api/types.ts'
 import { Button } from '../../ui/Button.tsx'
 
+// Re-score hidden: the backend endpoint is a stub that only counts rows (awdax_api/sources_stats_graph.py rescore_dataset).
+const SHOW_RESCORE: boolean = false
+
 const TIERS = ['high', 'usable', 'partial', 'low', 'noise', 'unscored'] as const
 const PARTS: [string, string][] = [
   ['coverage', 'Concept coverage'],
@@ -64,7 +67,7 @@ export function ScoreSummary({
               Include partial
             </label>
           )}
-          {onRescore && (
+          {SHOW_RESCORE && onRescore && (
             <Button
               variant="secondary"
               disabled={busy}

@@ -21,7 +21,8 @@ export interface AwdaxpInstance {
   live_enabled: boolean
   created_at: string
   updated_at: string
-  dataset_row_count: number
+  /** Present on the single-instance response only; the list omits it. */
+  dataset_row_count?: number
 }
 
 export interface AwdaxpMessage {
@@ -63,12 +64,15 @@ export interface AwdaxpDashboard {
   } | null
 }
 
-const PHASE: Record<string, LivePhase> = {
+export const PHASE: Record<string, LivePhase> = {
   queued: 'idle',
   planning: 'discovery',
   discovery: 'discovery',
   rendering: 'inspect',
   extracting: 'extract',
+  scraping: 'extract',
+  // Live mode between refreshes ("next check in…"), same as a finished cycle.
+  live: 'sleep',
   scoring: 'extract',
   merging: 'merge',
   complete: 'sleep',

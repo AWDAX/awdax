@@ -14,9 +14,12 @@ export function useCopyToClipboard({ onCopySuccess, onCopyError, resetDelay = 15
   const [state, setState] = useState<CopyState>('idle')
   const resetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => () => {
-    if (resetTimeout.current) clearTimeout(resetTimeout.current)
-  }, [])
+  useEffect(
+    () => () => {
+      if (resetTimeout.current) clearTimeout(resetTimeout.current)
+    },
+    [],
+  )
 
   const copy = useCallback(
     async (text: string | (() => string)) => {
@@ -30,7 +33,6 @@ export function useCopyToClipboard({ onCopySuccess, onCopyError, resetDelay = 15
         setState('error')
         onCopyError?.(error instanceof Error ? error : new Error('Copy failed'))
       } finally {
-        // A copy that overlapped this write may have set its timer meanwhile; keep only one.
         if (resetTimeout.current) clearTimeout(resetTimeout.current)
         resetTimeout.current = setTimeout(() => setState('idle'), resetDelay)
       }

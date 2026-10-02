@@ -8,7 +8,7 @@ from typing import Any
 from awdax_api.dataset_export import build_dataset_table
 from awdax_api.run_registry import active_regulatory_instances, instance_for_job
 from awdax_api.serializers import to_awdax_live_state
-from awdax_api.session_store import load_instance_session, persist_session, set_awdax_run
+from awdax_api.session_store import load_instance_session, persist_run_state, set_awdax_run
 from reasoning import ScrapeIntent
 from regulatory_strategy import intent_uses_regulatory_feed
 
@@ -118,14 +118,14 @@ class LiveBridge:
             msg = str(event.get("message") or "")
             phase = "extracting" if channel == "universal" else "extracting"
             set_awdax_run(sess, phase=phase, detail=msg[:500])
-            persist_session(sess)
+            persist_run_state(sess)
             self.notify_instance(instance_id, {"type": "status", "state": to_awdax_live_state(sess)})
             return
 
         if etype == "status":
             phase = str(event.get("phase") or "extracting")
             set_awdax_run(sess, phase=phase, detail=str(event.get("message") or ""))
-            persist_session(sess)
+            persist_run_state(sess)
             self.notify_instance(instance_id, {"type": "status", "state": to_awdax_live_state(sess)})
             return
 
@@ -147,7 +147,7 @@ class LiveBridge:
             rows_total = (table.get("row_count") or 0) + 1
             gid = item.get("gazette_id") or item.get("external_id") or ""
             set_awdax_run(sess, rows_total=rows_total, rows_added=1, phase="extracting", detail=f"Saved row {gid}")
-            persist_session(sess)
+            persist_run_state(sess)
             self.notify_instance(
                 instance_id,
                 {
@@ -165,7 +165,7 @@ class LiveBridge:
             return
 
         if etype == "table":
-            persist_session(sess)
+            persist_run_state(sess)
             self.notify_instance(instance_id, {"type": "batch_complete"})
 
 

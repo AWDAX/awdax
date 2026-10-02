@@ -20,7 +20,7 @@ export function CleanByDefault() {
 
   return (
     <Section labelledBy="clean-title">
-      <Container data-tour="landing-clean">
+      <Container>
         <SectionHead
           id="clean-title"
           index="04"

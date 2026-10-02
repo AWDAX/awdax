@@ -45,7 +45,7 @@ export function HeroRun() {
   }
 
   return (
-    <div ref={ref} data-tour="landing-liverun" className="flex flex-col gap-5">
+    <div ref={ref} className="flex flex-col gap-5">
       <RunPanel
         key={`${samples[index].key}-${take}`}
         sample={samples[index]}
