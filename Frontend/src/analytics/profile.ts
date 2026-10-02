@@ -29,6 +29,8 @@ export interface ColumnProfile {
   labels: string[]
   /** Numeric kinds: one exact value per row, null when missing or excluded. */
   numbers?: (Dec | null)[]
+  /** Numeric kinds: true for each row whose cell was a range, counted at its lowest value. Absent when no cell was. */
+  ranged?: boolean[]
   /** Period kind: one period per row. */
   periods?: (Period | null)[]
   excluded: Excluded[]
@@ -137,6 +139,7 @@ function profileColumn(index: number, name: string, cells: string[]): ColumnProf
     const percent = parsed.filter((p) => p.percent).length * 2 > parsed.length
     const suffix = mostCommon(parsed.map((p) => p.suffix).filter((s): s is string => !!s))
     const numbers: (Dec | null)[] = cells.map(() => null)
+    const ranged: boolean[] = cells.map(() => false)
     const excluded: Excluded[] = []
     let scale = 0
     for (const x of nums) {
@@ -154,6 +157,7 @@ function profileColumn(index: number, name: string, cells: string[]): ColumnProf
         continue
       }
       numbers[x.row] = p.value
+      if (p.range) ranged[x.row] = true
       scale = Math.max(scale, p.value.s)
     }
     const kind: ColumnKind = moneyVotes * 2 > parsed.length ? 'money' : percent ? 'percent' : 'number'
@@ -165,6 +169,7 @@ function profileColumn(index: number, name: string, cells: string[]): ColumnProf
       currency: kind === 'money' ? currency : undefined,
       percent: kind === 'percent' || undefined,
       suffix, idLike: idLike || undefined,
+      ranged: ranged.includes(true) ? ranged : undefined,
     }
   }
 

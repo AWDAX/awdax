@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { runQuery } from '../../analytics/aggregate.ts'
+import { plural } from '../../analytics/format.ts'
 import type { TableProfile } from '../../analytics/profile.ts'
 import { CHART_LABEL, newId } from '../../analytics/spec.ts'
 import type { ChartSpec, ChartType } from '../../analytics/spec.ts'
@@ -109,6 +110,7 @@ export function GraphsPanel({ instanceId, profile: raw, includePartial, onInclud
                     {result.used.toLocaleString('en-IN')} rows used
                     {result.blank.length ? ` · ${result.blank.length} missing values skipped` : ''}
                     {result.excluded.length ? ` · ${result.excluded.length} invalid values skipped` : ''}
+                    {result.ranged > 0 ? ` · ${plural(result.ranged, 'range')} counted at the lowest value` : ''}
                     {chart.query.limit && result.rows.length > chart.query.limit ? ` · top ${chart.query.limit} groups + Other` : ''}
                   </p>
                 </div>

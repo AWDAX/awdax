@@ -56,6 +56,8 @@ export interface QueryResult {
   matched: number
   /** Rows that passed the filters and had a usable value. */
   used: number
+  /** Used rows whose value was a range, counted at its lowest value. */
+  ranged: number
   /** Cells left out of the numbers, with the reason. */
   excluded: (Excluded & { column: string })[]
   /** Rows that passed the filters but had no value (empty or "N/A" in the source) for the group or measure. */
@@ -227,6 +229,7 @@ export function runQuery(p: TableProfile, q: Query): QueryResult {
     overall: reduce(q.agg, allValues, usedRows.length, allKeys, scale),
     matched: matched.length,
     used: usedRows.length,
+    ranged: needsValue && measure?.ranged ? usedRows.filter((r) => measure.ranged![r]).length : 0,
     excluded,
     blank,
     scale: q.agg === 'avg' ? scale + AVG_EXTRA : scale,
