@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 import sqlite3
 
 from discovery import SourceCandidate
-from inspector import ScrapePlan, egazette_preset_plan
+from inspector import ScrapePlan, egazette_preset_plan, load_page, page_load_seconds
 from reasoning import ScrapeIntent, parse_prompt
 from table_merge import merge_records
 
@@ -348,6 +348,7 @@ class PlanDrivenScraper:
             opts.add_argument("--headless=new")
             opts.add_argument("--window-size=1920,1080")
         self.driver = webdriver.Chrome(options=opts)
+        self.driver.set_page_load_timeout(page_load_seconds())
         return self.driver
 
     def quit(self):
@@ -389,7 +390,7 @@ class PlanDrivenScraper:
                     logger.warning("Ready step error: %s", e)
 
     def open_entry(self):
-        self.driver.get(self.plan.entry_url)
+        load_page(self.driver, self.plan.entry_url)
         time.sleep(2)
         self.run_ready_steps()
         try:
@@ -871,7 +872,15 @@ class UniversalScrapeService:
             self._current_job = job
             self.save_job(job)
             self._live[jid] = runner
-            thread.start()
+            # Running from now, as trigger_scrape_all does, not from when the thread reaches _run_all: the
+            # orchestrator polls is_job_running right after this returns and would post "Run complete" with no rows.
+            self._running_jobs.add(jid)
+            try:
+                thread.start()
+            except Exception:
+                self._running_jobs.discard(jid)
+                self._live.pop(jid, None)
+                raise
         self._set_status(
             jid,
             phase="live",
@@ -930,6 +939,8 @@ class UniversalScrapeService:
                 break
         with self._lock:
             self._live.pop(job_id, None)
+            # start_live marked it running; a loop stopped before its first cycle never reached _run_all's clear.
+            self._running_jobs.discard(job_id)
         self._set_status(job_id, phase="idle", message="Live mode stopped", live_enabled=False)
 
     def list_raw_records(self, job_id: str, *, limit: int = 500) -> list[dict[str, Any]]:
