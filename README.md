@@ -1,8 +1,22 @@
 # AWDAX
 
-**Ask for data. See where it came from. Explore it your way.**
+<div align="center">
+  <b>Ask for data. See where it came from. Explore it your way.</b>
+</div>
 
-AWDAX turns a plain-language research request into a dataset you can inspect, chart, question, and export. It shows the sources it finds while the work is happening, so you can follow a request from discovery through to the rows in your report. You can also start with a data file you already have.
+<div align="center">
+  <img src="assets/landing-page.png" alt="AWDAX Landing Page" width="800">
+</div>
+
+## 																																																											Description
+
+AWDAX is an AI-powered research and data exploration tool. It transforms plain-language queries into structured datasets by actively researching the web, allowing you to watch the discovery process live. Once data is gathered, AWDAX provides an interactive dashboard to inspect sources, automatically generate relevant charts, ask follow-up questions, and export the results. You can also bring your own data files for instant visualization and analysis.
+
+<div align="center">
+  <img src="assets/dashboard.png" alt="AWDAX Dashboard" width="800">
+</div>
+
+---
 
 ## What you can do
 
@@ -27,46 +41,3 @@ Results depend on the pages available for a particular request. AWDAX keeps miss
 ## Bring your own data
 
 Upload a CSV, TSV, JSON, or `.xlsx` file to use the same dashboard, graphs, questions, and exports without scraping. Uploaded files stay in this browser on this device. The sample run in the app is a quick way to explore the experience before starting a web request.
-
-## Run locally
-
-This folder contains the Flask backend (`app.py`) and the React app (`Frontend/`). Use two PowerShell terminals.
-
-**Backend** — from this folder:
-
-```powershell
-if (-not (Test-Path .venv)) { py -3.11 -m venv .venv }
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-.\.venv\Scripts\python.exe app.py
-```
-
-Set `GEMINI_API_KEY` in the backend `.env` before starting a real web request. Flask runs at `http://127.0.0.1:8000` by default.
-
-**Frontend** — in the second terminal:
-
-```powershell
-cd Frontend
-if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
-npm ci
-npm run dev:agent
-```
-
-Add your Supabase `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to `Frontend/.env.local`, then open `http://localhost:5174/`. The Supabase project must allow `http://localhost:5174/auth/callback` as a redirect URL. The frontend sends local API requests to port 8000; `npm run dev` uses port 5173 instead.
-
-For more setup detail, see [local development](LOCAL_DEV.md) and the [frontend README](Frontend/README.md).
-
-## If something goes wrong
-
-- **`ECONNREFUSED 127.0.0.1:8000`:** Start the backend and leave its terminal running. Check `http://127.0.0.1:8000/health`.
-- **An error remains after a code change:** Stop and restart Flask. Its automatic reloader is disabled; an old failed message also remains in chat history until you submit a new request.
-- **Sign-in fails:** Check the two Supabase values and the callback URL for the port you are using.
-- **Discovery cannot reach Gemini:** Check `GEMINI_API_KEY` in the backend `.env` and restart Flask.
-
-The startup messages about `google.generativeai` and `fitz` are deprecation warnings; they do not stop the local server from starting.
-
-## Developer notes and safety
-
-The backend API and legacy scraper interface live in `app.py` and `awdax_api/`; frontend code lives in `Frontend/`. Backend tests are in `tests/test_awdax_api/`, and frontend commands are listed in [Frontend/README.md](Frontend/README.md).
-
-Keep the Flask backend local. It does not yet enforce per-user ownership or authenticate direct API requests, so it should not be exposed through a public tunnel. Keep API keys in the backend `.env`, never in a `VITE_` variable. See the [deployment notes](../DEPLOY.md) before planning a hosted setup.
