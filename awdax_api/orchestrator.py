@@ -6,7 +6,7 @@ import time
 from typing import Any
 
 from awdax_api.live_bridge import live_bridge
-from awdax_api.pipeline_runner import run_pipeline_for_session
+from awdax_api.pipeline_runner import InstanceDeleted, run_pipeline_for_session
 from awdax_api.run_registry import (
     is_running,
     mark_running,
@@ -94,6 +94,42 @@ def _wait_universal_job(job_id: str, timeout: float = 3600) -> None:
     time.sleep(0.5)
 
 
+def _job_from_session(sess: dict[str, Any]) -> tuple[list[ScrapePlan], ScrapeJob]:
+    intent = ScrapeIntent.from_dict(sess["intent"])
+    plans = [ScrapePlan.from_dict(p) for p in sess["plans"]]
+    job = ScrapeJob(
+        job_id=sess["job_id"],
+        intent=intent,
+        plans=plans,
+        plan=plans[0],
+        table_schema=sess.get("table_schema"),
+    )
+    return plans, job
+
+
+def resume_instance(instance_id: str, sess: dict[str, Any]) -> None:
+    """Restart work when live mode is switched on and nothing is running (Resume / Retry)."""
+    if is_running(instance_id):
+        return
+    job_id = sess.get("job_id")
+    last_failed = (sess.get("awdax_run") or {}).get("status") == "failed"
+    if job_id and sess.get("plans") and sess.get("intent") and not last_failed:
+        if not universal_service.is_job_live(job_id):
+            plans, job = _job_from_session(sess)
+            universal_service.start_live(plans, job)
+        return
+    goal = str(sess.get("goal") or "").strip()
+    if not goal:
+        return
+    if not sess.get("messages"):
+        append_message(sess, role="user", content=goal)
+        persist_session(sess)
+    try:
+        start_run(instance_id, goal)
+    except RuntimeError:
+        pass
+
+
 def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
     sess = load_instance_session(instance_id)
     if not sess:
@@ -119,21 +155,18 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
             sess["regulatory_feed_snapshot_ids"] = snap
         elif job_id and sess.get("plans"):
             _wait_universal_job(job_id)
-            intent = ScrapeIntent.from_dict(sess["intent"])
-            plans = [ScrapePlan.from_dict(p) for p in sess["plans"]]
-            job = ScrapeJob(
-                job_id=job_id,
-                intent=intent,
-                plans=plans,
-                plan=plans[0],
-                table_schema=sess.get("table_schema"),
-            )
+            _, job = _job_from_session(sess)
             universal_service.rebuild_merged_table(job)
 
         latest = load_instance_session(instance_id)
-        if latest:
-            for key in ("messages", "run_events", "awdax_run", "discovery_sources", "title", "archived", "keep_live"):
-                sess[key] = latest.get(key)
+        if latest is None:
+            # Chat was deleted mid-run: stop its live job and write nothing.
+            jid = sess.get("job_id")
+            if jid:
+                universal_service.stop_live(jid)
+            return
+        for key in ("messages", "run_events", "awdax_run", "discovery_sources", "title", "archived", "keep_live"):
+            sess[key] = latest.get(key)
         report = format_discovery_report(sess, goal=goal)
         summary = f"**Run complete.**\n\n{report}"
         append_message(sess, role="assistant", content=summary)
@@ -152,6 +185,8 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
         persist_session(sess)
         live_bridge.notify_instance(instance_id, {"type": "batch_complete"})
         live_bridge.notify_instance(instance_id, {"type": "status", "state": to_awdax_live_state(sess)})
+    except InstanceDeleted:
+        logger.info("Chat %s was deleted during its run", instance_id)
     except Exception as e:
         logger.exception("Orchestrator failed for %s", instance_id)
         sess = load_instance_session(instance_id) or sess

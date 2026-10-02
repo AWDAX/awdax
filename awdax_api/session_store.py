@@ -35,7 +35,7 @@ def load_instance_session(instance_id: str, user_id: str | None = None) -> dict[
 
 def persist_session(sess: dict[str, Any]) -> dict[str, Any]:
     ensure_awdax_defaults(sess)
-    return save_session(sess)
+    return save_session(sess, allow_insert=False)
 
 
 def append_message(sess: dict[str, Any], *, role: str, content: str) -> dict[str, Any]:

@@ -168,7 +168,8 @@ def create_session(user_id_or_title: str | None = None, *, user_id: str | None =
     return get_session(sid, actual_user_id) or {"id": sid, "title": actual_title, "user_id": actual_user_id, **_empty_payload()}
 
 
-def save_session(arg1: Any, arg2: dict[str, Any] | None = None) -> dict[str, Any]:
+def save_session(arg1: Any, arg2: dict[str, Any] | None = None, *, allow_insert: bool = True) -> dict[str, Any]:
+    """Update a session row. With allow_insert=False a missing row (deleted chat) is not re-created."""
     init_ui_sessions()
     if arg2 is not None:
         user_id = str(arg1 or "anonymous")
@@ -196,6 +197,11 @@ def save_session(arg1: Any, arg2: dict[str, Any] | None = None) -> dict[str, Any
             (title, job_id, json.dumps(payload), now, user_id, sid),
         )
         if cur.rowcount == 0:
+            if not allow_insert:
+                conn.commit()
+                cur.close()
+                conn.close()
+                return session
             cur.execute(
                 """INSERT INTO ui_sessions (id, title, job_id, payload_json, created_at, updated_at, user_id)
                    VALUES (?,?,?,?,?,?,?)""",

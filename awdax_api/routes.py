@@ -7,7 +7,7 @@ from flask import Blueprint, Response, jsonify, request, stream_with_context
 
 from awdax_api.dataset_export import build_dashboard, build_dataset_table
 from awdax_api.errors import detail_response
-from awdax_api.orchestrator import is_running, start_run
+from awdax_api.orchestrator import is_running, resume_instance, start_run
 from awdax_api.serializers import to_awdax_instance, to_awdax_live_state, to_awdax_messages
 from awdax_api.session_store import append_message, load_instance_session, persist_session
 from awdax_api.sources_stats_graph import (
@@ -87,6 +87,9 @@ def patch_instance(instance_id: str):
         if not enabled and jid:
             universal_service.stop_live(jid)
     sess = persist_session(sess)
+    if body.get("live_enabled"):
+        resume_instance(instance_id, sess)
+        sess = load_instance_session(instance_id) or sess
     return jsonify(to_awdax_instance(sess))
 
 
@@ -201,6 +204,9 @@ def patch_live(instance_id: str):
     if jid and not enabled:
         universal_service.stop_live(jid)
     sess = persist_session(sess)
+    if enabled:
+        resume_instance(instance_id, sess)
+        sess = load_instance_session(instance_id) or sess
     return jsonify(to_awdax_live_state(sess))
 
 
