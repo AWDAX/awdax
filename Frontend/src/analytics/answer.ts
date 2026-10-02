@@ -23,7 +23,10 @@ export interface Answer {
 
 const pct = (part: Dec, whole: Dec) => div(mul(part, fromInt(100)), whole, 2)
 
+export const STALE_MESSAGE = 'This answer refers to a column that is no longer in the data.'
+
 export function describe(p: TableProfile, intent: Intent, r: QueryResult): string {
+  if (r.stale) return STALE_MESSAGE
   if (r.used === 0) return 'No rows match that question, so there is nothing to count.'
   const q = r.query
   const m = q.measure !== undefined ? p.columns[q.measure] : undefined
