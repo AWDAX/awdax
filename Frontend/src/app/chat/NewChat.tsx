@@ -5,10 +5,9 @@ import { awdax } from '../../api/awdax.ts'
 import { ApiError } from '../../api/client.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import { notifyInstancesChanged } from '../../api/instancesSync.ts'
-import { ChartIcon, CompassIcon, DatabaseIcon, FileIcon, ReportIcon, SearchIcon, SparkleIcon } from '../../ui/appIcons.tsx'
+import { ChartIcon, ChevronIcon, DatabaseIcon, FileIcon, ReportIcon, SearchIcon, SparkleIcon } from '../../ui/appIcons.tsx'
 import { PlayIcon } from '../../ui/icons.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
-import { useTutorial } from '../../ui/tutorial/tutorialContext.ts'
 import { FEATURES } from '../features.ts'
 import { PromptBox } from '../prompt/PromptBox.tsx'
 import { startFromFile } from './startFromFile.ts'
@@ -47,7 +46,6 @@ export default function NewChat() {
   const navigate = useNavigate()
   const { upsert } = useInstances()
   const { toast } = useToast()
-  const { openTutorial } = useTutorial()
 
   const submit = async (goal: string, attached: File[]) => {
     setBusy(true)
@@ -93,6 +91,17 @@ export default function NewChat() {
   // Real buttons (keyboard-reachable) that open the prompt box's file picker.
   const pickFile = () => (document.getElementById(FILE_INPUT) as HTMLInputElement | null)?.click()
 
+  // A card fills the box and puts the caret at the end, ready to edit before sending. It never sends by itself.
+  const tryCard = (prompt?: string) => {
+    if (!prompt) return pickFile()
+    setText(prompt)
+    requestAnimationFrame(() => {
+      const box = document.getElementById(`${FILE_INPUT}-text`) as HTMLTextAreaElement | null
+      box?.focus()
+      box?.setSelectionRange(prompt.length, prompt.length)
+    })
+  }
+
   const stripItem = 'flex items-center gap-1.5 rounded-sm transition-colors duration-300 ease-soft hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink'
   // Shortcuts on the left, the refresh note on the right, one centred line; on a narrow box the note wraps
   // under the shortcuts, left-aligned, instead of hanging off to the right on its own.
@@ -113,21 +122,17 @@ export default function NewChat() {
         <Link to="/app/sample" className={stripItem}>
           <PlayIcon /> Watch a sample run
         </Link>
-        <button type="button" onClick={() => openTutorial()} className={`${stripItem} text-signal font-medium hover:text-signal-dark`}>
-          <CompassIcon /> Watch tutorial
-        </button>
       </div>
       <span className="hidden font-mono text-micro leading-none tracking-normal text-ink-3 sm:inline">Web requests refresh every 5 min</span>
     </div>
   )
 
   return (
-    <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-5 py-10">
-      <h1 className="text-center font-display font-wide text-h1 font-extrabold">What data do you need?</h1>
-      <p className="mx-auto mt-3 mb-8 max-w-[54ch] text-center text-lead text-ink-2">
+    <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center px-5 py-8">
+      <h1 className="text-center font-display font-wide text-h2 font-extrabold text-balance">What data do you need?</h1>
+      <p className="mx-auto mt-2 mb-7 max-w-[60ch] text-center text-body text-pretty text-ink-2">
         Describe it and AWDAX finds it on the web, or drop in a file you already have. Either way you get a dashboard you can shape and question.
       </p>
-
 
       <div>
         <PromptBox
@@ -147,27 +152,28 @@ export default function NewChat() {
         />
       </div>
 
-      <section className="mt-10" aria-labelledby="try-heading">
-        <h2 id="try-heading" className="flex items-center gap-2 text-body font-semibold">
+      {/* Whole-card buttons: icon and title on one line, the example under it (hidden on phones, where the
+          three cards stack and would otherwise push the page into a scroll). */}
+      <section className="mt-8" aria-labelledby="try-heading">
+        <h2 id="try-heading" className="flex items-center gap-2 text-small font-semibold text-ink-2">
           <SparkleIcon /> See what AWDAX can do
         </h2>
-        <ul className="mt-3 grid gap-3 sm:grid-cols-3">
+        <ul className="mt-2.5 grid gap-2.5 sm:grid-cols-3">
           {CARDS.map((c) => (
-            <li key={c.title} className="flex flex-col rounded-panel border-2 border-line p-4 transition-colors duration-300 ease-soft hover:border-ink">
-              <div className="flex items-start justify-between">
-                <span className="grid size-8 place-items-center rounded-control bg-signal">{c.icon}</span>
-                {c.prompt ? (
-                  <button type="button" onClick={() => setText(c.prompt!)} aria-label={`Try: ${c.title}`} className="rounded-control border-2 border-ink px-2.5 py-0.5 text-small font-semibold hover:bg-ink hover:text-on-ink">
-                    Try
-                  </button>
-                ) : (
-                  <button type="button" onClick={pickFile} aria-label={`Try: ${c.title}`} className="rounded-control border-2 border-ink px-2.5 py-0.5 text-small font-semibold hover:bg-ink hover:text-on-ink">
-                    Try
-                  </button>
-                )}
-              </div>
-              <p className="mt-3 font-semibold">{c.title}</p>
-              <p className="mt-1 text-small text-ink-2">{c.body}</p>
+            <li key={c.title}>
+              <button
+                type="button"
+                onClick={() => tryCard(c.prompt)}
+                disabled={busy}
+                className="group flex h-full w-full flex-col gap-1.5 rounded-panel border-2 border-line bg-surface p-3 text-left transition-[border-color,opacity] duration-300 ease-soft hover:border-ink disabled:pointer-events-none disabled:opacity-50 focus-visible:border-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              >
+                <span className="flex w-full items-center gap-2.5">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-control bg-signal">{c.icon}</span>
+                  <span className="min-w-0 flex-1 text-small leading-snug font-semibold">{c.title}</span>
+                  <ChevronIcon className="shrink-0 text-ink-3 transition-[translate,color] duration-300 ease-soft group-hover:translate-x-0.5 group-hover:text-ink" />
+                </span>
+                <span className="hidden text-small text-ink-2 sm:block">{c.body}</span>
+              </button>
             </li>
           ))}
         </ul>

@@ -113,7 +113,7 @@ export function PromptBox({
           disabled={busy}
           autoFocus={autoFocus}
           placeholder={placeholder}
-          className={`block w-full resize-none bg-transparent px-2 outline-none placeholder:text-ink-3 ${big ? 'min-h-16 py-1.5 text-lead' : 'min-h-9 py-1.5 text-body'}`}
+          className={`block w-full resize-none bg-transparent px-2 outline-none placeholder:text-ink-3 ${big ? 'min-h-14 py-1.5 text-body' : 'min-h-9 py-1.5 text-body'}`}
         />
         <div className="mt-1 flex items-center gap-1.5">
           {/* No attach button in the box: "Upload a file" under it opens this input by id. */}
