@@ -8,10 +8,12 @@ from typing import Any
 from awdax_api.live_bridge import live_bridge
 from awdax_api.pipeline_runner import InstanceDeleted, run_pipeline_for_session
 from awdax_api.run_registry import (
+    RunLimitError,
     is_running,
     mark_running,
     mark_stopped,
     register_job,
+    try_mark_running,
     unregister_job,
 )
 from awdax_api.run_report import format_discovery_report
@@ -127,7 +129,7 @@ def resume_instance(instance_id: str, sess: dict[str, Any]) -> None:
         persist_session(sess)
     try:
         start_run(instance_id, goal)
-    except RuntimeError:
+    except (RuntimeError, RunLimitError):
         pass
 
 
@@ -229,6 +231,11 @@ def recover_interrupted_runs() -> int:
 def start_run(instance_id: str, goal: str, *, max_pages: int | None = None) -> None:
     if is_running(instance_id):
         raise RuntimeError("A run is already active for this instance")
-    mark_running(instance_id)
-    t = threading.Thread(target=_run_thread, args=(instance_id, goal, max_pages), daemon=True, name=f"awdax-run-{instance_id[:8]}")
-    t.start()
+    sess = load_instance_session(instance_id)
+    try_mark_running(instance_id, (sess or {}).get("user_id"))
+    try:
+        t = threading.Thread(target=_run_thread, args=(instance_id, goal, max_pages), daemon=True, name=f"awdax-run-{instance_id[:8]}")
+        t.start()
+    except BaseException:
+        mark_stopped(instance_id)
+        raise
