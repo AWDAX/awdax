@@ -24,7 +24,7 @@ import { ChatView } from './ChatView.tsx'
 export default function ChatPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const { remove, upsert, list, loading: listLoading } = useInstances()
+  const { remove, upsert, list, loading: listLoading, listOk } = useInstances()
   const { toast } = useToast()
   const [chat, setChat] = useState<InstanceDetail | null>(null)
   const [missing, setMissing] = useState(false)
@@ -82,7 +82,7 @@ export default function ChatPage() {
     }
   }
 
-  if (missing || live.missing || (!listLoading && !!id && !list.some((instance) => instance.id === id))) {
+  if (missing || live.missing || (!listLoading && listOk && !!id && !list.some((instance) => instance.id === id))) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
         <h1 className="font-display font-wide text-h2 font-extrabold">This chat no longer exists.</h1>

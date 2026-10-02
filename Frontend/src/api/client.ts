@@ -1,3 +1,5 @@
+import { detailOf } from './errorText.ts'
+
 /**
  * Fetch wrapper for the AWDAX backend. In dev, calls are same-origin and Vite proxies them
  * (vite.config.ts). VITE_API_BASE_URL points at a backend on another origin, which then needs CORS.
@@ -10,17 +12,6 @@ export class ApiError extends Error {
     super(message)
     this.status = status
   }
-}
-
-/** FastAPI errors are `{ "detail": "..." }`; fall back to the raw text. */
-function detailOf(text: string, status: number): string {
-  try {
-    const body = JSON.parse(text) as { detail?: unknown }
-    if (typeof body.detail === 'string') return body.detail
-  } catch {
-    // not JSON
-  }
-  return text || `HTTP ${status}`
 }
 
 type TokenSource = () => Promise<string | null>

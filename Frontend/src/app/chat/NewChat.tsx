@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { awdax } from '../../api/awdax.ts'
+import { ApiError } from '../../api/client.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import { notifyInstancesChanged } from '../../api/instancesSync.ts'
 import { ChartIcon, CompassIcon, DatabaseIcon, FileIcon, ReportIcon, SearchIcon, SparkleIcon } from '../../ui/appIcons.tsx'
@@ -65,11 +66,28 @@ export default function NewChat() {
         navigate(`/app/f/${res.id}`)
         return
       }
-      const created = await awdax.createInstance(goal.trim())
-      const started = await awdax.startTracking(created.id, goal)
-      upsert(started)
-      notifyInstancesChanged('create')
-      navigate(`/app/c/${started.id}`)
+      const created = await awdax.createInstance(goal.trim().slice(0, 80))
+      try {
+        const started = await awdax.startTracking(created.id, goal)
+        upsert(started)
+        notifyInstancesChanged('create')
+        navigate(`/app/c/${started.id}`)
+      } catch (err) {
+        const status = err instanceof ApiError ? err.status : 0
+        // Only a clear refusal deletes the new chat. A 500 can come after the run already started, so it counts as unknown.
+        if (status === 409 || ![400, 401, 403, 404, 422].includes(status)) {
+          // The run exists, or the outcome is unknown: keep the chat, never delete or retry.
+          upsert(created)
+          notifyInstancesChanged('create')
+          navigate(`/app/c/${created.id}`)
+          if (status !== 409) {
+            toast({ title: 'The server didn’t confirm the start', description: 'This chat will update when the server answers.', tone: 'error' })
+          }
+          return
+        }
+        await awdax.deleteInstance(created.id).catch(() => {})
+        throw err
+      }
     } catch (err) {
       setBusy(false)
       toast({ title: 'Couldn’t start that request', description: err instanceof Error ? err.message : String(err), tone: 'error' })
