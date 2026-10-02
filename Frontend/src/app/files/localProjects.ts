@@ -134,8 +134,8 @@ export async function renameLocal(id: string, title: string) {
 export async function deleteLocal(id: string) {
   await run('readwrite', (s) => s.delete(id))
   try {
-    localStorage.removeItem(`awdax.answers.file-${id}`)
-    localStorage.removeItem(`awdax.dashboard.file-${id}`)
+    // The keys useAnswers, useDashboard and GraphsPanel save this chat under (plus the pre-v2 dashboard key).
+    for (const key of ['answers', 'dashboard', 'dashboard.v2', 'graphs.v2']) localStorage.removeItem(`awdax.${key}.file-${id}`)
   } catch {
     // nothing to clean
   }
