@@ -166,6 +166,30 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
         mark_stopped(instance_id)
 
 
+def recover_interrupted_runs() -> int:
+    """At startup no run thread exists yet, so any session still marked running was cut off by a restart.
+    Mark it failed with a clear message; otherwise the chat shows "running" forever."""
+    from ui_sessions import list_sessions
+
+    fixed = 0
+    for meta in list_sessions():
+        sess = load_instance_session(meta["id"])
+        if not sess:
+            continue
+        run = sess.get("awdax_run") or {}
+        if not sess.get("run_active") and run.get("status") != "running":
+            continue
+        detail = "The server restarted during this run. Send the request again to retry."
+        append_message(sess, role="assistant", content=f"**Run interrupted.** {detail}")
+        set_awdax_run(sess, status="failed", phase="failed", detail=detail)
+        sess["run_active"] = False
+        persist_session(sess)
+        fixed += 1
+    if fixed:
+        logger.info("Marked %d interrupted run(s) as failed", fixed)
+    return fixed
+
+
 def start_run(instance_id: str, goal: str, *, max_pages: int | None = None) -> None:
     if is_running(instance_id):
         raise RuntimeError("A run is already active for this instance")

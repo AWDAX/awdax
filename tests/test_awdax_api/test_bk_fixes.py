@@ -61,6 +61,28 @@ class _TempDb(unittest.TestCase):
             pass
 
 
+class InterruptedRunTests(_TempDb):
+    def test_runs_cut_off_by_a_restart_are_marked_failed(self):
+        from awdax_api.orchestrator import recover_interrupted_runs
+        from awdax_api.session_store import set_awdax_run
+
+        stuck = ui_sessions.create_session(user_id="u", title="stuck")
+        set_awdax_run(stuck, status="running", phase="rendering", detail="Reading")
+        stuck["run_active"] = True
+        ui_sessions.save_session(stuck)
+        done = ui_sessions.create_session(user_id="u", title="done")
+        set_awdax_run(done, status="succeeded", phase="complete")
+        ui_sessions.save_session(done)
+
+        self.assertEqual(recover_interrupted_runs(), 1)
+        after = ui_sessions.get_session(stuck["id"])
+        self.assertEqual(after["awdax_run"]["status"], "failed")
+        self.assertFalse(after["run_active"])
+        self.assertIn("interrupted", after["messages"][-1]["content"].lower())
+        self.assertEqual(ui_sessions.get_session(done["id"])["awdax_run"]["status"], "succeeded")
+        self.assertEqual(recover_interrupted_runs(), 0)
+
+
 class RunThreadMergeTests(_TempDb):
     def test_rename_during_run_survives_final_persist(self):
         from awdax_api import orchestrator

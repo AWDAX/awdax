@@ -67,6 +67,11 @@ class LlmClientTests(unittest.TestCase):
                 llm_client.llm_text("p")
             self.assertEqual(post.call_count, 1)
 
+    def test_litellm_provider_prefix_is_stripped(self):
+        env = {"NVIDIA_API_KEY": "k", "LLM_MODEL": "openai/nvidia/nemotron-x", "NVIDIA_MODELS": "openai/gpt-oss-120b"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            self.assertEqual(llm_client._nvidia_models(), ["nvidia/nemotron-x", "openai/gpt-oss-120b"])
+
     def test_no_keys(self):
         with mock.patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesRegex(RuntimeError, "No LLM key set"):

@@ -36,6 +36,15 @@ def _key(name: str) -> str:
     return "" if v.startswith("your_") else v
 
 
+def _model_name(name: str) -> str:
+    """LiteLLM-style "openai/<org>/<model>" names carry a provider prefix NVIDIA's API rejects (404).
+    Keep real NVIDIA ids that start with openai/, such as "openai/gpt-oss-120b"."""
+    name = name.strip()
+    if name.startswith("openai/") and "/" in name[len("openai/"):]:
+        return name[len("openai/"):]
+    return name
+
+
 def _nvidia_models() -> list[str]:
     names = []
     first = (os.getenv("LLM_MODEL") or "").strip()
@@ -43,7 +52,7 @@ def _nvidia_models() -> list[str]:
         names.append(first)
     names += [m.strip() for m in (os.getenv("NVIDIA_MODELS") or _DEFAULT_MODELS).split(",")]
     out: list[str] = []
-    for n in names:
+    for n in map(_model_name, names):
         if n and n not in out:
             out.append(n)
     return out
