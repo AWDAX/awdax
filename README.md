@@ -3,6 +3,8 @@
 <div align="center">
   <b>Ask for data. See where it came from. Explore it your way.</b>
 </div>
+<br>
+
 
 <div align="center">
   <img src="assets/landing-page.png" alt="AWDAX Landing Page" width="800">
@@ -16,7 +18,7 @@ AWDAX is an AI-powered research and data exploration tool. It transforms plain-l
   <img src="assets/dashboard.png" alt="AWDAX Dashboard" width="800">
 </div>
 
----
+<hr>
 
 ## What you can do
 
