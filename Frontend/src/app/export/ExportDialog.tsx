@@ -149,6 +149,7 @@ export function ExportDialog({ profile, scope, title, onClose }: Props) {
         )}
         <p className="mt-3 text-micro text-ink-3">
           Missing values stay empty (NULL in SQL), never 0. Text cells starting with = + − @ get a leading ' in CSV and TSV so spreadsheets don’t run them as formulas.
+          {!raw && profile.columns.some((c) => c.ranged) && ' Ranges are exported as their lowest value; tick “Values exactly as scraped” to keep the text.'}
         </p>
 
         <div className="mt-4 flex gap-2">
