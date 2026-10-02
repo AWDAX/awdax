@@ -41,7 +41,7 @@ export default function FilePage() {
   if (project === null) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
-        <h1 className="font-display font-wide text-h2 font-extrabold">This upload isn’t in this browser.</h1>
+        <h1 className="font-display text-h2 font-extrabold">This upload isn’t in this browser.</h1>
         <p className="mt-3 text-ink-2">Uploaded files stay on the device they were added on, and this one may have been deleted.</p>
         <Link to="/app" className="mt-6 inline-block underline underline-offset-2">
           Start a new chat
@@ -55,7 +55,7 @@ export default function FilePage() {
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-6">
       <header className="flex flex-wrap items-start gap-3 border-b-2 border-ink pb-4">
         <div className="min-w-0 flex-1">
-          <h1 className="font-display font-wide text-h3 font-extrabold break-words">{project.title}</h1>
+          <h1 className="font-display text-h3 font-extrabold break-words">{project.title}</h1>
           <p className="mt-1 font-mono text-micro text-ink-3">
             Uploaded {timeAgo(project.created_at)} · kept in this browser only
           </p>

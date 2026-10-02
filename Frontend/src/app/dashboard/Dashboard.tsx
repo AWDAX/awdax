@@ -122,7 +122,7 @@ export function Dashboard({ profile, dash, title, sources, graphs, scoring, reco
         role="tab"
         aria-selected={active}
         onClick={() => setView(v)}
-        className={`relative z-10 flex h-9 items-center gap-1.5 rounded-control px-3 text-small transition-colors duration-200 ${active ? 'text-on-ink' : 'text-ink hover:bg-sunken'}`}
+        className={`relative z-10 flex h-9 shrink-0 items-center gap-1.5 rounded-control px-3 text-small whitespace-nowrap transition-colors duration-200 ${active ? 'text-on-ink' : 'text-ink hover:bg-sunken'}`}
       >
         <span className={active ? 'opacity-100' : 'opacity-70'}>{icon}</span>
         <span className="flex items-center gap-1">{label}</span>
@@ -133,7 +133,9 @@ export function Dashboard({ profile, dash, title, sources, graphs, scoring, reco
   return (
     <section ref={section} aria-label="Dashboard" className={`flex flex-col transition-all duration-300 ease-out gap-3 ${full ? 'overflow-auto bg-canvas p-4' : ''}`} data-lenis-prevent>
       <div className="flex flex-wrap items-center gap-2">
-        <div ref={tablistRef} role="tablist" aria-label="Dashboard view" className="relative flex gap-1 overflow-hidden rounded-panel border-2 border-ink p-0.5">
+        {/* On a phone the four tabs are wider than the screen: the bar scrolls sideways (no visible scrollbar)
+            instead of clipping the last tab out of reach. */}
+        <div ref={tablistRef} role="tablist" aria-label="Dashboard view" className="relative flex max-w-full gap-1 overflow-x-auto scrollbar-none rounded-panel border-2 border-ink p-0.5">
           <div
             className="absolute top-0.5 bottom-0.5 rounded-control bg-ink transition-all duration-200 ease-out"
             style={{ left: pillStyle.left, width: pillStyle.width, opacity: pillStyle.opacity }}

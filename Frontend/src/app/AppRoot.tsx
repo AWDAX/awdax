@@ -10,7 +10,6 @@ import FilePage from './chat/FilePage.tsx'
 import NewChat from './chat/NewChat.tsx'
 import LoginPage from './LoginPage.tsx'
 import ProjectsReport from './report/ProjectsReport.tsx'
-import SampleRun from './sample/SampleRun.tsx'
 import Layout from './workspace/Layout.tsx'
 
 // Dev-only preview of components and the dashboard on sample tables; Vite drops it from production builds.
@@ -39,7 +38,6 @@ export default function AppRoot() {
           <Route index element={<NewChat />} />
           <Route path="c/:id" element={<ChatPage />} />
           <Route path="f/:id" element={<FilePage />} />
-          <Route path="sample" element={<SampleRun />} />
           <Route path="demo/:slug" element={<DemoReplay />} />
           <Route path="projects" element={<ProjectsReport />} />
           {AskPage && (

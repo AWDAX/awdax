@@ -94,7 +94,7 @@ export default function ChatPage() {
   if (gone || live.missing) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
-        <h1 className="font-display font-wide text-h2 font-extrabold">This chat no longer exists.</h1>
+        <h1 className="font-display text-h2 font-extrabold">This chat no longer exists.</h1>
         <p className="mt-3 text-ink-2">It may have been deleted in another tab.</p>
         <Link to="/app" className="mt-6 inline-block underline underline-offset-2">
           Start a new chat
@@ -107,7 +107,7 @@ export default function ChatPage() {
   if (!chat && loadError) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
-        <h1 className="font-display font-wide text-h2 font-extrabold">This chat can’t load right now.</h1>
+        <h1 className="font-display text-h2 font-extrabold">This chat can’t load right now.</h1>
         <p className="mt-3 max-w-[60ch] text-ink-2">{loadError}</p>
         <div className="mt-6 flex gap-2">
           <Button onClick={() => void refetch()}>Try again</Button>
@@ -121,7 +121,7 @@ export default function ChatPage() {
 
   const raw = chat?.title
   const title = raw && !isUntitled(raw) ? raw : 'Untitled chat'
-  const actions = (
+  const menu = (
     <ChatMenu
       watched={watched}
       onWatch={(on) => setWatched(id, on, live.rowsTotal)}
@@ -144,7 +144,7 @@ export default function ChatPage() {
       live={view}
       visits={visits}
       runStartedAt={chat?.created_at}
-      actions={actions}
+      menu={menu}
       onRetry={async () => {
         await setLive(false)
         await setLive(true)

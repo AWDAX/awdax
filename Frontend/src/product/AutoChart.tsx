@@ -31,23 +31,26 @@ export function AutoChart({ spec, compact = false, className = '' }: Props) {
           ` ${missing} ${missing === 1 ? 'row has' : 'rows have'} no ${column.label.toLowerCase()} and ${missing === 1 ? 'is' : 'are'} left out.`}
       </p>
 
-      <table className="sr-only">
-        <caption>{spec.title}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{spec.kind === 'line' ? 'Period' : column.label}</th>
-            <th scope="col">Rows</th>
-          </tr>
-        </thead>
-        <tbody>
-          {spec.data.map((d) => (
-            <tr key={d.key}>
-              <th scope="row">{d.label}</th>
-              <td>{d.value}</td>
+      {/* sr-only on a wrapper: a table won't shrink to 1px, and would push narrow screens sideways. */}
+      <div className="sr-only">
+        <table>
+          <caption>{spec.title}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{spec.kind === 'line' ? 'Period' : column.label}</th>
+              <th scope="col">Rows</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {spec.data.map((d) => (
+              <tr key={d.key}>
+                <th scope="row">{d.label}</th>
+                <td>{d.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   )
 }

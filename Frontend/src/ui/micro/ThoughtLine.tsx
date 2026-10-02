@@ -93,10 +93,11 @@ export function ThoughtLine({
     else if (collapseOnSettle) setOpen(false)
   }
 
-  // The clock, in tenths: from `startedAt` (or the moment work began) while working, frozen once it settles.
+  // The clock, in tenths: from `startedAt` (or the moment work began) while working, frozen once it settles. A
+  // hidden timer doesn't tick (no re-render ten times a second for nothing).
   const [tick, setTick] = useState(0)
   useEffect(() => {
-    if (elapsed != null || !working) return undefined
+    if (elapsed != null || !working || !showTimer) return undefined
     const origin = startedAt ?? Date.now()
     const paint = () => setTick(Math.max(0, Math.floor((Date.now() - origin) / 100)))
     const first = window.setTimeout(paint, 0)
@@ -105,7 +106,7 @@ export function ThoughtLine({
       window.clearTimeout(first)
       window.clearInterval(id)
     }
-  }, [working, elapsed, startedAt])
+  }, [working, elapsed, startedAt, showTimer])
   const ds = elapsed != null ? Math.round(elapsed * 10) : tick
 
   // The breath: the glyph (and the label, when it doesn't shimmer) dims and returns; settling dims the glyph.

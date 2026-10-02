@@ -78,7 +78,7 @@ export default function ProjectsReport() {
         {kpis.map((k) => (
           <div key={k.label} className="rounded-panel border-2 border-ink p-3">
             <dt className="text-micro text-ink-3">{k.label}</dt>
-            <dd className="mt-1 font-display font-wide text-h3 font-extrabold tabular-nums">{k.value.toLocaleString('en-IN')}</dd>
+            <dd className="mt-1 font-display text-h3 font-extrabold tabular-nums">{k.value.toLocaleString('en-IN')}</dd>
           </div>
         ))}
       </dl>

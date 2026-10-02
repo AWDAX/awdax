@@ -118,7 +118,7 @@ export default function NewChat() {
           files={files}
           onFilesChange={(f) => setFiles(f.slice(-1))}
           fileInputId={FILE_INPUT}
-          placeholder={files.length ? 'Ask something about this file (optional), then send' : 'e.g. Track Indian EV sales every month from 2024 to 2026'}
+          placeholder={files.length ? 'Ask something about this file (optional), then send' : 'e.g. Electric cars under ₹20 lakh in India with price and range'}
         />
       </div>
 

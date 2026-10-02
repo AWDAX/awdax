@@ -104,7 +104,7 @@ export function GraphsPanel({ instanceId, profile: raw, includePartial, onInclud
             <article key={chart.id} className="min-w-0 rounded-panel border-2 border-ink p-3">
               <header className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="font-display font-wide text-h3 font-extrabold">{chart.title}</h3>
+                  <h3 className="font-display text-h3 font-extrabold">{chart.title}</h3>
                   <p className="mt-1 text-micro text-ink-2">{chart.reason}</p>
                   <p className="mt-1 font-mono text-micro text-ink-3">
                     {result.used.toLocaleString('en-IN')} rows used

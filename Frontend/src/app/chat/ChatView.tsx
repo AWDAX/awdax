@@ -25,11 +25,12 @@ type Props = {
   messages: ChatMessage[]
   live: LiveState
   visits: Visit[]
+  /** A row of buttons in the header (a replay's controls); on phones they stack full width. */
   actions?: ReactNode
+  /** One compact control that always sits beside the title, e.g. a real chat's ⋯ menu. */
+  menu?: ReactNode
   onRetry: () => void
-  /** Shown above the title, e.g. "Sample run · fictional data". */
-  badge?: ReactNode
-  /** Recorded or scripted data (a demo replay): nothing is asked of the backend, so no rescoring. */
+  /** Recorded data (a demo replay): nothing is asked of the backend, so no rescoring. */
   offline?: boolean
   /** When the chat's first run started, for the run line's clock. */
   runStartedAt?: string
@@ -38,11 +39,11 @@ type Props = {
 }
 
 /**
- * One chat, drawn from plain data (the real page feeds it the backend; the sample run feeds it a script):
+ * One chat, drawn from plain data (the real page feeds it the backend; a demo replay feeds it a recorded run):
  * the request and replies, the live run with the websites being read, then the one-screen dashboard with its
  * Sources tab, and questions about the rows.
  */
-export function ChatView({ instanceKey, title, meta, messages, live, visits, actions, onRetry, badge, offline = false, runStartedAt, runElapsedSec }: Props) {
+export function ChatView({ instanceKey, title, meta, messages, live, visits, actions, menu, onRetry, offline = false, runStartedAt, runElapsedSec }: Props) {
   const [view, setView] = useState<DashboardView>('report')
   const dashRef = useRef<HTMLDivElement>(null)
   const working = live.liveEnabled && WORKING.includes(live.status.phase ?? 'idle')
@@ -52,10 +53,9 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
     return null
   }, [messages])
   const profile = useMemo(() => (table ? profileTable(table) : undefined), [table])
-  const remote = !offline && instanceKey !== 'sample-run'
-  // The scripted sample run has no source list (an empty one changes nothing); a recorded replay has the real one.
+  const remote = !offline
   const sources = useMemo(
-    () => overlaySources(buildSources({ report, profile, visits, current: live.status.current_source, working }), live.sources),
+    () => overlaySources(buildSources({ report, profile, visits, current: live.status.current_source, working }), live.sources, working),
     [report, profile, visits, live.status.current_source, live.sources, working],
   )
   const panel = <SourcesPanel sources={sources} report={report} visits={visits} />
@@ -78,13 +78,13 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-6">
       <header className="flex flex-wrap items-start gap-3 border-b-2 border-ink pb-4">
         <div className="min-w-0 flex-1">
-          {badge}
-          <h1 className="font-display font-wide text-h3 font-extrabold break-words">{title}</h1>
+          <h1 className="font-display text-h3 font-extrabold break-words">{title}</h1>
           <p className="mt-1 font-mono text-micro text-ink-3">{meta}</p>
         </div>
+        {/* A real chat's ⋯ menu stays beside the title at every width (the tutorial is in it and on the sidebar). */}
+        {menu && <div className="shrink-0">{menu}</div>}
         {/* Equal boxes: every action is the same height, and on wider screens the same width (the widest one's),
-            so the row reads as one set; on phones they stack full width. A real chat has one ⋯ menu here (the
-            tutorial is in it and on the sidebar's compass). */}
+            so the row reads as one set; on phones they stack full width. */}
         {actions && <div className="grid w-full grid-cols-1 gap-2 *:w-full *:justify-center sm:w-auto sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">{actions}</div>}
       </header>
 

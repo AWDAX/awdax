@@ -84,6 +84,10 @@ export function ChatMenu({ watched, onWatch, liveEnabled, switching, onLive, onD
         >
           <TrashIcon className="shrink-0" /> {confirming ? 'Click again to delete' : 'Delete chat'}
         </button>
+        {/* The armed state is only a label change; screen readers hear it here. */}
+        <span className="sr-only" role="status">
+          {confirming ? `Press Delete again within ${CONFIRM_MS / 1000} seconds to delete this chat.` : ''}
+        </span>
       </Popover>
     </>
   )

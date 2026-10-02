@@ -3,7 +3,7 @@ import type { DatasetTable } from '../api/types.ts'
 /**
  * A sample run in the backend's exact output shapes: the first-pass report text (discovery/format_report.py +
  * extraction/format.py) and the merged master table with `source` / `source_url` on every row. Fictional
- * numbers on .example domains, always labelled "sample run". Used by tests and the sample-run demo.
+ * numbers on .example domains. Test fixture only (runReport.test.ts); the /app/sample demo that also used it is gone.
  */
 export const SAMPLE_GOAL = 'Track Indian EV sales every month from 2024 to 2025, by segment'
 

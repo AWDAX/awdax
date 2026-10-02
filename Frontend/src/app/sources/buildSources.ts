@@ -112,16 +112,28 @@ const API_STATE: Record<string, SourceState> = {
   failed: 'rejected',
 }
 
-/** Overlay AwdaxP source rows (interactive pass, origin, rank) onto the websites already shown. */
-export function overlaySources(views: SourceView[], api: { url: string; title: string; status: string; accepted: number; reason: string; domain: string; origin: string; rank_reasons?: string[]; deep_accepted: number; deep_notes: string[] }[] | undefined): SourceView[] {
+/**
+ * Overlay AwdaxP source rows (interactive pass, origin, rank) onto the websites already shown. A run that stopped
+ * leaves its last source "inspecting" in the backend's list; once nothing is `working`, that reads as visited, not
+ * "Reading now".
+ */
+export function overlaySources(
+  views: SourceView[],
+  api: { url: string; title: string; status: string; accepted: number; reason: string; domain: string; origin: string; rank_reasons?: string[]; deep_accepted: number; deep_notes: string[] }[] | undefined,
+  working = true,
+): SourceView[] {
   if (!api?.length) return views
+  const stateOf = (status: string): SourceState | undefined => {
+    const s = API_STATE[status]
+    return s === 'reading' && !working ? 'visited' : s
+  }
   const next = views.map((view) => ({ ...view }))
   const bySite = new Map(next.map((view) => [view.site, view]))
   for (const item of api) {
     const site = siteOf(item.url || item.domain)
     let view = bySite.get(site)
     if (!view) {
-      view = { site, url: item.url, title: item.title || site, state: API_STATE[item.status] ?? 'visited', rows: item.accepted, share: null, reason: item.reason }
+      view = { site, url: item.url, title: item.title || site, state: stateOf(item.status) ?? 'visited', rows: item.accepted, share: null, reason: item.reason }
       next.push(view)
       bySite.set(site, view)
     }
@@ -130,7 +142,7 @@ export function overlaySources(views: SourceView[], api: { url: string; title: s
     view.deepNotes = item.deep_notes
     view.rankReasons = item.rank_reasons
     view.apiStatus = item.status
-    if (!view.rows && view.state !== 'rejected') view.state = API_STATE[item.status] ?? view.state
+    if (!view.rows && view.state !== 'rejected') view.state = stateOf(item.status) ?? view.state
     if (item.accepted > view.rows) view.rows = item.accepted
     if ((item.status === 'blocked' || item.status === 'failed') && item.reason && !item.accepted && !view.rows) {
       view.state = 'rejected'

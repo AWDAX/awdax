@@ -78,8 +78,8 @@ asks for. "Waiting on the owner" lists what agents can't do.
       access method, fill rate, strategies); `src/app/sources/` merges it with exact rows per site (`source_url`)
       and the pages read live (`useVisits`). Shown as a strip in the live run, a panel before the first pass, and the
       dashboard's Sources tab. The thread hides the report's copy of all rows
-- [x] **Sample run** at `/app/sample` ("Watch a sample run" on New chat): the real ChatView fed a script in the
-      backend's exact shapes (`src/app/sample/`), labelled "Sample run · fictional data". Works without Gemini
+- [x] ~~Sample run at `/app/sample`~~ (removed 3 Oct 2026: nothing linked to it). The New chat cards now replay real
+      recorded runs at `/app/demo/<slug>` (`src/app/demo/`)
 - [x] ChatPage split into ChatView (drawing) + ChatPage (backend wiring); 28 tests
 
 ## M10: Functional and UI QA pass, 2026-09-28 (done)
