@@ -168,8 +168,17 @@ def create_session(user_id_or_title: str | None = None, *, user_id: str | None =
     return get_session(sid, actual_user_id) or {"id": sid, "title": actual_title, "user_id": actual_user_id, **_empty_payload()}
 
 
-def save_session(arg1: Any, arg2: dict[str, Any] | None = None, *, allow_insert: bool = True) -> dict[str, Any]:
-    """Update a session row. With allow_insert=False a missing row (deleted chat) is not re-created."""
+def save_session(
+    arg1: Any,
+    arg2: dict[str, Any] | None = None,
+    *,
+    allow_insert: bool = True,
+    preserve: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    """Update a session row. With allow_insert=False a missing row (deleted chat) is not re-created.
+
+    `preserve` names fields (title or payload keys) that are re-read from the stored row inside the write's
+    lock and copied into `session` first, so a background writer holding a stale copy cannot revert them."""
     init_ui_sessions()
     if arg2 is not None:
         user_id = str(arg1 or "anonymous")
@@ -181,16 +190,24 @@ def save_session(arg1: Any, arg2: dict[str, Any] | None = None, *, allow_insert:
     sid = str(session.get("id") or "")
     if not sid:
         raise ValueError("session id required")
-    title = str(session.get("title") or "New session").strip() or "New session"
-    job_id = session.get("job_id")
-    payload = _empty_payload()
-    for key in payload:
-        if key in session:
-            payload[key] = session[key]
     now = _now()
     with _lock:
         conn = _conn()
         cur = conn.cursor()
+        if preserve:
+            cur.execute("SELECT * FROM ui_sessions WHERE id=?", (sid,))
+            stored_row = cur.fetchone()
+            if stored_row is not None:
+                stored = _row_to_session(stored_row)
+                for key in preserve:
+                    if key in stored:
+                        session[key] = stored[key]
+        title = str(session.get("title") or "New session").strip() or "New session"
+        job_id = session.get("job_id")
+        payload = _empty_payload()
+        for key in payload:
+            if key in session:
+                payload[key] = session[key]
         cur.execute(
             """UPDATE ui_sessions SET title=?, job_id=?, payload_json=?, updated_at=?, user_id=?
                WHERE id=?""",

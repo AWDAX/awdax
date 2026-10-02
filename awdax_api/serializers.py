@@ -7,12 +7,12 @@ from reasoning import ScrapeIntent
 from regulatory_strategy import intent_uses_regulatory_feed
 
 
-def to_awdax_instance(sess: dict[str, Any]) -> dict[str, Any]:
+def to_awdax_instance(sess: dict[str, Any], *, with_row_count: bool = True) -> dict[str, Any]:
     intent = sess.get("intent")
     goal = sess.get("goal") or ""
     if not goal and intent:
         goal = ScrapeIntent.from_dict(intent).topic or ""
-    return {
+    out = {
         "id": sess["id"],
         "title": sess.get("title") or "Untitled chat",
         "goal": goal,
@@ -20,8 +20,10 @@ def to_awdax_instance(sess: dict[str, Any]) -> dict[str, Any]:
         "live_enabled": bool(sess.get("keep_live")),
         "created_at": sess["created_at"],
         "updated_at": sess["updated_at"],
-        "dataset_row_count": dataset_row_count(sess),
     }
+    if with_row_count:
+        out["dataset_row_count"] = dataset_row_count(sess)
+    return out
 
 
 def to_awdax_messages(sess: dict[str, Any]) -> list[dict[str, Any]]:
