@@ -582,7 +582,7 @@ def api_discover():
                 "plans": sess["plans"],
                 "inspected": inspected,
                 "count": len(sources),
-                "target": min(int(intent.max_sources or 10), int(os.getenv("DISCOVERY_MAX_SOURCES", "10"))),
+                "target": min(int(intent.max_sources or 10), int(os.getenv("DISCOVERY_MAX_SOURCES", "6"))),
                 "progress": progress[-20:],
                 "session": _public_session(sess),
             }
