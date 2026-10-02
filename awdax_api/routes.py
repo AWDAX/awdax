@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
 from awdax_api.dataset_export import build_dashboard, build_dataset_table
 from awdax_api.errors import detail_response
-from awdax_api.orchestrator import is_running, start_run
+from awdax_api.orchestrator import is_running, resume_instance, start_run
 from awdax_api.serializers import to_awdax_instance, to_awdax_live_state, to_awdax_messages
 from awdax_api.session_store import append_message, load_instance_session, persist_session
 from awdax_api.sources_stats_graph import (
@@ -23,6 +24,22 @@ from scraper import universal_service
 from ui_sessions import create_session, delete_session, get_session, list_sessions, save_session
 
 bp = Blueprint("awdax_api", __name__)
+
+MAX_PROMPT_CHARS = 2000
+PROMPT_TOO_LONG = f"Request is too long ({MAX_PROMPT_CHARS} characters max)"
+WS_KEEPALIVE_SECONDS = 15
+
+
+def _pump(sub, send, timeout: float = WS_KEEPALIVE_SECONDS) -> None:
+    """Forward queued live messages to `send`. On an idle timeout send a ping frame; a send on a closed
+    socket raises, which ends the loop so the caller's cleanup runs."""
+    while True:
+        try:
+            msg = sub.get(timeout=timeout)
+        except queue.Empty:
+            send(json.dumps({"type": "ping"}))
+            continue
+        send(json.dumps(msg, default=str))
 
 
 @bp.get("/health")
@@ -45,7 +62,7 @@ def list_instances():
             continue
         if full.get("archived"):
             continue
-        rows.append(to_awdax_instance(full))
+        rows.append(to_awdax_instance(full, with_row_count=False))
     return jsonify(rows)
 
 
@@ -55,6 +72,8 @@ def create_instance():
     body = request.get_json(silent=True) or {}
     title = str(body.get("title") or "Untitled chat")[:80].strip() or "Untitled chat"
     goal = str(body.get("goal") or "").strip()
+    if len(goal) > MAX_PROMPT_CHARS:
+        return detail_response(400, PROMPT_TOO_LONG)
     sess = create_session(user_id=uid, title=title)
     if goal:
         sess["goal"] = goal
@@ -77,7 +96,7 @@ def patch_instance(instance_id: str):
         return detail_response(404, "Instance not found")
     body = request.get_json(silent=True) or {}
     if "title" in body:
-        sess["title"] = str(body.get("title") or sess.get("title"))
+        sess["title"] = str(body.get("title") or "").strip()[:80] or sess.get("title")
     if "archived" in body:
         sess["archived"] = bool(body.get("archived"))
     if "live_enabled" in body:
@@ -87,6 +106,9 @@ def patch_instance(instance_id: str):
         if not enabled and jid:
             universal_service.stop_live(jid)
     sess = persist_session(sess)
+    if body.get("live_enabled"):
+        resume_instance(instance_id, sess)
+        sess = load_instance_session(instance_id) or sess
     return jsonify(to_awdax_instance(sess))
 
 
@@ -121,6 +143,8 @@ def post_message(instance_id: str):
     content = str(body.get("content") or "").strip()
     if not content:
         return detail_response(400, "content is required")
+    if len(content) > MAX_PROMPT_CHARS:
+        return detail_response(400, PROMPT_TOO_LONG)
     append_message(sess, role="user", content=content)
     sess["goal"] = content
     sess["keep_live"] = True
@@ -201,6 +225,9 @@ def patch_live(instance_id: str):
     if jid and not enabled:
         universal_service.stop_live(jid)
     sess = persist_session(sess)
+    if enabled:
+        resume_instance(instance_id, sess)
+        sess = load_instance_session(instance_id) or sess
     return jsonify(to_awdax_live_state(sess))
 
 
@@ -299,9 +326,7 @@ def register_websocket(sock) -> None:
             ws.send(json.dumps(live_bridge.hello_payload(instance_id), default=str))
             sub = live_bridge.subscribe(instance_id)
             try:
-                while True:
-                    msg = sub.get()
-                    ws.send(json.dumps(msg, default=str))
+                _pump(sub, ws.send)
             finally:
                 live_bridge.unsubscribe(instance_id, sub)
         finally:

@@ -20,7 +20,7 @@ export function PermittedSources() {
 
   return (
     <Section id="sources" labelledBy="sources-title">
-      <Container data-tour="landing-sources">
+      <Container>
 
         <SectionHead
           id="sources-title"

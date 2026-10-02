@@ -96,7 +96,7 @@ export function HistoryItem({ item: chat, onNavigate }: { item: Entry; onNavigat
           ref={input}
           autoFocus
           defaultValue={title}
-          maxLength={120}
+          maxLength={80}
           onKeyDown={onNameKey}
           onBlur={saveName}
           className="block w-full rounded-control border-2 border-ink bg-surface px-2 py-1 text-small text-ink outline-none"

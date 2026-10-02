@@ -15,6 +15,10 @@ from regulatory_strategy import (
 from scraper import ScrapeJob, universal_service
 
 
+class InstanceDeleted(RuntimeError):
+    """The chat was deleted while its run was in progress."""
+
+
 ProgressFn = Callable[[str, str, str], None]
 SourceFn = Callable[[str, dict[str, Any]], None]
 JobFn = Callable[[str, str], None]
@@ -95,7 +99,17 @@ def run_pipeline_for_session(
         table_schema=sess.get("table_schema"),
     )
     universal_service.save_job(job)
-    live = bool(sess.get("keep_live"))
+    live = _live_flag_from_store(sess)
     prog("extracting", f"Scraping {len(plans)} source(s)…")
     universal_service.trigger_scrape_all(plans, job, max_pages=pages, live=live)
     return sess
+
+
+def _live_flag_from_store(sess: dict[str, Any]) -> bool:
+    """Read keep_live fresh: the user may have paused (or deleted the chat) since the run started."""
+    from awdax_api.session_store import load_instance_session
+
+    latest = load_instance_session(sess["id"])
+    if latest is None:
+        raise InstanceDeleted(sess["id"])
+    return bool(latest.get("keep_live"))

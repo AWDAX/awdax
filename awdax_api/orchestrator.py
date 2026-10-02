@@ -6,7 +6,7 @@ import time
 from typing import Any
 
 from awdax_api.live_bridge import live_bridge
-from awdax_api.pipeline_runner import run_pipeline_for_session
+from awdax_api.pipeline_runner import InstanceDeleted, run_pipeline_for_session
 from awdax_api.run_registry import (
     is_running,
     mark_running,
@@ -20,6 +20,7 @@ from awdax_api.session_store import (
     append_message,
     append_run_event,
     load_instance_session,
+    persist_run_state,
     persist_session,
     set_awdax_run,
 )
@@ -37,7 +38,7 @@ def _on_progress(instance_id: str, phase: str, detail: str) -> None:
         return
     set_awdax_run(sess, phase=phase, detail=detail, status="running")
     append_run_event(sess, phase=phase, detail=detail)
-    persist_session(sess)
+    persist_run_state(sess)
     live_bridge.notify_instance(instance_id, {"type": "run_event", "event": (sess.get("run_events") or [])[-1]})
     live_bridge.notify_instance(instance_id, {"type": "status", "state": to_awdax_live_state(sess)})
 
@@ -65,7 +66,7 @@ def _on_source(instance_id: str, source: dict[str, Any]) -> None:
     }
     current = [old for old in sess.get("discovery_sources") or [] if old.get("url") != item["url"]]
     sess["discovery_sources"] = [*current, item]
-    persist_session(sess)
+    persist_run_state(sess)
     live_bridge.notify_instance(instance_id, {"type": "source", "source": item})
 
 
@@ -75,7 +76,7 @@ def _on_job(instance_id: str, job_id: str) -> None:
     sess = load_instance_session(instance_id)
     if sess:
         sess["job_id"] = job_id
-        persist_session(sess)
+        persist_run_state(sess)
 
 
 def _wait_regulatory(instance_id: str, timeout: float = 3600) -> None:
@@ -94,6 +95,42 @@ def _wait_universal_job(job_id: str, timeout: float = 3600) -> None:
     time.sleep(0.5)
 
 
+def _job_from_session(sess: dict[str, Any]) -> tuple[list[ScrapePlan], ScrapeJob]:
+    intent = ScrapeIntent.from_dict(sess["intent"])
+    plans = [ScrapePlan.from_dict(p) for p in sess["plans"]]
+    job = ScrapeJob(
+        job_id=sess["job_id"],
+        intent=intent,
+        plans=plans,
+        plan=plans[0],
+        table_schema=sess.get("table_schema"),
+    )
+    return plans, job
+
+
+def resume_instance(instance_id: str, sess: dict[str, Any]) -> None:
+    """Restart work when live mode is switched on and nothing is running (Resume / Retry)."""
+    if is_running(instance_id):
+        return
+    job_id = sess.get("job_id")
+    last_failed = (sess.get("awdax_run") or {}).get("status") == "failed"
+    if job_id and sess.get("plans") and sess.get("intent") and not last_failed:
+        if not universal_service.is_job_live(job_id):
+            plans, job = _job_from_session(sess)
+            universal_service.start_live(plans, job)
+        return
+    goal = str(sess.get("goal") or "").strip()
+    if not goal:
+        return
+    if not sess.get("messages"):
+        append_message(sess, role="user", content=goal)
+        persist_session(sess)
+    try:
+        start_run(instance_id, goal)
+    except RuntimeError:
+        pass
+
+
 def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
     sess = load_instance_session(instance_id)
     if not sess:
@@ -106,7 +143,7 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
         sess["awdax_run"] = None
         set_awdax_run(sess, status="running", phase="queued", detail="Starting…", rows_total=0, rows_added=0)
         sess["run_active"] = True
-        persist_session(sess)
+        persist_run_state(sess)
         sess = run_pipeline_for_session(sess, goal, on_progress=_on_progress, on_source=_on_source, on_job=_on_job, max_pages=max_pages)
         intent = ScrapeIntent.from_dict(sess["intent"]) if sess.get("intent") else None
         job_id = sess.get("job_id")
@@ -119,21 +156,18 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
             sess["regulatory_feed_snapshot_ids"] = snap
         elif job_id and sess.get("plans"):
             _wait_universal_job(job_id)
-            intent = ScrapeIntent.from_dict(sess["intent"])
-            plans = [ScrapePlan.from_dict(p) for p in sess["plans"]]
-            job = ScrapeJob(
-                job_id=job_id,
-                intent=intent,
-                plans=plans,
-                plan=plans[0],
-                table_schema=sess.get("table_schema"),
-            )
+            _, job = _job_from_session(sess)
             universal_service.rebuild_merged_table(job)
 
         latest = load_instance_session(instance_id)
-        if latest:
-            for key in ("messages", "run_events", "awdax_run", "discovery_sources", "title", "archived", "keep_live"):
-                sess[key] = latest.get(key)
+        if latest is None:
+            # Chat was deleted mid-run: stop its live job and write nothing.
+            jid = sess.get("job_id")
+            if jid:
+                universal_service.stop_live(jid)
+            return
+        for key in ("messages", "run_events", "awdax_run", "discovery_sources", "title", "archived", "keep_live"):
+            sess[key] = latest.get(key)
         report = format_discovery_report(sess, goal=goal)
         summary = f"**Run complete.**\n\n{report}"
         append_message(sess, role="assistant", content=summary)
@@ -149,16 +183,18 @@ def _run_thread(instance_id: str, goal: str, max_pages: int | None) -> None:
             rows_added=rows,
         )
         sess["run_active"] = False
-        persist_session(sess)
+        persist_run_state(sess)
         live_bridge.notify_instance(instance_id, {"type": "batch_complete"})
         live_bridge.notify_instance(instance_id, {"type": "status", "state": to_awdax_live_state(sess)})
+    except InstanceDeleted:
+        logger.info("Chat %s was deleted during its run", instance_id)
     except Exception as e:
         logger.exception("Orchestrator failed for %s", instance_id)
         sess = load_instance_session(instance_id) or sess
         append_message(sess, role="assistant", content=f"**Run failed:** {e}")
         set_awdax_run(sess, status="failed", phase="failed", detail=str(e))
         sess["run_active"] = False
-        persist_session(sess)
+        persist_run_state(sess)
         live_bridge.notify_instance(instance_id, {"type": "status", "state": to_awdax_live_state(sess)})
     finally:
         jid = sess.get("job_id") if sess else None

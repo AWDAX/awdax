@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type CopyState = 'idle' | 'done' | 'error'
 
@@ -14,6 +14,13 @@ export function useCopyToClipboard({ onCopySuccess, onCopyError, resetDelay = 15
   const [state, setState] = useState<CopyState>('idle')
   const resetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  useEffect(
+    () => () => {
+      if (resetTimeout.current) clearTimeout(resetTimeout.current)
+    },
+    [],
+  )
+
   const copy = useCallback(
     async (text: string | (() => string)) => {
       if (resetTimeout.current) clearTimeout(resetTimeout.current)
@@ -26,6 +33,7 @@ export function useCopyToClipboard({ onCopySuccess, onCopyError, resetDelay = 15
         setState('error')
         onCopyError?.(error instanceof Error ? error : new Error('Copy failed'))
       } finally {
+        if (resetTimeout.current) clearTimeout(resetTimeout.current)
         resetTimeout.current = setTimeout(() => setState('idle'), resetDelay)
       }
     },
