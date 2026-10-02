@@ -68,7 +68,9 @@ export function Nav() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <TourTrigger tourId="landing-tour" label="Visual Tour" variant="secondary" className="hidden sm:inline-flex" />
+          {/* max-sm:hidden, not "hidden sm:inline-flex": buttonClass already sets inline-flex, which overrides a plain
+              hidden, and on phones the button pushed Sign in off the screen. */}
+          <TourTrigger tourId="landing-tour" label="Visual Tour" variant="secondary" className="max-sm:hidden" />
           {signedIn ? <ButtonLink to="/app">Open the app</ButtonLink> : <ButtonLink to="/login">Sign in</ButtonLink>}
         </div>
       </Container>
