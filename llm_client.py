@@ -33,6 +33,9 @@ _nvidia_key_rejected = False
 # A model that timed out or answered busy (429/5xx) waits out a cooldown, and the model that last answered
 # goes first, so one slow model doesn't cost a full timeout on every call (as on feat/nvidia-llm).
 _cooldown_until: dict[str, float] = {}
+# Models whose cooldown came from a timeout. Busy answers (429/5xx) come back at once, so a busy model is a cheap last
+# resort; a timed-out one costs a full timeout, so a call tries at most one of those (the one cooling longest).
+_timed_out: set[str] = set()
 _last_good: str | None = None
 
 
@@ -44,13 +47,16 @@ def _cooldown_seconds() -> float:
 
 
 def _ordered(models: list[str], now: float) -> list[str]:
-    """Healthy models first (the last one that answered leads), models in cooldown last as a final resort."""
+    """Healthy models first (the last one that answered leads), busy ones as a last resort, then at most one that
+    timed out, so a call with every model degraded waits out one timeout rather than one per model."""
     healthy = [m for m in models if _cooldown_until.get(m, 0) <= now]
     cooling = [m for m in models if m not in healthy]
+    busy = [m for m in cooling if m not in _timed_out]
+    slow = sorted((m for m in cooling if m in _timed_out), key=lambda m: _cooldown_until.get(m, 0))
     if _last_good in healthy:
         healthy.remove(_last_good)
         healthy.insert(0, _last_good)
-    return healthy + cooling
+    return healthy + busy + slow[:1]
 
 
 def _key(name: str) -> str:
@@ -129,15 +135,19 @@ def _nvidia_call(prompt: str, temperature: float, parse: Callable[[str], Any]) -
             if res.status_code != 200:
                 if res.status_code == 429 or res.status_code >= 500:
                     _cooldown_until[model] = time.monotonic() + _cooldown_seconds()
+                    _timed_out.discard(model)
                 raise RuntimeError(f"NVIDIA {model}: HTTP {res.status_code}")
             content = res.json()["choices"][0]["message"]["content"] or ""
             result = parse(content)
             _last_good = model
             _cooldown_until.pop(model, None)
+            _timed_out.discard(model)
             return result
         except Exception as exc:  # noqa: BLE001 - every failure moves on to the next model
             if isinstance(exc, (requests.Timeout, requests.ConnectionError)):
                 _cooldown_until[model] = time.monotonic() + _cooldown_seconds()
+                if isinstance(exc, requests.Timeout):
+                    _timed_out.add(model)
             last = f"{type(exc).__name__}: {exc}"
             logger.warning("NVIDIA model %s failed: %s", model, last)
             if _nvidia_key_rejected:

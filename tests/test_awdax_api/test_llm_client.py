@@ -31,6 +31,7 @@ class LlmClientTests(unittest.TestCase):
     def _reset():
         llm_client._nvidia_key_rejected = False
         llm_client._cooldown_until.clear()
+        llm_client._timed_out.clear()
         llm_client._last_good = None
 
     def test_timed_out_model_is_skipped_until_its_cooldown_ends(self):
