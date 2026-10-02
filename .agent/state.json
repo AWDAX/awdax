@@ -1,0 +1,266 @@
+{
+  "schema": 1,
+  "project": "AWDAX",
+  "created": "2026-10-02T07:37:28.133Z",
+  "updated": "2026-10-02T09:20:52.183Z",
+  "phase": "Frontend audit and safe remediation planning",
+  "active": null,
+  "tasks": [
+    {
+      "id": "A1",
+      "title": "FE-02 + FE-07: honest API errors, no false chat-deleted",
+      "state": "TODO",
+      "deps": [],
+      "attempts": 0,
+      "ui": true,
+      "role": "frontend",
+      "owns": [
+        "Frontend/src/api/client.ts",
+        "Frontend/src/api/InstancesProvider.tsx",
+        "Frontend/src/api/instancesContext.ts",
+        "Frontend/src/app/chat/ChatPage.tsx"
+      ],
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "A2",
+      "title": "FE-10 + FE-12: microphone and dictation lifecycle",
+      "state": "TODO",
+      "deps": [],
+      "attempts": 0,
+      "ui": true,
+      "role": "frontend",
+      "owns": [
+        "Frontend/src/ui/micro/**",
+        "Frontend/src/app/voice/**"
+      ],
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "A3",
+      "title": "FE-01: list request ordering across mutations",
+      "state": "WAITING",
+      "deps": [
+        "A1"
+      ],
+      "attempts": 0,
+      "ui": true,
+      "role": "frontend",
+      "owns": [
+        "Frontend/src/api/InstancesProvider.tsx",
+        "Frontend/src/api/listSequence*.ts"
+      ],
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "A4a",
+      "title": "FE-04: one state source for live callbacks",
+      "state": "TODO",
+      "deps": [],
+      "attempts": 0,
+      "ui": true,
+      "role": "frontend",
+      "owns": [
+        "Frontend/src/api/useLiveStream.ts",
+        "Frontend/src/api/liveState*.ts"
+      ],
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "A4b",
+      "title": "FE-03/05/06/08: snapshot gate for the live dataset",
+      "state": "WAITING",
+      "deps": [
+        "A4a"
+      ],
+      "attempts": 0,
+      "ui": true,
+      "role": "frontend",
+      "owns": [
+        "Frontend/src/api/useLiveStream.ts",
+        "Frontend/src/api/snapshotGate*.ts"
+      ],
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "A5",
+      "title": "FE-09: single project-polling cycle",
+      "state": "TODO",
+      "deps": [],
+      "attempts": 0,
+      "ui": true,
+      "role": "frontend",
+      "owns": [
+        "Frontend/src/app/report/**"
+      ],
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "A6",
+      "title": "FE-11: atomic uploaded-file rename",
+      "state": "TODO",
+      "deps": [],
+      "attempts": 0,
+      "role": "frontend",
+      "owns": [
+        "Frontend/src/app/files/localProjects.ts"
+      ],
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "A7",
+      "title": "FE-13: per-user browser storage (owner decision first)",
+      "state": "BLOCKED",
+      "deps": [
+        "A6"
+      ],
+      "attempts": 0,
+      "ui": true,
+      "role": "frontend",
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": "Per-user storage decides what happens to users' uploaded files",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      },
+      "blocked": {
+        "category": "HUMAN",
+        "why": "Per-user storage decides what happens to users' uploaded files",
+        "needs": "Owner picks: namespace + migrate (recommended) or clear on sign-out",
+        "at": "2026-10-02T09:20:52.183Z",
+        "attempts": 0,
+        "failures": []
+      }
+    },
+    {
+      "id": "A8",
+      "title": "N4 + N5: proxy JWKS/timeouts, auth gate catch",
+      "state": "TODO",
+      "deps": [],
+      "attempts": 0,
+      "role": "frontend",
+      "owns": [
+        "Frontend/src/server/**",
+        "Frontend/src/app/auth/AuthProvider.tsx"
+      ],
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "A9",
+      "title": "Sweep of the unchecked frontend files",
+      "state": "TODO",
+      "deps": [],
+      "attempts": 0,
+      "role": "frontend",
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    }
+  ],
+  "log": [
+    {
+      "ts": "2026-10-02T07:37:28.134Z",
+      "event": "init",
+      "detail": "AWDAX"
+    },
+    {
+      "ts": "2026-10-02T09:20:44.171Z",
+      "event": "add",
+      "detail": "A1 FE-02 + FE-07: honest API errors, no false chat-deleted"
+    },
+    {
+      "ts": "2026-10-02T09:20:44.413Z",
+      "event": "add",
+      "detail": "A2 FE-10 + FE-12: microphone and dictation lifecycle"
+    },
+    {
+      "ts": "2026-10-02T09:20:44.674Z",
+      "event": "add",
+      "detail": "A3 FE-01: list request ordering across mutations"
+    },
+    {
+      "ts": "2026-10-02T09:20:44.877Z",
+      "event": "add",
+      "detail": "A4a FE-04: one state source for live callbacks"
+    },
+    {
+      "ts": "2026-10-02T09:20:45.099Z",
+      "event": "add",
+      "detail": "A4b FE-03/05/06/08: snapshot gate for the live dataset"
+    },
+    {
+      "ts": "2026-10-02T09:20:45.336Z",
+      "event": "add",
+      "detail": "A5 FE-09: single project-polling cycle"
+    },
+    {
+      "ts": "2026-10-02T09:20:45.558Z",
+      "event": "add",
+      "detail": "A6 FE-11: atomic uploaded-file rename"
+    },
+    {
+      "ts": "2026-10-02T09:20:45.771Z",
+      "event": "add",
+      "detail": "A7 FE-13: per-user browser storage (owner decision first)"
+    },
+    {
+      "ts": "2026-10-02T09:20:45.999Z",
+      "event": "add",
+      "detail": "A8 N4 + N5: proxy JWKS/timeouts, auth gate catch"
+    },
+    {
+      "ts": "2026-10-02T09:20:51.741Z",
+      "event": "add",
+      "detail": "A9 Sweep of the unchecked frontend files"
+    },
+    {
+      "ts": "2026-10-02T09:20:51.967Z",
+      "event": "decision",
+      "detail": "Backend Python is read-only for agents; Track B (B1-B4) goes to the owner"
+    },
+    {
+      "ts": "2026-10-02T09:20:52.183Z",
+      "event": "block",
+      "detail": "A7 [HUMAN]: Per-user storage decides what happens to users' uploaded files — needs Owner picks: namespace + migrate (recommended) or clear on sign-out"
+    }
+  ],
+  "integrity": "1adddc22a3d172be395c7b181360a91c0554e44c9efff5bbae1573d7b16272aa"
+}
