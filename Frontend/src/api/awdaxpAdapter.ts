@@ -71,6 +71,9 @@ export const PHASE: Record<string, LivePhase> = {
   rendering: 'inspect',
   extracting: 'extract',
   scraping: 'extract',
+  // The scraper's own names for a scrape pass (scraper.py), which reach the run as-is.
+  starting: 'extract',
+  live_scraping: 'extract',
   // Live mode between refreshes ("next check in…"), same as a finished cycle.
   live: 'sleep',
   scoring: 'extract',
