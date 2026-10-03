@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 
 from reasoning import ScrapeIntent
+from regulatory_strategy import intent_is_parliament_sessions
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,24 @@ class AnchorListing:
     url: str
     source_category: str = "aggregator"
 
+
+_PARLIAMENT_ANCHORS: tuple[AnchorListing, ...] = (
+    AnchorListing(
+        "List of Lok Sabha sessions (Wikipedia)",
+        "https://en.wikipedia.org/wiki/List_of_sessions_of_the_Lok_Sabha",
+        "wiki",
+    ),
+    AnchorListing(
+        "Rajya Sabha sessions (Wikipedia category)",
+        "https://en.wikipedia.org/wiki/Category:Sessions_of_the_Rajya_Sabha",
+        "wiki",
+    ),
+    AnchorListing(
+        "PRS Parliament sessions",
+        "https://prsindia.org/parliament-track/sessions",
+        "aggregator",
+    ),
+)
 
 _EV_INDIA_ANCHORS: tuple[AnchorListing, ...] = (
     AnchorListing("CarWale Electric Cars", "https://www.carwale.com/new/electric-cars/", "aggregator"),
@@ -32,9 +51,11 @@ def intent_wants_ev_catalog(intent: ScrapeIntent) -> bool:
 
 
 def anchor_listings_for_intent(intent: ScrapeIntent) -> list[AnchorListing]:
-    if not intent_wants_ev_catalog(intent):
-        return []
-    return list(_EV_INDIA_ANCHORS)
+    if intent_wants_ev_catalog(intent):
+        return list(_EV_INDIA_ANCHORS)
+    if intent_is_parliament_sessions(intent):
+        return list(_PARLIAMENT_ANCHORS)
+    return []
 
 
 def is_aggregator_listing_url(url: str) -> bool:

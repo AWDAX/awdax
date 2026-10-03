@@ -40,6 +40,7 @@ from inspector import (  # noqa: E402
 from reasoning import ScrapeIntent, parse_prompt  # noqa: E402
 from regulatory_strategy import (  # noqa: E402
     intent_uses_regulatory_feed,
+    load_intent,
     regulatory_feed_max_pages,
     regulatory_feed_table_schema,
 )
@@ -263,7 +264,7 @@ def api_feed():
             if raw:
                 intent = None
                 if sess and sess.get("intent") and sess.get("job_id") == job_id:
-                    intent = ScrapeIntent.from_dict(sess["intent"])
+                    intent = load_intent(sess["intent"])
                 else:
                     intent = universal_service.load_intent(job_id)
                 if intent:
@@ -300,7 +301,7 @@ def api_feed():
                 )
             intent = None
             if sess and sess.get("intent"):
-                intent = ScrapeIntent.from_dict(sess["intent"])
+                intent = load_intent(sess["intent"])
             if intent and intent_uses_regulatory_feed(intent):
                 items = feed_service.list_feed(limit=limit)
                 return jsonify(
@@ -453,15 +454,16 @@ def api_queries():
         body = request.get_json(silent=True) or {}
         sess = _work_session(body)
         if body.get("intent"):
-            intent = ScrapeIntent.from_dict(body["intent"])
+            intent = load_intent(body["intent"])
         elif sess.get("intent"):
-            intent = ScrapeIntent.from_dict(sess["intent"])
+            intent = load_intent(sess["intent"])
         else:
             return jsonify({"ok": False, "error": "Run /api/prompt first"}), 400
 
         from query_generation import generate_search_queries
 
         queries = generate_search_queries(intent)
+        sess["intent"] = intent.to_dict()
         sess["search_queries"] = [q.to_dict() for q in queries]
         sess["job_id"] = intent.job_id
         sess = save_session(sess)
@@ -488,7 +490,8 @@ def api_table_headers():
             return jsonify({"ok": False, "error": "Run /api/prompt first"}), 400
         if not sess.get("plans"):
             return jsonify({"ok": False, "error": "Run discover & inspect first"}), 400
-        intent = ScrapeIntent.from_dict(sess["intent"])
+        intent = load_intent(sess["intent"])
+        sess["intent"] = intent.to_dict()
         plans = [ScrapePlan.from_dict(p) for p in sess["plans"]]
 
         if intent_uses_regulatory_feed(intent):
@@ -520,11 +523,12 @@ def api_discover():
         body = request.get_json(silent=True) or {}
         sess = _work_session(body)
         if body.get("intent"):
-            intent = ScrapeIntent.from_dict(body["intent"])
+            intent = load_intent(body["intent"])
         elif sess.get("intent"):
-            intent = ScrapeIntent.from_dict(sess["intent"])
+            intent = load_intent(sess["intent"])
         else:
             return jsonify({"ok": False, "error": "Run /api/prompt first"}), 400
+        sess["intent"] = intent.to_dict()
         progress: list[str] = []
         jid = intent.job_id
 
@@ -594,7 +598,8 @@ def api_inspect():
         sess = _work_session(body)
         if not sess.get("sources"):
             return jsonify({"ok": False, "error": "Run /api/discover first"}), 400
-        intent = ScrapeIntent.from_dict(sess["intent"])
+        intent = load_intent(sess["intent"])
+        sess["intent"] = intent.to_dict()
         sources = [SourceCandidate.from_dict(s) for s in sess["sources"]]
 
         if inspect_all:
@@ -651,17 +656,15 @@ def api_scrape_run():
         use_preset = bool(body.get("use_egazette_preset"))
         sess = _work_session(body)
 
-        session_intent = (
-            ScrapeIntent.from_dict(sess["intent"]) if sess.get("intent") else None
-        )
+        session_intent = load_intent(sess["intent"]) if sess.get("intent") else None
         use_regulatory_feed = use_preset or (
             session_intent is not None and intent_uses_regulatory_feed(session_intent)
         )
 
         if use_regulatory_feed:
             if use_preset:
-                intent = ScrapeIntent.from_dict(
-                    sess.get("intent") or {"job_id": "egazette", "topic": "eGazette", "pipeline": "regulatory_feed"}
+                intent = load_intent(
+                    sess.get("intent") or {"job_id": "egazette", "topic": "eGazette", "pipeline": "regulatory_feed", "raw_prompt": "egazette.gov.in notifications"}
                 )
             else:
                 intent = session_intent
@@ -684,11 +687,17 @@ def api_scrape_run():
             scrape_max = int(max_pages_raw or os.getenv("SCRAPE_MAX_PAGES", "3"))
             if not sess.get("table_schema"):
                 return jsonify({"ok": False, "error": "Run /api/table-headers (step 4) first"}), 400
-            intent = ScrapeIntent.from_dict(sess["intent"])
+            intent = load_intent(sess["intent"])
+            sess["intent"] = intent.to_dict()
             if sess.get("plans"):
                 plans = [ScrapePlan.from_dict(p) for p in sess["plans"]]
             else:
                 plans = [ScrapePlan.from_dict(p) for p in [sess["plan"]]]
+            plans = [p for p in plans if not p.blocked]
+            if not plans:
+                return jsonify(
+                    {"ok": False, "error": "No validated sources — run Discover again or relax INSPECT_ACCEPT_ZERO_ROWS"},
+                ), 400
             job = ScrapeJob(
                 job_id=intent.job_id,
                 intent=intent,
