@@ -79,3 +79,14 @@ Verified 2026-10-03 06:05 against code `c3e3ce341a4f`.
   - viewports: mobile, desktop
   - states: default
   - 48 assertion(s) · 0 console error(s) · 0 failed request(s)
+
+## Q8 — Frontend: measure bundles, lazy-load what slows first paint
+
+Verified 2026-10-03 06:10 against code `3a497929fa35`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 06:10
+- **ui** — PASS via `playwright-core+chromium-1243 (headless)` · recorded 2026-10-03 06:10
+  - routes: /app, /, /app/demo/*, /app/c/*
+  - viewports: mobile, desktop
+  - states: default
+  - 48 assertion(s) · 0 console error(s) · 0 failed request(s)

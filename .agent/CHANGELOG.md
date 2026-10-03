@@ -36,3 +36,7 @@ _2026-10-03 06:02_ · code:PASS · code `51b508456861`
 ## Q7 — Frontend: no Untitled chat flash while a chat loads
 
 _2026-10-03 06:05_ · code:PASS ui:PASS · code `c3e3ce341a4f`
+
+## Q8 — Frontend: measure bundles, lazy-load what slows first paint
+
+_2026-10-03 06:10_ · code:PASS ui:PASS · code `3a497929fa35`

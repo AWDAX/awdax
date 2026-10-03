@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T06:05:24.533Z",
+  "updated": "2026-10-03T06:10:35.055Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -495,17 +495,57 @@
     {
       "id": "Q8",
       "title": "Frontend: measure bundles, lazy-load what slows first paint",
-      "state": "TODO",
+      "state": "DONE",
       "deps": [
         "Q7"
       ],
-      "attempts": 0,
+      "attempts": 1,
       "ui": true,
-      "evidence": {},
-      "notes": [],
-      "started": null,
-      "finished": null,
-      "blockedReason": null
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:10:03.569Z",
+          "codeHash": "3a497929fa35c21ab7a5764971eadc2ed5e9bff35eb0b148e7607c29d10852cb"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:10:27.590Z",
+          "codeHash": "3a497929fa35c21ab7a5764971eadc2ed5e9bff35eb0b148e7607c29d10852cb",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:10:34.360Z",
+          "text": "Bundles (gzip): app chunk 139.9 -> 107.9 KB (Supabase AuthClient only, no new dep; equivalence of url/storageKey/flowType/headers vs createClient checked in node), landing chunk 163.0 -> 135.1 KB (LazyMotion loads domMax async, 18.7 KB chunk). Simulated slow phone (CPU x4, 1.6 Mbps + 150 ms, median of 3): landing FCP 2012 -> 1776 ms, login 2408 -> 2080 ms; features chunk at 2038 ms, no element stuck at opacity 0 after 6 s, no console errors."
+        }
+      ],
+      "started": "2026-10-03T06:05:25.803Z",
+      "finished": "2026-10-03T06:10:35.052Z",
+      "blockedReason": null,
+      "base": "9ddfdf9425842c0bca338344d87250cdb96b6e6d",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     },
     {
       "id": "Q9",
@@ -841,7 +881,32 @@
       "ts": "2026-10-03T06:05:24.533Z",
       "event": "done",
       "detail": "Q7 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T06:05:25.803Z",
+      "event": "start",
+      "detail": "Q8 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:10:03.611Z",
+      "event": "evidence",
+      "detail": "Q8/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:10:27.631Z",
+      "event": "evidence",
+      "detail": "Q8/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T06:10:34.360Z",
+      "event": "note",
+      "detail": "Q8: Bundles (gzip): app chunk 139.9 -> 107.9 KB (Supabase AuthCl"
+    },
+    {
+      "ts": "2026-10-03T06:10:35.055Z",
+      "event": "done",
+      "detail": "Q8 (code:PASS ui:PASS)"
     }
   ],
-  "integrity": "49e5b6f72486a0a9a09f3069c6bfb50a21ea627befcbc627efa9651a504c5cf2"
+  "integrity": "63282eb5839441ed0b5b6e6d2a5870c710a5772a34f8340fc4d03460870ffd99"
 }
