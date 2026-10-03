@@ -90,3 +90,9 @@ Verified 2026-10-03 06:10 against code `3a497929fa35`.
   - viewports: mobile, desktop
   - states: default
   - 48 assertion(s) · 0 console error(s) · 0 failed request(s)
+
+## Q9 — Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change
+
+Verified 2026-10-03 06:14 against code `1b48e6b74ffb`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 06:14

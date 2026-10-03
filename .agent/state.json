@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T06:10:35.055Z",
+  "updated": "2026-10-03T06:14:48.525Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -550,21 +550,43 @@
     {
       "id": "Q9",
       "title": "Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change",
-      "state": "TODO",
+      "state": "DONE",
       "deps": [
         "Q6"
       ],
-      "attempts": 0,
-      "evidence": {},
-      "notes": [],
-      "started": null,
-      "finished": null,
-      "blockedReason": null
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:14:39.672Z",
+          "codeHash": "1b48e6b74ffb22498bd89c7dc5365dcd82866cca690145338e23a1d544f757b6"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:14:47.602Z",
+          "text": "Moves only, verbatim blocks: scraper.py 1171->883 (+ plan_scraper.py 300: Selenium listing engine; listing_extract.py 129: HTML tables + LLM listing extract); RegulatoryFeed.py 1460->727 (+ gazette_pdf.py 171, gazette_summary.py 203, gazette_scraper.py 411). Importers (inspector, html_extract) and tests point at the new modules, no re-export shims. symtable check: no undefined or unused globals in any of the 7 modules; each imports cleanly alone (no cycles); 168 tests OK; backend restarted, /health /ready /api/instances + chat dataset/sources/dashboard 200, retired route 404. Left over 300: UniversalScrapeService (~650 lines) and RegulatoryFeedService (~600) are single classes; GazetteScraper is one 375-line class. Splitting them means mixins or delegating wrappers, not a move: left as known debt."
+        },
+        {
+          "ts": "2026-10-03T06:14:47.835Z",
+          "text": "Live re-check rebuilt the test chat's merged table from 70 to 54 rows (06:02 UTC, before Q9 code ran): rebuild_merged_table re-merges all stored records, so more fields per car let merge_records fold near-duplicates. Pre-existing behaviour; looks like dedup, not loss, but unconfirmed.",
+          "kind": "finding"
+        }
+      ],
+      "started": "2026-10-03T06:10:45.374Z",
+      "finished": "2026-10-03T06:14:48.524Z",
+      "blockedReason": null,
+      "base": "ae3c5d4c9d7ad1d9feed75049801652a48331c6c",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     },
     {
       "id": "Q10",
       "title": "CI at the repo root: backend tests + frontend gate on every PR",
-      "state": "WAITING",
+      "state": "TODO",
       "deps": [
         "Q9"
       ],
@@ -906,7 +928,32 @@
       "ts": "2026-10-03T06:10:35.055Z",
       "event": "done",
       "detail": "Q8 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T06:10:45.374Z",
+      "event": "start",
+      "detail": "Q9 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:14:39.711Z",
+      "event": "evidence",
+      "detail": "Q9/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:14:47.602Z",
+      "event": "note",
+      "detail": "Q9: Moves only, verbatim blocks: scraper.py 1171->883 (+ plan_sc"
+    },
+    {
+      "ts": "2026-10-03T06:14:47.835Z",
+      "event": "note",
+      "detail": "Q9 [finding]: Live re-check rebuilt the test chat's merged table from 70 t"
+    },
+    {
+      "ts": "2026-10-03T06:14:48.525Z",
+      "event": "done",
+      "detail": "Q9 (code:PASS)"
     }
   ],
-  "integrity": "63282eb5839441ed0b5b6e6d2a5870c710a5772a34f8340fc4d03460870ffd99"
+  "integrity": "d90639fa2ed25138dca07b8667c4e0fb7c171b91e4caf7e16167a94958e479a1"
 }

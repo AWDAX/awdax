@@ -17,8 +17,8 @@ from requests.structures import CaseInsensitiveDict  # noqa: E402
 
 import discovery  # noqa: E402
 import inspector  # noqa: E402
-import RegulatoryFeed  # noqa: E402
-import scraper  # noqa: E402
+import gazette_pdf  # noqa: E402
+import plan_scraper  # noqa: E402
 import url_guard  # noqa: E402
 
 PUBLIC = "93.184.216.34"
@@ -491,7 +491,7 @@ class ScraperCallSiteTests(GuardTestCase):
     def test_open_entry_refuses_an_internal_entry_url(self):
         for url in ("http://169.254.169.254/latest/meta-data/", "file:///etc/passwd", "http://127.0.0.1:8000/api"):
             with self.subTest(url=url):
-                s = scraper.PlanDrivenScraper(inspector.ScrapePlan(source_name="s", entry_url=url))
+                s = plan_scraper.PlanDrivenScraper(inspector.ScrapePlan(source_name="s", entry_url=url))
                 s.driver = mock.Mock()
                 with self.assertRaises(url_guard.UnsafeURL) as cm:
                     s.open_entry()
@@ -501,7 +501,7 @@ class ScraperCallSiteTests(GuardTestCase):
     def test_a_blocked_source_is_one_failed_source_not_a_crashed_run(self):
         # _run_all records "<source>: <reason>" for any per-source exception and carries on; the reason must be short.
         plan = inspector.ScrapePlan(source_name="Evil", entry_url="http://169.254.169.254/")
-        s = scraper.PlanDrivenScraper(plan)
+        s = plan_scraper.PlanDrivenScraper(plan)
         s.driver = mock.Mock()
         try:
             s.open_entry()
@@ -510,10 +510,10 @@ class ScraperCallSiteTests(GuardTestCase):
         self.assertEqual(text, "Evil: Blocked: address not allowed")
 
     def test_template_pdf_urls_to_internal_addresses_are_dropped(self):
-        self.assertEqual(scraper.guard_detail_url("http://169.254.169.254/x.pdf"), "")
-        self.assertEqual(scraper.guard_detail_url("file:///etc/passwd"), "")
-        self.assertEqual(scraper.guard_detail_url("https://example.test/a.pdf"), "https://example.test/a.pdf")
-        self.assertEqual(scraper.guard_detail_url(""), "")
+        self.assertEqual(plan_scraper.guard_detail_url("http://169.254.169.254/x.pdf"), "")
+        self.assertEqual(plan_scraper.guard_detail_url("file:///etc/passwd"), "")
+        self.assertEqual(plan_scraper.guard_detail_url("https://example.test/a.pdf"), "https://example.test/a.pdf")
+        self.assertEqual(plan_scraper.guard_detail_url(""), "")
 
 
 class RegulatoryPdfDownloadTests(GuardTestCase):
@@ -522,7 +522,7 @@ class RegulatoryPdfDownloadTests(GuardTestCase):
         for url in ("http://169.254.169.254/latest/meta-data/", "http://127.0.0.1:8000/api/feed", "file:///etc/passwd"):
             with self.subTest(url=url):
                 with self.assertRaises(url_guard.UnsafeURL):
-                    RegulatoryFeed._fetch_pdf_bytes(sess, url, timeout=5)
+                    gazette_pdf._fetch_pdf_bytes(sess, url, timeout=5)
         sess.get.assert_not_called()
 
 

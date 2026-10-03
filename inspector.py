@@ -284,7 +284,7 @@ HTTPS preview headers: {https.get("table_headers_preview")}"""
 def dry_run_plan(plan: ScrapePlan, intent: ScrapeIntent | None = None, max_rows: int = 20) -> int:
     if not SELENIUM_AVAILABLE:
         return 0
-    from scraper import PlanDrivenScraper
+    from plan_scraper import PlanDrivenScraper
 
     scraper = PlanDrivenScraper(plan, fast_mode=True, intent=intent)
     try:

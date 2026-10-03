@@ -34,7 +34,7 @@ def build_page_digest(html: str, *, max_text: int = 55_000) -> dict[str, Any]:
     next_m = re.search(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.I | re.S)
     next_snip = (next_m.group(1)[:80000] if next_m else "")
 
-    from scraper import extract_tables_from_html
+    from listing_extract import extract_tables_from_html
 
     tables = extract_tables_from_html(html)
     table_preview = []
@@ -58,7 +58,7 @@ def build_page_digest(html: str, *, max_text: int = 55_000) -> dict[str, Any]:
 
 def rows_from_tables(html: str, columns: list[str]) -> list[dict[str, Any]]:
     """Map largest HTML table to row dicts (heuristic)."""
-    from scraper import extract_tables_from_html
+    from listing_extract import extract_tables_from_html
 
     tables = extract_tables_from_html(html)
     if not tables:

@@ -40,3 +40,7 @@ _2026-10-03 06:05_ · code:PASS ui:PASS · code `c3e3ce341a4f`
 ## Q8 — Frontend: measure bundles, lazy-load what slows first paint
 
 _2026-10-03 06:10_ · code:PASS ui:PASS · code `3a497929fa35`
+
+## Q9 — Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change
+
+_2026-10-03 06:14_ · code:PASS · code `1b48e6b74ffb`
