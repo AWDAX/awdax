@@ -2,11 +2,10 @@ import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router'
 import { setStreamToken } from '../../api/client.ts'
 import { useAuth } from '../auth/authContext.ts'
-import { DatabaseIcon, LogoutIcon, PlusIcon, ReportIcon, SearchIcon, SidebarIcon } from '../../ui/appIcons.tsx'
+import { LogoutIcon, PlusIcon, ReportIcon, SearchIcon, SidebarIcon } from '../../ui/appIcons.tsx'
 import { buttonClass } from '../../ui/buttonClass.ts'
 import { Tooltip } from '../../ui/Tooltip.tsx'
 import { TutorialTrigger } from '../../ui/tutorial/TutorialTrigger.tsx'
-import { FEATURES } from '../features.ts'
 import { HistoryList } from './HistoryList.tsx'
 
 type Props = {
@@ -59,11 +58,6 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
           <NavLink to="/app/projects" onClick={onNavigate} className={navClass}>
             <ReportIcon /> Projects report
           </NavLink>
-          {FEATURES.askDatabase && (
-            <NavLink to="/app/ask" onClick={onNavigate} className={navClass}>
-              <DatabaseIcon /> Ask database
-            </NavLink>
-          )}
         </div>
       </div>
 

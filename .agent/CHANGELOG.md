@@ -16,3 +16,7 @@ _2026-10-03 05:24_ · code:PASS · code `00aa1c520ddb`
 ## Q2 — Frontend: delete CallChip and unused exports
 
 _2026-10-03 05:30_ · code:PASS ui:PASS · code `3697a3a54295`
+
+## Q3 — Frontend: remove the switched-off Ask database page (chat's Ask box stays)
+
+_2026-10-03 05:33_ · code:PASS ui:PASS · code `faed386b03da`

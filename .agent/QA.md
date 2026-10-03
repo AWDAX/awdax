@@ -34,3 +34,14 @@ Verified 2026-10-03 05:30 against code `3697a3a54295`.
   - viewports: mobile, desktop
   - states: default
   - 35 assertion(s) · 0 console error(s) · 0 failed request(s)
+
+## Q3 — Frontend: remove the switched-off Ask database page (chat's Ask box stays)
+
+Verified 2026-10-03 05:33 against code `faed386b03da`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 05:33
+- **ui** — PASS via `playwright-core+chromium-1243 (headless)` · recorded 2026-10-03 05:33
+  - routes: /app, /, /app/demo/*
+  - viewports: mobile, desktop
+  - states: default
+  - 35 assertion(s) · 0 console error(s) · 0 failed request(s)

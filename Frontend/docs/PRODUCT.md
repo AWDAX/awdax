@@ -52,14 +52,14 @@ The TypeScript version of these lives in `src/domain/types.ts`.
 
 As built on 2026-09-28 against the real backend. `docs/APP.md` has the detail; the original list is kept below it.
 
-1. New chat: one prompt box (text, voice, or a CSV/Excel/JSON file), a shortcut strip, "See what AWDAX can do" cards
+1. New chat: one prompt box (text, voice, or a CSV/Excel/JSON file through its +), and "See what AWDAX can do" cards that
+   replay real recorded runs (`/app/demo/<slug>`)
 2. Chat: the request, the backend's replies, the live run (phase and pipeline steps), then the dashboard and questions
 3. Dashboard (Power BI style): suggested charts plus build-your-own, resizable and movable tiles, slicers,
    click-to-filter, every row in a grid, and an exact precision note under each chart
 4. Questions: follow-up chips and the same prompt box, answered exactly from the rows (never re-scraped)
 5. Projects report: every web request and uploaded file with status, rows, search, filter buttons and quick queries
-6. Ask database: question any project with rows; the query builder pins results to its dashboard
-7. Export: SQL (PostgreSQL, MySQL, SQLite, SQL Server), JSON, JSON Lines, CSV, TSV, Excel, XML, Markdown
+6. Export: SQL (PostgreSQL, MySQL, SQLite, SQL Server), JSON, JSON Lines, CSV, TSV, Excel, XML, Markdown
 
 Not built, because the backend doesn't support them yet:
 - plan review before running;

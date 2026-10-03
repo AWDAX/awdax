@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T05:30:43.798Z",
+  "updated": "2026-10-03T05:33:35.736Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -274,17 +274,57 @@
     {
       "id": "Q3",
       "title": "Frontend: remove the switched-off Ask database page (chat's Ask box stays)",
-      "state": "TODO",
+      "state": "DONE",
       "deps": [
         "Q2"
       ],
-      "attempts": 0,
+      "attempts": 1,
       "ui": true,
-      "evidence": {},
-      "notes": [],
-      "started": null,
-      "finished": null,
-      "blockedReason": null
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:33:34.077Z",
+          "codeHash": "faed386b03da51b3cc66189699da099c1d617ba11e44649336455e10c0e88f7b"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:33:34.740Z",
+          "codeHash": "faed386b03da51b3cc66189699da099c1d617ba11e44649336455e10c0e88f7b",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 6,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T05:33:35.029Z",
+          "text": "Functional check: /app/ask redirects to /app; no 'Ask database' anywhere in the UI; a chat's own Ask box still answers ('highest price by model' -> OPPO K14 Plus 5G, Rs 29,999, 9 rows used)",
+          "kind": "finding"
+        }
+      ],
+      "started": "2026-10-03T05:30:54.788Z",
+      "finished": "2026-10-03T05:33:35.734Z",
+      "blockedReason": null,
+      "base": "61eca3b9901cff1ebb094da523c66894cd09885b",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     },
     {
       "id": "Q4",
@@ -331,7 +371,7 @@
     {
       "id": "Q7",
       "title": "Frontend: no Untitled chat flash while a chat loads",
-      "state": "WAITING",
+      "state": "TODO",
       "deps": [
         "Q3"
       ],
@@ -577,7 +617,32 @@
       "ts": "2026-10-03T05:30:43.798Z",
       "event": "done",
       "detail": "Q2 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T05:30:54.788Z",
+      "event": "start",
+      "detail": "Q3 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T05:33:34.114Z",
+      "event": "evidence",
+      "detail": "Q3/code PASS"
+    },
+    {
+      "ts": "2026-10-03T05:33:34.780Z",
+      "event": "evidence",
+      "detail": "Q3/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T05:33:35.029Z",
+      "event": "note",
+      "detail": "Q3 [finding]: Functional check: /app/ask redirects to /app; no 'Ask databa"
+    },
+    {
+      "ts": "2026-10-03T05:33:35.736Z",
+      "event": "done",
+      "detail": "Q3 (code:PASS ui:PASS)"
     }
   ],
-  "integrity": "520489246fe85bf0cd0293aa763a773e860799e73ffbb49045956d2c739615d2"
+  "integrity": "c9943ff067f5fae5ce80361c99bc3a6c0a896817ba85b1208e4099c5d7c84a55"
 }

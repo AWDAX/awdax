@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-03T05:28:09.438Z",
+  "generated": "2026-10-03T05:30:54.754Z",
   "hasContract": true,
   "baseUrl": "http://localhost:5174",
   "start": "npm --prefix Frontend run dev:agent",

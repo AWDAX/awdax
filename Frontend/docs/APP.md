@@ -11,7 +11,6 @@ read-only for frontend work**: every gap below is worked around here, never patc
 | `/app/c/:id` | A web request: thread, live run, dashboard, questions | `src/app/chat/ChatPage.tsx`, `LiveRun.tsx`, `Thread.tsx`, `ChatData.tsx` |
 | `/app/f/:id` | An uploaded file: dashboard and questions | `src/app/chat/FilePage.tsx`, `src/app/files/*` |
 | `/app/projects` | Projects report | `src/app/report/*` |
-| `/app/ask` | Ask database (off for everyone for now: `src/app/features.ts`) | `src/app/ask/AskPage.tsx`, `ProjectAsk.tsx` |
 | `/app/dev` | Dev builds only: component gallery and the dashboard on sample tables | `src/app/dev/DevPreview.tsx` |
 
 The sidebar (`src/app/workspace/`) lists every web request and uploaded file, grouped by day, with search and a
