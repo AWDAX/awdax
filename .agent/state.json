@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T06:14:48.525Z",
+  "updated": "2026-10-03T06:16:57.060Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -586,16 +586,41 @@
     {
       "id": "Q10",
       "title": "CI at the repo root: backend tests + frontend gate on every PR",
-      "state": "TODO",
+      "state": "BLOCKED",
       "deps": [
         "Q9"
       ],
-      "attempts": 0,
-      "evidence": {},
-      "notes": [],
-      "started": null,
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:16:35.510Z",
+          "codeHash": "91e8d5ce2cf6f25bbc4a45a7423114ec5f9096f2515dc61316048b529b490969"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:16:56.832Z",
+          "text": "Root .github/workflows/ci.yml: backend (py 3.12, pip install -r requirements.txt, compileall, unittest) + frontend (node 24, npm ci, lint, test, audit high, build). Checks only, no secrets, no deploy; actions pinned by SHA (checkout/setup-node copied from Frontend/.github/workflows/deploy.yml, setup-python v6 ece7cb0 looked up via gh api). Dry run of every step in a clean worktree of 7b2f1fe with no .env/.env.local: compile ok, 168 tests OK, lint/test/audit(2 moderate)/build exit 0. Finding: Frontend/.github/workflows/deploy.yml never runs in this monorepo (GitHub reads only root .github); its Cloudflare deploy is the owner's to move."
+        }
+      ],
+      "started": "2026-10-03T06:14:54.818Z",
       "finished": null,
-      "blockedReason": null
+      "blockedReason": "CI evidence needs a real GitHub Actions run of .github/workflows/ci.yml, which exists only after the owner pushes the branch",
+      "base": "7b2f1fe57a57a50b43d96e0c33fa43131da01223",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      },
+      "blocked": {
+        "category": "HUMAN",
+        "why": "CI evidence needs a real GitHub Actions run of .github/workflows/ci.yml, which exists only after the owner pushes the branch",
+        "needs": "Owner pushes fix/polish-and-run-speed and opens a PR; then loop evidence delivery from: node ~/.agents/gates/delivery.mjs ci --run <run-id>",
+        "at": "2026-10-03T06:16:57.060Z",
+        "attempts": 1,
+        "failures": []
+      }
     },
     {
       "id": "Q11",
@@ -953,7 +978,27 @@
       "ts": "2026-10-03T06:14:48.525Z",
       "event": "done",
       "detail": "Q9 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T06:14:54.818Z",
+      "event": "start",
+      "detail": "Q10 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:16:35.553Z",
+      "event": "evidence",
+      "detail": "Q10/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:16:56.832Z",
+      "event": "note",
+      "detail": "Q10: Root .github/workflows/ci.yml: backend (py 3.12, pip install"
+    },
+    {
+      "ts": "2026-10-03T06:16:57.060Z",
+      "event": "block",
+      "detail": "Q10 [HUMAN]: CI evidence needs a real GitHub Actions run of .github/workflows/ci.yml, which exists only after the owner pushes the branch — needs Owner pushes fix/polish-and-run-speed and opens a PR; then loop evidence delivery from: node ~/.agents/gates/delivery.mjs ci --run <run-id>"
     }
   ],
-  "integrity": "d90639fa2ed25138dca07b8667c4e0fb7c171b91e4caf7e16167a94958e479a1"
+  "integrity": "7c79d7e4fc7f61d80ecead1afb1d7f2213efb9476128862e8d3fb39da76a68f0"
 }
