@@ -36,7 +36,7 @@ export function ProjectAsk({ table, title, instanceKey, path }: Props) {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-display font-wide text-h3 font-extrabold">{title}</h2>
+          <h2 className="font-display text-h3 font-extrabold">{title}</h2>
           <p className="mt-1 text-small text-ink-2">
             {profile.rowCount.toLocaleString('en-IN')} rows · {profile.columns.filter((c) => !c.virtual).map((c) => c.label).join(', ')}
           </p>

@@ -18,7 +18,7 @@ export function SourcesPanel({ sources, report, visits }: Props) {
     <section aria-label="Sources" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h3 className="font-display font-wide text-h3 font-extrabold">Where the data came from</h3>
+          <h3 className="font-display text-h3 font-extrabold">Where the data came from</h3>
           <p className="text-small text-ink-2">
             {rows > 0
               ? `${used.filter((s) => s.rows > 0).length} ${used.filter((s) => s.rows > 0).length === 1 ? 'website' : 'websites'} gave ${rows.toLocaleString('en-IN')} rows`

@@ -96,8 +96,9 @@ Then look at it in a browser at 1536×864 (the owner's laptop), 1024, 768 and 39
 - `src/ui/Select.tsx`: the styled single-choice dropdown (Sort in the projects report)
 - `src/app/sources/`: buildSources (report + exact rows per site + pages read live), SourcesPanel, SourceCard,
   SourcesStrip, useVisits
-- `src/app/sample/`: SampleRun (`/app/sample`) and its script, in the backend's exact output shapes
-- `src/app/chat/ChatView.tsx`: the chat screen from plain data (ChatPage wires the backend; SampleRun a script)
+- `src/app/demo/`: DemoReplay (`/app/demo/<slug>`), a real recorded run replayed in readable beats (`replay.ts`),
+  fed from `public/demo/<slug>.json`; record with `scripts/record-demo.mjs`, trim with `scripts/build-replay.mjs`
+- `src/app/chat/ChatView.tsx`: the chat screen from plain data (ChatPage wires the backend; DemoReplay a recording)
 - `src/app/dashboard/layout.ts`: the 12 × 6 one-screen page (layoutPage, packedRows); `useBox.ts` measures it
 - `src/analytics/runReport.ts`: parses the backend's run report text; `sampleRun.ts`: the sample report and rows
 - `src/ui/micro/`, `src/ui/toast/`, `src/app/voice/`: the micro components (credits in CREDITS.md)

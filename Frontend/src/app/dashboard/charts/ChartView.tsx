@@ -44,7 +44,7 @@ export function ChartView({ spec, profile, filters = [], height, selected, onSel
     const px = Math.max(16, Math.round(height * 0.82))
     content = (
       <div className="@container flex items-center" style={{ height }} title={`${measureTitle(profile, result.query)}: ${text}`}>
-        <p className="font-display font-wide leading-none font-extrabold whitespace-nowrap text-series tabular-nums" style={{ fontSize: `min(${px}px, 3rem, calc(165cqw / ${Math.max(5, text.length)}))` }}>
+        <p className="font-display leading-none font-extrabold whitespace-nowrap text-series tabular-nums" style={{ fontSize: `min(${px}px, 3rem, calc(165cqw / ${Math.max(5, text.length)}))` }}>
           {text}
         </p>
       </div>

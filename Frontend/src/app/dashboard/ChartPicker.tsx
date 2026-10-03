@@ -48,7 +48,7 @@ export function ChartPicker({ profile, current, editing, onAdd, onUpdate, onClos
               <ArrowIcon className="rotate-180" /> All charts
             </button>
           )}
-          <h2 className="font-display font-wide text-h3 font-extrabold">{editing ? 'Edit chart' : building ? 'Build the chart' : 'Add charts'}</h2>
+          <h2 className="font-display text-h3 font-extrabold">{editing ? 'Edit chart' : building ? 'Build the chart' : 'Add charts'}</h2>
           <button type="button" aria-label="Close" onClick={onClose} className="ml-auto grid size-8 place-items-center rounded-control hover:bg-sunken">
             <CloseIcon />
           </button>

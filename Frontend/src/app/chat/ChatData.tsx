@@ -82,7 +82,7 @@ export function ChatData({ instanceId, table, title, sources, view, onViewChange
       <section aria-labelledby="ask-heading" className="mt-4 grid gap-x-10 gap-y-6 border-t-2 border-ink pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <div className="flex flex-col gap-5 lg:sticky lg:top-6 lg:self-start">
           <div>
-            <h2 id="ask-heading" className="font-display font-wide text-h3 font-extrabold">
+            <h2 id="ask-heading" className="font-display text-h3 font-extrabold">
               Ask about this data
             </h2>
             <p className="mt-1 text-small text-ink-2">

@@ -13,25 +13,30 @@ export function ChartTip({ x, y, children, below = false }: { x: number; y: numb
   )
 }
 
-/** Screen-reader copy of a chart's numbers; the drawing itself is aria-hidden. */
+/**
+ * Screen-reader copy of a chart's numbers; the drawing itself is aria-hidden. The sr-only box wraps the table: a
+ * table won't shrink to sr-only's 1px, so on its own it stayed hundreds of pixels wide and pushed phones sideways.
+ */
 export function SrTable({ caption, head, rows }: { caption: string; head: [string, string]; rows: [string, string][] }) {
   return (
-    <table className="sr-only">
-      <caption>{caption}</caption>
-      <thead>
-        <tr>
-          <th scope="col">{head[0]}</th>
-          <th scope="col">{head[1]}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(([a, b], i) => (
-          <tr key={i}>
-            <th scope="row">{a}</th>
-            <td>{b}</td>
+    <div className="sr-only">
+      <table>
+        <caption>{caption}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{head[0]}</th>
+            <th scope="col">{head[1]}</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map(([a, b], i) => (
+            <tr key={i}>
+              <th scope="row">{a}</th>
+              <td>{b}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

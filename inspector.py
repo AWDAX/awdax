@@ -464,6 +464,30 @@ def _emit_discovery_source(on_source: Any | None, candidate: SourceCandidate, st
     })
 
 
+def _inspect_or_blocked(intent: ScrapeIntent, candidate: SourceCandidate) -> ScrapePlan:
+    """inspect_source, with a failure turned into a blocked plan (never raises)."""
+    try:
+        return inspect_source(intent, candidate)
+    except Exception as e:
+        logger.warning("Inspect failed for %s: %s", candidate.url, e)
+        return ScrapePlan(
+            source_name=candidate.title or candidate.domain,
+            entry_url=candidate.final_url or candidate.url,
+            source_url=candidate.url,
+            blocked=True,
+            confidence=0.0,
+            warnings=[f"Inspect failed: {e}"],
+        )
+
+
+def _inspect_workers() -> int:
+    """How many sources discovery inspects at once. Each inspection runs its own headless Chrome and LLM call."""
+    try:
+        return max(1, int(os.getenv("DISCOVERY_INSPECT_WORKERS", "3")))
+    except ValueError:
+        return 3
+
+
 def discover_inspected_from_queries(
     intent: ScrapeIntent,
     queries: list[Any],
@@ -471,8 +495,19 @@ def discover_inspected_from_queries(
     on_progress: Any | None = None,
     on_source: Any | None = None,
 ) -> tuple[list[SourceCandidate], list[ScrapePlan]]:
-    """One search query → resolve URL (Gemini / APIs) → inspect (10 queries → up to 10 sites)."""
+    """
+    Anchor listings first, then one search query → resolve URL → inspect, up to DISCOVERY_MAX_SOURCES sites.
+
+    Inspections run DISCOVERY_INSPECT_WORKERS at a time, in waves that never ask for more sites than are still
+    needed; results are taken in query order. Workers only search and inspect: every progress line and source
+    update is handed back and delivered on this thread, because those callbacks write the chat's session.
+    """
+    from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+    import queue
+    import threading
+
     from discovery import candidate_from_serp_hit
+    from listing_sources import anchor_listings_for_intent
     from query_generation import GeneratedQuery
     from source_search import search_hits_for_query
     from table_merge import intent_avoid_oem_sites, is_oem_source
@@ -506,27 +541,24 @@ def discover_inspected_from_queries(
     query_idx = 0
     inspect_attempts = 0
 
-    from listing_sources import anchor_listings_for_intent
-    from discovery import candidate_from_serp_hit as _cand_from_hit
-
+    # Anchor listings: curated pages for the intent, inspected before any search. Each joins seen_urls when it is
+    # scheduled, so an anchor left out by the cap can still be found by a search.
+    anchors: list[tuple[Any, SourceCandidate]] = []
+    anchor_urls: set[str] = set()
     for anchor in anchor_listings_for_intent(intent):
         if len(plans) >= target:
             break
         if anchor.url in seen_urls:
             continue
         hit = {"url": anchor.url, "title": anchor.title, "snippet": "anchor listing"}
-        candidate = _cand_from_hit(
-            hit,
-            search_query=f"anchor:{anchor.title}",
-            source_type_hint=anchor.source_category,
-        )
+        candidate = candidate_from_serp_hit(hit, search_query=f"anchor:{anchor.title}", source_type_hint=anchor.source_category)
         if avoid_oem and is_oem_source(url=candidate.url, domain=candidate.domain):
             continue
         seen_urls.add(candidate.url)
         _emit_discovery_source(on_source, candidate, "inspecting")
         _progress(f"Anchor inspect ({len(plans) + 1}/{target}): {anchor.title}")
         try:
-            plan = inspect_source(intent, candidate)
+            return _search_and_inspect_one(item)
         except Exception as e:
             plan = ScrapePlan(
                 source_name=candidate.title or candidate.domain,
@@ -652,7 +684,7 @@ def discover_inspected_sources(
 
     from discovery import DiscoveryCandidateFeed
 
-    max_n = min(int(intent.max_sources or 10), int(os.getenv("DISCOVERY_MAX_SOURCES", "10")))
+    max_n = min(int(intent.max_sources or 10), int(os.getenv("DISCOVERY_MAX_SOURCES", "6")))
     max_attempts = int(os.getenv("DISCOVERY_MAX_INSPECT_ATTEMPTS", "40"))
     feed = DiscoveryCandidateFeed(intent)
     sources: list[SourceCandidate] = []

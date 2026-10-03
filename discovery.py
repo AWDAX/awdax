@@ -642,7 +642,7 @@ def candidate_from_serp_hit(
 
 
 def discover_sources(intent: ScrapeIntent) -> list[SourceCandidate]:
-    max_n = min(int(intent.max_sources or 10), int(os.getenv("DISCOVERY_MAX_SOURCES", "10")))
+    max_n = min(int(intent.max_sources or 10), int(os.getenv("DISCOVERY_MAX_SOURCES", "6")))
     feed = DiscoveryCandidateFeed(intent)
     out: list[SourceCandidate] = []
     while len(out) < max_n:

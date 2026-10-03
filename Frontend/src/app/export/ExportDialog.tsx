@@ -90,7 +90,7 @@ export function ExportDialog({ profile, scope, title, onClose }: Props) {
       <div ref={trap} role="dialog" aria-modal="true" aria-label="Export data" className="w-full max-w-3xl rounded-panel border-2 border-ink bg-surface p-5">
         <div className="mb-4 flex items-start gap-4 border-b-2 border-ink pb-3">
           <div>
-            <h2 className="font-display font-wide text-h3 font-extrabold">Export data</h2>
+            <h2 className="font-display text-h3 font-extrabold">Export data</h2>
             <p className="text-small text-ink-2">
               {scope.label} · {sheet.rows.length.toLocaleString('en-IN')} rows × {sheet.columns.length} columns
             </p>

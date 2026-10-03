@@ -17,9 +17,9 @@ const FILE_INPUT = 'new-chat-files'
 const CARDS: { icon: ReactNode; title: string; body: string; demo?: { slug: string; prompt: string } }[] = [
   {
     icon: <ChartIcon />,
-    title: 'Track a number over time',
-    body: 'Every RBI repo rate change since 2019, with its date, kept up to date in the background.',
-    demo: { slug: 'repo-rate', prompt: 'RBI repo rate changes since 2019 with date and rate' },
+    title: 'Shortlist phones by spec',
+    body: 'Smartphones under ₹30,000 with price, RAM and battery, side by side in one table.',
+    demo: { slug: 'phones-under-30k', prompt: 'Smartphones under ₹30,000 in India with price, RAM and battery' },
   },
   {
     icon: <SearchIcon />,
@@ -118,7 +118,7 @@ export default function NewChat() {
           files={files}
           onFilesChange={(f) => setFiles(f.slice(-1))}
           fileInputId={FILE_INPUT}
-          placeholder={files.length ? 'Ask something about this file (optional), then send' : 'e.g. Track Indian EV sales every month from 2024 to 2026'}
+          placeholder={files.length ? 'Ask something about this file (optional), then send' : 'e.g. Electric cars under ₹20 lakh in India with price and range'}
         />
       </div>
 
