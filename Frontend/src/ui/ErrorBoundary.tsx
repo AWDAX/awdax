@@ -3,7 +3,6 @@ import type { ErrorInfo, ReactNode } from 'react'
 import { Button } from './Button.tsx'
 import { buttonClass } from './buttonClass.ts'
 import { isChunkLoadError, reloadOnce } from './chunkReload.ts'
-import { reportError } from './reportError.ts'
 
 type FallbackArgs = { error: unknown; reset: () => void }
 
@@ -63,7 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
-    reportError(error, { componentStack: info.componentStack ?? undefined })
+    console.error('[awdax]', error, info.componentStack ?? undefined)
     if (isChunkLoadError(error)) {
       try {
         reloadOnce(sessionStorage, Date.now(), () => window.location.reload())

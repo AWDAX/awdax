@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
-from ui_sessions import get_session, save_session
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+from ui_sessions import _now, get_session, save_session
 
 
 def ensure_awdax_defaults(sess: dict[str, Any]) -> dict[str, Any]:

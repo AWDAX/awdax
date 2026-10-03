@@ -4,15 +4,12 @@ Generate Google search queries from the user's prompt.
 
 from __future__ import annotations
 
-import argparse
-import json
 import os
 import re
-import sys
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from reasoning import ScrapeIntent, gemini_json, parse_prompt
+from reasoning import ScrapeIntent, gemini_json
 from regulatory_strategy import intent_uses_regulatory_feed, regulatory_feed_search_queries
 
 # Queries that usually return shortlists, not full catalogs
@@ -175,31 +172,3 @@ def _fallback_queries(
         seen.add(s.lower())
         out.append(GeneratedQuery(query=s))
     return out
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Generate Google queries from user prompt")
-    parser.add_argument("--intent", help="Path to intent JSON")
-    parser.add_argument("prompt", nargs="?", help="Or raw prompt text")
-    parser.add_argument("--out", "-o")
-    args = parser.parse_args(argv)
-    if args.intent:
-        with open(args.intent, encoding="utf-8") as f:
-            intent = ScrapeIntent.from_dict(json.load(f))
-    elif args.prompt:
-        intent = parse_prompt(args.prompt)
-    else:
-        intent = parse_prompt(sys.stdin.read())
-    queries = generate_search_queries(intent)
-    payload = {"intent": intent.to_dict(), "queries": [q.to_dict() for q in queries]}
-    text = json.dumps(payload, indent=2)
-    if args.out:
-        with open(args.out, "w", encoding="utf-8") as f:
-            f.write(text)
-    else:
-        print(text)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

@@ -44,3 +44,7 @@ _2026-10-03 06:10_ · code:PASS ui:PASS · code `3a497929fa35`
 ## Q9 — Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change
 
 _2026-10-03 06:14_ · code:PASS · code `1b48e6b74ffb`
+
+## Q12 — Apply the re-audit cuts: dead html_extract extractors + dev CLIs + unused service methods, write-only LiveBridge map, duplicate helpers, unused frontend exports
+
+_2026-10-03 09:45_ · code:PASS ui:PASS · code `4065e34c7ae6`

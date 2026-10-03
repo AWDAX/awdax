@@ -4,7 +4,6 @@ Inspect a candidate source and produce a machine-runnable ScrapePlan.
 
 from __future__ import annotations
 
-import argparse
 import json
 import logging
 import os
@@ -654,26 +653,3 @@ def discover_inspected_sources(
         )
 
     return sources, plans
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Inspect URL → ScrapePlan")
-    parser.add_argument("--url", required=True)
-    parser.add_argument("--intent", required=True)
-    parser.add_argument("--out", "-o")
-    args = parser.parse_args()
-    with open(args.intent, encoding="utf-8") as f:
-        intent = ScrapeIntent.from_dict(json.load(f))
-    source = SourceCandidate(url=args.url, title=args.url)
-    plan = inspect_source(intent, source)
-    text = json.dumps(plan.to_dict(), indent=2)
-    if args.out:
-        with open(args.out, "w", encoding="utf-8") as f:
-            f.write(text)
-    else:
-        print(text)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

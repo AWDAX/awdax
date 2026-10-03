@@ -4,7 +4,6 @@ Discover candidate sources for a ScrapeIntent (hybrid search + Gemini legit filt
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import re
@@ -639,37 +638,3 @@ def candidate_from_serp_hit(
         http_status=int(probe.get("http_status") or 0),
         search_query=search_query,
     )
-
-
-def discover_sources(intent: ScrapeIntent) -> list[SourceCandidate]:
-    max_n = min(int(intent.max_sources or 10), int(os.getenv("DISCOVERY_MAX_SOURCES", "6")))
-    feed = DiscoveryCandidateFeed(intent)
-    out: list[SourceCandidate] = []
-    while len(out) < max_n:
-        c = feed.next_candidate()
-        if c is None:
-            break
-        out.append(c)
-    return out
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Discover sources for ScrapeIntent")
-    parser.add_argument("--intent", required=True, help="Path to intent JSON")
-    parser.add_argument("--out", "-o", help="Output JSON path")
-    args = parser.parse_args()
-    with open(args.intent, encoding="utf-8") as f:
-        intent = ScrapeIntent.from_dict(json.load(f))
-    sources = discover_sources(intent)
-    payload = {"intent": intent.to_dict(), "sources": [s.to_dict() for s in sources]}
-    text = json.dumps(payload, indent=2)
-    if args.out:
-        with open(args.out, "w", encoding="utf-8") as f:
-            f.write(text)
-    else:
-        print(text)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

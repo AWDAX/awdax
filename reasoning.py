@@ -4,10 +4,6 @@ Parse natural-language scrape requests into structured ScrapeIntent (JSON).
 
 from __future__ import annotations
 
-import argparse
-import json
-import re
-import sys
 import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -105,23 +101,3 @@ If the user wants a comprehensive list (e.g. all EV cars with prices, compare mo
     from regulatory_strategy import enrich_intent_for_execution
 
     return enrich_intent_for_execution(intent)
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Parse scrape prompt → ScrapeIntent JSON")
-    parser.add_argument("prompt", nargs="?", help="Natural language prompt")
-    parser.add_argument("--out", "-o", help="Write JSON to file")
-    args = parser.parse_args(argv)
-    prompt = args.prompt or sys.stdin.read()
-    intent = parse_prompt(prompt)
-    out = json.dumps(intent.to_dict(), indent=2)
-    if args.out:
-        with open(args.out, "w", encoding="utf-8") as f:
-            f.write(out)
-    else:
-        print(out)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

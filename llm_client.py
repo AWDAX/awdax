@@ -113,7 +113,7 @@ def _parse_json(text: str) -> Any:
 def _nvidia_call(prompt: str, temperature: float, parse: Callable[[str], Any]) -> Any:
     """Try each NVIDIA model in order. Raises RuntimeError (no key text) when all fail."""
     global _nvidia_key_rejected, _last_good
-    base =(os.getenv("NVIDIA_API_BASE") or os.getenv("NVIDIA_BASE_URL") or _DEFAULT_BASE).strip().rstrip("/")
+    base =(os.getenv("NVIDIA_API_BASE") or _DEFAULT_BASE).strip().rstrip("/")
     try:
         timeout = float(os.getenv("NVIDIA_TIMEOUT_SECONDS") or 90)
     except ValueError:

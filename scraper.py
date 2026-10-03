@@ -267,21 +267,6 @@ class UniversalScrapeService:
         conn.close()
         return int(n)
 
-    def load_intent(self, job_id: str) -> ScrapeIntent | None:
-        init_universal_tables()
-        conn = _get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT intent_json FROM scrape_jobs WHERE id=?", (job_id,))
-        row = cur.fetchone()
-        cur.close()
-        conn.close()
-        if not row or not row["intent_json"]:
-            return None
-        try:
-            return ScrapeIntent.from_dict(json.loads(row["intent_json"]))
-        except Exception:
-            return None
-
     def save_job(self, job: ScrapeJob) -> None:
         init_universal_tables()
         conn = _get_db()
@@ -576,42 +561,6 @@ class UniversalScrapeService:
         )
         self.save_merged_table(job.job_id, table)
         return table
-
-    def list_records(self, job_id: str | None, limit: int = 50) -> list[dict[str, Any]]:
-        init_universal_tables()
-        conn = _get_db()
-        cur = conn.cursor()
-        if job_id:
-            cur.execute(
-                "SELECT id, external_id, data_json, created_at FROM records WHERE job_id=? ORDER BY id DESC LIMIT ?",
-                (job_id, limit),
-            )
-        else:
-            cur.execute(
-                "SELECT id, external_id, data_json, created_at FROM records ORDER BY id DESC LIMIT ?",
-                (limit,),
-            )
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        out = []
-        for r in rows:
-            data = json.loads(r["data_json"])
-            out.append(
-                {
-                    "id": r["id"],
-                    "external_id": r["external_id"],
-                    "subject": data.get("subject") or data.get("Subject") or r["external_id"],
-                    "summary": data.get("summary") or "Pending summary…",
-                    "gazette_id": r["external_id"],
-                    "ministry": data.get("ministry") or data.get("Ministry / Organization"),
-                    "publish_date": data.get("publish_date") or data.get("Publish Date"),
-                    "pdf_url": data.get("PDF_URL") or "",
-                    "importance": data.get("importance") or "medium",
-                    "created_at": r["created_at"],
-                }
-            )
-        return out
 
     def trigger_scrape(self, plan: ScrapePlan, job: ScrapeJob, max_pages: int = 3) -> dict[str, Any]:
         return self.trigger_scrape_all([plan], job, max_pages=max_pages)

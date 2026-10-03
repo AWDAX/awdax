@@ -96,3 +96,18 @@ Verified 2026-10-03 06:10 against code `3a497929fa35`.
 Verified 2026-10-03 06:14 against code `1b48e6b74ffb`.
 
 - **code** — PASS via `verify.mjs` · recorded 2026-10-03 06:14
+
+### Q6 — later note (finding) · 2026-10-03 06:21
+
+Same-source A/B of the scrape fetch+extract step (6 cars sources, same hour): SCRAPE_WORKERS=3 wall 482 s / 44 rows; =1 wall 655 s / 30 rows. 26% less wall time, not ~3x: NVIDIA serves concurrent calls slower (sum of per-source times 655 -> 1050 s) and 90 s read timeouts dominate both runs. One sample each; directional.
+
+## Q12 — Apply the re-audit cuts: dead html_extract extractors + dev CLIs + unused service methods, write-only LiveBridge map, duplicate helpers, unused frontend exports
+
+Verified 2026-10-03 09:45 against code `4065e34c7ae6`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 09:44
+- **ui** — PASS via `playwright-core+chromium-1243 (headless)` · recorded 2026-10-03 09:45
+  - routes: /app, /, /app/demo/*, /app/c/*
+  - viewports: mobile, desktop
+  - states: default
+  - 48 assertion(s) · 0 console error(s) · 0 failed request(s)

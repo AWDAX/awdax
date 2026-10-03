@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T06:16:57.060Z",
+  "updated": "2026-10-03T09:45:56.419Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -425,6 +425,12 @@
         {
           "ts": "2026-10-03T06:02:30.151Z",
           "text": "Real run (cars, 6 sources): end to end OK with SCRAPE_WORKERS=3, first pass 70 rows at 871 s; wall time skewed by 5 NVIDIA 90 s timeouts during the scrape, so a same-source A/B (1 vs 3 workers) follows as a note."
+        },
+        {
+          "ts": "2026-10-03T06:21:49.426Z",
+          "text": "Same-source A/B of the scrape fetch+extract step (6 cars sources, same hour): SCRAPE_WORKERS=3 wall 482 s / 44 rows; =1 wall 655 s / 30 rows. 26% less wall time, not ~3x: NVIDIA serves concurrent calls slower (sum of per-source times 655 -> 1050 s) and 90 s read timeouts dominate both runs. One sample each; directional.",
+          "kind": "finding",
+          "afterDone": true
         }
       ],
       "started": "2026-10-03T05:41:02.769Z",
@@ -636,6 +642,58 @@
       "started": null,
       "finished": null,
       "blockedReason": null
+    },
+    {
+      "id": "Q12",
+      "title": "Apply the re-audit cuts: dead html_extract extractors + dev CLIs + unused service methods, write-only LiveBridge map, duplicate helpers, unused frontend exports",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T09:44:51.144Z",
+          "codeHash": "4065e34c7ae60130b0840d1b78c4b28d9f01ab33e58dc5d977c9c1dc314cde08"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T09:45:49.709Z",
+          "codeHash": "4065e34c7ae60130b0840d1b78c4b28d9f01ab33e58dc5d977c9c1dc314cde08",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T09:45:55.731Z",
+          "text": "Re-audit cuts: html_extract.py removed (3 dead extractors; build_page_digest moved into its one caller gemini_scrape.py, digest checked by an assert smoke on JSON-LD, tables, visible text); dev CLIs main() in reasoning/query_generation/inspector/discovery and the then-dead discover_sources; UniversalScrapeService.list_records + load_intent; LiveBridge write-only _instance_jobs/register_job; duplicate _strip_html_tags (x2) and _now; NVIDIA_BASE_URL alias; reportError.ts (console.error inline); TerminalIcon. Kept setChatTitle: the test's only seed (Node has no usable localStorage). Dead-def scan now 0; 168 backend tests OK; frontend gate PASS; backend restarted, endpoints 200, retired route 404."
+        }
+      ],
+      "started": "2026-10-03T06:20:12.251Z",
+      "finished": "2026-10-03T09:45:56.416Z",
+      "blockedReason": null,
+      "base": "50700e692285fb64e60273e933dc17ed542d2b8e",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     }
   ],
   "log": [
@@ -998,7 +1056,42 @@
       "ts": "2026-10-03T06:16:57.060Z",
       "event": "block",
       "detail": "Q10 [HUMAN]: CI evidence needs a real GitHub Actions run of .github/workflows/ci.yml, which exists only after the owner pushes the branch — needs Owner pushes fix/polish-and-run-speed and opens a PR; then loop evidence delivery from: node ~/.agents/gates/delivery.mjs ci --run <run-id>"
+    },
+    {
+      "ts": "2026-10-03T06:20:11.575Z",
+      "event": "add",
+      "detail": "Q12 Apply the re-audit cuts: dead html_extract extractors + dev CLIs + unused service methods, write-only LiveBridge map, duplicate helpers, unused frontend exports"
+    },
+    {
+      "ts": "2026-10-03T06:20:12.251Z",
+      "event": "start",
+      "detail": "Q12 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:21:49.428Z",
+      "event": "note",
+      "detail": "Q6 [finding]: Same-source A/B of the scrape fetch+extract step (6 cars sou"
+    },
+    {
+      "ts": "2026-10-03T09:44:51.186Z",
+      "event": "evidence",
+      "detail": "Q12/code PASS"
+    },
+    {
+      "ts": "2026-10-03T09:45:49.749Z",
+      "event": "evidence",
+      "detail": "Q12/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T09:45:55.731Z",
+      "event": "note",
+      "detail": "Q12: Re-audit cuts: html_extract.py removed (3 dead extractors; b"
+    },
+    {
+      "ts": "2026-10-03T09:45:56.419Z",
+      "event": "done",
+      "detail": "Q12 (code:PASS ui:PASS)"
     }
   ],
-  "integrity": "7c79d7e4fc7f61d80ecead1afb1d7f2213efb9476128862e8d3fb39da76a68f0"
+  "integrity": "8bb14022eabd85778691b8faa82e29155d393e48eb7a2415a1bad5c0dbd2b53f"
 }
