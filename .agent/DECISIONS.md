@@ -44,3 +44,9 @@ owner approved on 2 Oct and again on 3 Oct (parallel discovery, audit fixes)
 **No stack change: SQLite stays (no Postgres), no new packages**
 
 owner, 3 Oct: 'we don't change the tech stack'
+
+## 2026-10-03 05:40
+
+**Skipped the shared Selenium import module from the audit: four 11-line try/except blocks would become four import lines plus a new ~25-line module, saving ~10 lines for one more file; not worth it by ponytail's own rule. Removed inspector.py's three unused Selenium imports instead.**
+
+measured the real saving before building the abstraction

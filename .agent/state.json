@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T05:39:13.689Z",
+  "updated": "2026-10-03T05:40:52.662Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -383,21 +383,33 @@
     {
       "id": "Q5",
       "title": "Backend: one shared Selenium import, dependency list trimmed",
-      "state": "TODO",
+      "state": "DONE",
       "deps": [
         "Q4"
       ],
-      "attempts": 0,
-      "evidence": {},
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:40:51.951Z",
+          "codeHash": "b7e5b01c9bb2d8c4d318c1fa3e00eae1da0b08f0006b320d4a1f787edd80bd08"
+        }
+      },
       "notes": [],
-      "started": null,
-      "finished": null,
-      "blockedReason": null
+      "started": "2026-10-03T05:39:24.038Z",
+      "finished": "2026-10-03T05:40:52.660Z",
+      "blockedReason": null,
+      "base": "df82edd6a776398156e61367c24c6032bc3b979d",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     },
     {
       "id": "Q6",
       "title": "Backend: scrape sources in parallel, database writes serialized",
-      "state": "WAITING",
+      "state": "TODO",
       "deps": [
         "Q5"
       ],
@@ -707,7 +719,27 @@
       "ts": "2026-10-03T05:39:13.689Z",
       "event": "done",
       "detail": "Q4 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T05:39:24.038Z",
+      "event": "start",
+      "detail": "Q5 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T05:40:12.839Z",
+      "event": "decision",
+      "detail": "Skipped the shared Selenium import module from the audit: four 11-line try/except blocks would become four import lines plus a new ~25-line module, saving ~10 lines for one more file; not worth it by ponytail's own rule. Removed inspector.py's three unused Selenium imports instead."
+    },
+    {
+      "ts": "2026-10-03T05:40:51.990Z",
+      "event": "evidence",
+      "detail": "Q5/code PASS"
+    },
+    {
+      "ts": "2026-10-03T05:40:52.662Z",
+      "event": "done",
+      "detail": "Q5 (code:PASS)"
     }
   ],
-  "integrity": "77dfb3fb8866329cc64e3045d0186f7762057f3265d96d9ee579040c7c6cbca6"
+  "integrity": "e06fc2c7a80b1485e123b1bf4c54a3686e96e9ca558cbb8b8bfc9226b9ea3da5"
 }

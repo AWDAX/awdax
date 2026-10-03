@@ -24,3 +24,7 @@ _2026-10-03 05:33_ · code:PASS ui:PASS · code `faed386b03da`
 ## Q4 — Backend: retire the legacy pre-React API and the old root page
 
 _2026-10-03 05:39_ · code:PASS ui:PASS · code `931f7b734a43`
+
+## Q5 — Backend: one shared Selenium import, dependency list trimmed
+
+_2026-10-03 05:40_ · code:PASS · code `b7e5b01c9bb2`

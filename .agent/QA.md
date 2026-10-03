@@ -56,3 +56,9 @@ Verified 2026-10-03 05:39 against code `931f7b734a43`.
   - viewports: mobile, desktop
   - states: default
   - 35 assertion(s) · 0 console error(s) · 0 failed request(s)
+
+## Q5 — Backend: one shared Selenium import, dependency list trimmed
+
+Verified 2026-10-03 05:40 against code `b7e5b01c9bb2`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 05:40
