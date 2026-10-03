@@ -6,6 +6,7 @@ import { ButtonLink } from '../ui/Button.tsx'
 import { Mark } from '../ui/Mark.tsx'
 import { useSignedInHint } from './useSignedInHint.ts'
 
+
 const links = [
   { href: '#how', label: 'How it works' },
   { href: '#sources', label: 'Sources' },
@@ -65,8 +66,11 @@ export function Nav() {
             </a>
           ))}
         </nav>
-        {signedIn ? <ButtonLink to="/app">Open the app</ButtonLink> : <ButtonLink to="/login">Sign in</ButtonLink>}
+        <div className="flex items-center gap-3">
+          {signedIn ? <ButtonLink to="/app">Open the app</ButtonLink> : <ButtonLink to="/login">Sign in</ButtonLink>}
+        </div>
       </Container>
     </header>
   )
 }
+

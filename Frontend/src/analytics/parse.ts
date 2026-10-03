@@ -1,10 +1,10 @@
-import { add, fromInt, fromString, mul, neg, shift } from './decimal.ts'
+import { add, cmp, fromInt, fromString, mul, neg, shift } from './decimal.ts'
 import type { Dec } from './decimal.ts'
 
 /**
  * Scraped cells are strings ("₹12.5 lakh", "1,44,879", "(1,200)", "18.4%", "450 km"). This reads them into
  * exact decimals and says what it read, so the UI can show the unit and why a cell was left out.
- * A missing value ("N/A", "—") is never read as 0.
+ * A missing value ("N/A", "—") is never read as 0. A range of one measured quantity counts as its lowest value.
  */
 
 export type Currency = 'INR' | 'USD' | 'EUR' | 'GBP'
@@ -19,6 +19,8 @@ export interface ParsedNumber {
   scaleWord?: string
   /** Marked "~", "approx." or "about" in the source. */
   approx?: boolean
+  /** The cell was a range ("₹11.45 – ₹26.95 Lakh"): `value` is its low end. */
+  range?: { low: Dec; high: Dec }
 }
 
 export type NumberRead = { ok: true; num: ParsedNumber } | { ok: false; missing: boolean; reason: string }
@@ -77,23 +79,15 @@ function readDigits(body: string): Dec | null {
   return fromString(whole.replace(/[, \u00a0\u202f]/g, '') + (m[2] ?? ''))
 }
 
-/** Reads one cell as a number. */
-export function parseNumber(input: string | number | null | undefined): NumberRead {
-  if (input === null || input === undefined) return { ok: false, missing: true, reason: 'empty' }
-  if (typeof input === 'number') {
-    if (!Number.isFinite(input)) return { ok: false, missing: false, reason: 'not a finite number' }
-    const d = fromString(String(input))
-    return d ? { ok: true, num: { value: d } } : { ok: false, missing: false, reason: 'not a number' }
-  }
-  let s = input.trim()
-  if (isMissingText(s)) return { ok: false, missing: true, reason: 'marked as missing' }
+/** One number: approx mark, brackets, currency, sign, percent, digits, scale word, unit. */
+function readOne(text: string): NumberRead {
+  let s = text
   const num: Partial<ParsedNumber> = {}
 
   if (/^(~|≈|approx\.?|about|around|circa|ca\.)\s*/i.test(s)) {
     num.approx = true
     s = s.replace(/^(~|≈|approx\.?|about|around|circa|ca\.)\s*/i, '')
   }
-  if (/\b(to|and)\b|\d\s*[-–—]\s*\d/i.test(s)) return { ok: false, missing: false, reason: 'a range, not one number' }
 
   let negative = false
   const paren = /^\((.*)\)$/.exec(s)
@@ -144,6 +138,57 @@ export function parseNumber(input: string | number | null | undefined): NumberRe
     num.suffix = rest.toLowerCase().replace(/\.$/, '')
   }
   return { ok: true, num: { ...num, value: negative ? neg(value) : value } }
+}
+
+/**
+ * "₹11.45 – ₹26.95 Lakh", "450 - 500 km", "10 to 15 Lakh": both ends of one quantity, read as the lower end.
+ * Null unless that is clear, so everything else keeps the single-number rules and their refusal.
+ */
+function readRange(s: string): NumberRead | null {
+  if (/^[-−+(]/.test(s)) return null
+  const m = /^(.+?)\s*(?:[-–—]|\bto\b)\s*(.+)$/i.exec(s)
+  // Another "to" or an "and" is "Up to 500", "500 and above" or a chain, not two ends: those stay refused.
+  if (!m || /\b(to|and)\b/i.test(`${m[1]} ${m[2]}`)) return null
+  const a = readOne(m[1])
+  const b = readOne(m[2])
+  if (!a.ok || !b.ok) return null
+  const x = a.num
+  const y = b.num
+
+  const unit = (n: ParsedNumber) => n.currency || n.scaleWord || n.suffix || n.percent
+  // Bare digits ("2024-25", "98765-43210") are years, pages and phone numbers as often as quantities.
+  if (!unit(x) && !unit(y)) return null
+  if (x.currency && y.currency && x.currency !== y.currency) return null
+  if (x.suffix && y.suffix && x.suffix !== y.suffix) return null
+  if ((x.percent || y.percent) && (x.currency || y.currency || x.suffix || y.suffix)) return null
+  // "km/h in 9.5 s" gets through readOne as a unit; with a digit in it, it is a phrase.
+  if ([x.suffix, y.suffix].some((u) => u && /\d/.test(u))) return null
+
+  let low = x.value
+  let high = y.value
+  // A scale word written once covers both ends ("24.99 - 34.49 Lakh"); two words are each read as written.
+  const power = (word: string) => SCALES.find(([, , name]) => name === word)?.[1] ?? 0
+  if (x.scaleWord && !y.scaleWord) high = shift(high, power(x.scaleWord))
+  else if (y.scaleWord && !x.scaleWord) low = shift(low, power(y.scaleWord))
+  if (cmp(low, high) > 0) return null
+  return { ok: true, num: { ...y, ...x, value: low, range: { low, high } } }
+}
+
+/** Reads one cell as a number. */
+export function parseNumber(input: string | number | null | undefined): NumberRead {
+  if (input === null || input === undefined) return { ok: false, missing: true, reason: 'empty' }
+  if (typeof input === 'number') {
+    if (!Number.isFinite(input)) return { ok: false, missing: false, reason: 'not a finite number' }
+    const d = fromString(String(input))
+    return d ? { ok: true, num: { value: d } } : { ok: false, missing: false, reason: 'not a number' }
+  }
+  // A footnote mark at the very end ("₹7.99 Lakh*") is not part of the number; anywhere else it still stops the read.
+  const s = input.trim().replace(/\s*[*†‡]+$/, '')
+  if (isMissingText(s)) return { ok: false, missing: true, reason: 'marked as missing' }
+  const range = readRange(s)
+  if (range) return range
+  if (/\b(to|and)\b|\d\s*[-–—]\s*\d/i.test(s)) return { ok: false, missing: false, reason: 'a range, not one number' }
+  return readOne(s)
 }
 
 /** Is this a web address? Scraped "Source" columns usually are. */

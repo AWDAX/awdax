@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
 from awdax_api.dataset_export import build_dashboard, build_dataset_table
 from awdax_api.errors import detail_response
-from awdax_api.orchestrator import is_running, start_run
+from awdax_api.orchestrator import is_running, resume_instance, start_run
+from awdax_api.run_registry import RunLimitError, has_capacity
 from awdax_api.serializers import to_awdax_instance, to_awdax_live_state, to_awdax_messages
 from awdax_api.session_store import append_message, load_instance_session, persist_session
 from awdax_api.sources_stats_graph import (
@@ -18,10 +20,28 @@ from awdax_api.sources_stats_graph import (
     rescore_dataset,
 )
 from awdax_api.live_bridge import live_bridge
+from auth_helper import get_user_id
 from scraper import universal_service
 from ui_sessions import create_session, delete_session, get_session, list_sessions, save_session
 
 bp = Blueprint("awdax_api", __name__)
+
+MAX_PROMPT_CHARS = 2000
+PROMPT_TOO_LONG = f"Request is too long ({MAX_PROMPT_CHARS} characters max)"
+WS_KEEPALIVE_SECONDS = 15
+RUNS_BUSY = "Too many runs are active right now. Please try again in a few minutes."
+
+
+def _pump(sub, send, timeout: float = WS_KEEPALIVE_SECONDS) -> None:
+    """Forward queued live messages to `send`. On an idle timeout send a ping frame; a send on a closed
+    socket raises, which ends the loop so the caller's cleanup runs."""
+    while True:
+        try:
+            msg = sub.get(timeout=timeout)
+        except queue.Empty:
+            send(json.dumps({"type": "ping"}))
+            continue
+        send(json.dumps(msg, default=str))
 
 
 @bp.get("/health")
@@ -36,32 +56,36 @@ def ready():
 
 @bp.get("/api/instances")
 def list_instances():
+    uid = get_user_id(request)
     rows = []
-    for meta in list_sessions():
-        full = get_session(meta["id"])
+    for meta in list_sessions(uid):
+        full = get_session(meta["id"], uid)
         if not full:
             continue
         if full.get("archived"):
             continue
-        rows.append(to_awdax_instance(full))
+        rows.append(to_awdax_instance(full, with_row_count=False))
     return jsonify(rows)
 
 
 @bp.post("/api/instances")
 def create_instance():
+    uid = get_user_id(request)
     body = request.get_json(silent=True) or {}
-    title = str(body.get("title") or "Untitled chat").strip() or "Untitled chat"
+    title = str(body.get("title") or "Untitled chat")[:80].strip() or "Untitled chat"
     goal = str(body.get("goal") or "").strip()
-    sess = create_session(title=title)
+    if len(goal) > MAX_PROMPT_CHARS:
+        return detail_response(400, PROMPT_TOO_LONG)
+    sess = create_session(user_id=uid, title=title)
     if goal:
         sess["goal"] = goal
-        sess = save_session(sess)
+        sess = save_session(uid, sess)
     return jsonify(to_awdax_instance(sess)), 201
 
 
 @bp.get("/api/instances/<instance_id>")
 def get_instance(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(to_awdax_instance(sess))
@@ -69,12 +93,12 @@ def get_instance(instance_id: str):
 
 @bp.patch("/api/instances/<instance_id>")
 def patch_instance(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     body = request.get_json(silent=True) or {}
     if "title" in body:
-        sess["title"] = str(body.get("title") or sess.get("title"))
+        sess["title"] = str(body.get("title") or "").strip()[:80] or sess.get("title")
     if "archived" in body:
         sess["archived"] = bool(body.get("archived"))
     if "live_enabled" in body:
@@ -84,24 +108,27 @@ def patch_instance(instance_id: str):
         if not enabled and jid:
             universal_service.stop_live(jid)
     sess = persist_session(sess)
+    if body.get("live_enabled"):
+        resume_instance(instance_id, sess)
+        sess = load_instance_session(instance_id) or sess
     return jsonify(to_awdax_instance(sess))
 
 
 @bp.delete("/api/instances/<instance_id>")
 def delete_instance(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     jid = sess.get("job_id")
     if jid:
         universal_service.stop_live(jid)
-    delete_session(instance_id)
+    delete_session(instance_id, get_user_id(request))
     return ("", 204)
 
 
 @bp.get("/api/instances/<instance_id>/messages")
 def get_messages(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(to_awdax_messages(sess))
@@ -109,7 +136,7 @@ def get_messages(instance_id: str):
 
 @bp.post("/api/instances/<instance_id>/messages")
 def post_message(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     if is_running(instance_id):
@@ -118,24 +145,39 @@ def post_message(instance_id: str):
     content = str(body.get("content") or "").strip()
     if not content:
         return detail_response(400, "content is required")
+    if len(content) > MAX_PROMPT_CHARS:
+        return detail_response(400, PROMPT_TOO_LONG)
+    # Refuse before any side effect: a request turned away must not stop tracking, clear the dataset or save a message.
+    if not has_capacity(instance_id, sess.get("user_id")):
+        return detail_response(429, RUNS_BUSY)
     append_message(sess, role="user", content=content)
     sess["goal"] = content
     sess["keep_live"] = True
+    
+    # Auto-rename chat to first prompt if still untitled
+    current_title = str(sess.get("title") or "").strip()
+    if not current_title or current_title in ("Untitled chat", "New session", "Session 1"):
+        sess["title"] = content[:80].strip()
+
     if sess.get("job_id"):
+        # The new run gets a new job id; stop the old live loop or it keeps re-scraping unseen (no-op if not live).
+        universal_service.stop_live(sess["job_id"])
         universal_service.clear_job_dataset(sess["job_id"])
     sess = persist_session(sess)
     max_pages = body.get("max_pages")
     mp = int(max_pages) if max_pages is not None else None
     try:
         start_run(instance_id, content, max_pages=mp)
+    except RunLimitError:
+        return detail_response(429, RUNS_BUSY)
     except RuntimeError as e:
         return detail_response(409, str(e))
-    return jsonify(to_awdax_messages(load_instance_session(instance_id) or sess)), 201
+    return jsonify(to_awdax_messages(load_instance_session(instance_id, get_user_id(request)) or sess)), 201
 
 
 @bp.get("/api/instances/<instance_id>/dataset")
 def get_dataset(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     try:
@@ -151,7 +193,7 @@ def get_dataset(instance_id: str):
 
 @bp.delete("/api/instances/<instance_id>/dataset")
 def delete_dataset(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     if is_running(instance_id):
@@ -166,7 +208,7 @@ def delete_dataset(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/dashboard")
 def get_dashboard(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(build_dashboard(sess))
@@ -174,7 +216,7 @@ def get_dashboard(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/live")
 def get_live(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(to_awdax_live_state(sess))
@@ -182,7 +224,7 @@ def get_live(instance_id: str):
 
 @bp.patch("/api/instances/<instance_id>/live")
 def patch_live(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     body = request.get_json(silent=True) or {}
@@ -192,12 +234,15 @@ def patch_live(instance_id: str):
     if jid and not enabled:
         universal_service.stop_live(jid)
     sess = persist_session(sess)
+    if enabled:
+        resume_instance(instance_id, sess)
+        sess = load_instance_session(instance_id) or sess
     return jsonify(to_awdax_live_state(sess))
 
 
 @bp.get("/api/instances/<instance_id>/live/stream")
 def live_stream(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
 
@@ -233,7 +278,7 @@ def live_stream(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/sources")
 def get_sources(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(build_sources_response(sess))
@@ -241,7 +286,7 @@ def get_sources(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/dataset/stats")
 def get_stats(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(build_dataset_stats(sess))
@@ -249,7 +294,7 @@ def get_stats(instance_id: str):
 
 @bp.post("/api/instances/<instance_id>/dataset/rescore")
 def post_rescore(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     try:
@@ -260,7 +305,7 @@ def post_rescore(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/graph/parameters")
 def get_graph_parameters(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     include_partial = request.args.get("include_partial", "false").lower() == "true"
@@ -269,7 +314,7 @@ def get_graph_parameters(instance_id: str):
 
 @bp.get("/api/instances/<instance_id>/graph")
 def get_graph(instance_id: str):
-    sess = load_instance_session(instance_id)
+    sess = load_instance_session(instance_id, get_user_id(request))
     if not sess:
         return detail_response(404, "Instance not found")
     include_partial = request.args.get("include_partial", "false").lower() == "true"
@@ -281,7 +326,7 @@ def get_graph(instance_id: str):
 def register_websocket(sock) -> None:
     @sock.route("/api/instances/<instance_id>/live/ws")
     def live_ws(ws, instance_id: str):
-        sess = load_instance_session(instance_id)
+        sess = load_instance_session(instance_id, get_user_id(request))
         if not sess:
             ws.send(json.dumps({"type": "error", "detail": "Instance not found"}))
             return
@@ -290,9 +335,7 @@ def register_websocket(sock) -> None:
             ws.send(json.dumps(live_bridge.hello_payload(instance_id), default=str))
             sub = live_bridge.subscribe(instance_id)
             try:
-                while True:
-                    msg = sub.get()
-                    ws.send(json.dumps(msg, default=str))
+                _pump(sub, ws.send)
             finally:
                 live_bridge.unsubscribe(instance_id, sub)
         finally:

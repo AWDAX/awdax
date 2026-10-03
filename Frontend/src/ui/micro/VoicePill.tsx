@@ -83,7 +83,6 @@ export function VoicePill({ onStart, onStop, disabled = false, listening: active
     return () => window.clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, listening])
-  useEffect(() => () => stop('unmount'), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = () => (listening ? stop('toggle') : begin())
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {

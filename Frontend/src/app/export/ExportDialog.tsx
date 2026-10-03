@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { SVGProps } from 'react'
 import type { TableProfile } from '../../analytics/profile.ts'
-import { CloseIcon, DownloadIcon } from '../../ui/appIcons.tsx'
+import { CloseIcon, DownloadIcon, TableIcon, ExcelIcon, BracesIcon, ListLinesIcon, DatabaseIcon, FileIcon, CodeIcon, MarkdownIcon } from '../../ui/appIcons.tsx'
 import { Button } from '../../ui/Button.tsx'
+import { Select } from '../../ui/Select.tsx'
 import { CopyButton } from '../../ui/micro/CopyButton.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
 import { useFocusTrap } from '../../ui/useFocusTrap.ts'
@@ -14,15 +16,15 @@ import type { Dialect } from './sql.ts'
 
 type Format = 'csv' | 'xlsx' | 'json' | 'jsonl' | 'sql' | 'tsv' | 'xml' | 'md'
 
-const FORMATS: { id: Format; label: string; ext: string; mime: string; note: string }[] = [
-  { id: 'csv', label: 'CSV', ext: 'csv', mime: 'text/csv', note: 'Excel, Power BI, Google Sheets' },
-  { id: 'xlsx', label: 'Excel', ext: 'xlsx', mime: '', note: 'Typed numbers and dates, plus an About sheet' },
-  { id: 'json', label: 'JSON', ext: 'json', mime: 'application/json', note: 'An array of objects' },
-  { id: 'jsonl', label: 'JSON Lines', ext: 'jsonl', mime: 'application/x-ndjson', note: 'One object per line' },
-  { id: 'sql', label: 'SQL', ext: 'sql', mime: 'application/sql', note: 'CREATE TABLE + INSERT' },
-  { id: 'tsv', label: 'TSV', ext: 'tsv', mime: 'text/tab-separated-values', note: 'Tab-separated' },
-  { id: 'xml', label: 'XML', ext: 'xml', mime: 'application/xml', note: 'One <row> per row' },
-  { id: 'md', label: 'Markdown', ext: 'md', mime: 'text/markdown', note: 'A table for docs and READMEs' },
+const FORMATS: { id: Format; label: string; ext: string; mime: string; note: string; icon: (p: SVGProps<SVGSVGElement>) => React.JSX.Element }[] = [
+  { id: 'csv', label: 'CSV', ext: 'csv', mime: 'text/csv', note: 'Excel, Power BI, Google Sheets', icon: TableIcon },
+  { id: 'xlsx', label: 'Excel', ext: 'xlsx', mime: '', note: 'Typed numbers and dates, plus an About sheet', icon: ExcelIcon },
+  { id: 'json', label: 'JSON', ext: 'json', mime: 'application/json', note: 'An array of objects', icon: BracesIcon },
+  { id: 'jsonl', label: 'JSON Lines', ext: 'jsonl', mime: 'application/x-ndjson', note: 'One object per line', icon: ListLinesIcon },
+  { id: 'sql', label: 'SQL', ext: 'sql', mime: 'application/sql', note: 'CREATE TABLE + INSERT', icon: DatabaseIcon },
+  { id: 'tsv', label: 'TSV', ext: 'tsv', mime: 'text/tab-separated-values', note: 'Tab-separated', icon: FileIcon },
+  { id: 'xml', label: 'XML', ext: 'xml', mime: 'application/xml', note: 'One <row> per row', icon: CodeIcon },
+  { id: 'md', label: 'Markdown', ext: 'md', mime: 'text/markdown', note: 'A table for docs and READMEs', icon: MarkdownIcon },
 ]
 
 type Props = { profile: TableProfile; scope: ExportScope; title: string; onClose: () => void }
@@ -101,9 +103,12 @@ export function ExportDialog({ profile, scope, title, onClose }: Props) {
         <fieldset className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <legend className="sr-only">Format</legend>
           {FORMATS.map((f) => (
-            <label key={f.id} className={`flex cursor-pointer flex-col rounded-panel border-2 p-2.5 ${format === f.id ? 'border-ink bg-signal-soft' : 'border-line hover:border-ink'}`}>
+            <label key={f.id} className={`flex cursor-pointer flex-col gap-1.5 rounded-panel border-2 p-2.5 ${format === f.id ? 'border-ink bg-signal-soft' : 'border-line hover:border-ink'}`}>
               <input type="radio" name="format" value={f.id} checked={format === f.id} onChange={() => setFormat(f.id)} className="sr-only" />
-              <span className="text-small font-semibold">{f.label}</span>
+              <div className="flex items-center gap-2">
+                <f.icon className={format === f.id ? 'text-ink' : 'text-ink-2'} />
+                <span className="text-small font-semibold">{f.label}</span>
+              </div>
               <span className="text-micro text-ink-3">{f.note}</span>
             </label>
           ))}
@@ -118,13 +123,12 @@ export function ExportDialog({ profile, scope, title, onClose }: Props) {
             <>
               <label className="flex flex-col gap-1">
                 <span className="text-micro text-ink-3">Database</span>
-                <select value={dialect} onChange={(e) => setDialect(e.target.value as Dialect)} className="h-9 rounded-control border-2 border-line px-2 focus:border-ink focus:outline-none">
-                  {(Object.keys(DIALECT_LABEL) as Dialect[]).map((d) => (
-                    <option key={d} value={d}>
-                      {DIALECT_LABEL[d]}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  label="Database"
+                  value={dialect}
+                  onChange={(d) => setDialect(d)}
+                  options={(Object.keys(DIALECT_LABEL) as Dialect[]).map((d) => ({ value: d, label: DIALECT_LABEL[d] }))}
+                />
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-micro text-ink-3">Table name</span>
@@ -145,14 +149,15 @@ export function ExportDialog({ profile, scope, title, onClose }: Props) {
         )}
         <p className="mt-3 text-micro text-ink-3">
           Missing values stay empty (NULL in SQL), never 0. Text cells starting with = + − @ get a leading ' in CSV and TSV so spreadsheets don’t run them as formulas.
+          {!raw && profile.columns.some((c) => c.ranged) && ' Ranges are exported as their lowest value; tick “Values exactly as scraped” to keep the text.'}
         </p>
 
         <div className="mt-4 flex gap-2">
           <Button onClick={save} loading={busy}>
             <DownloadIcon /> Download .{spec.ext}
           </Button>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
+          <Button variant="secondary" onClick={onClose}>
+            <CloseIcon /> Cancel
           </Button>
         </div>
       </div>

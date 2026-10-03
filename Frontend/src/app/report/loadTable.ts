@@ -2,10 +2,9 @@ import { awdax } from '../../api/awdax.ts'
 import type { DatasetTable } from '../../api/types.ts'
 import { getLocal } from '../files/localProjects.ts'
 
-/** Pauses or resumes a web project, then reads its status back (PATCH /live doesn't push an SSE event). */
-export async function setLiveAndSnapshot(id: string, enabled: boolean) {
-  await awdax.setLive(id, enabled)
-  return awdax.getLive(id)
+/** Pauses or resumes a web project; PATCH /live answers with the new status, so no read-back is needed. */
+export function setLiveAndSnapshot(id: string, enabled: boolean) {
+  return awdax.setLive(id, enabled)
 }
 
 /** A project's table: from the backend's dashboard endpoint for a web request, from this browser for a file. */

@@ -11,6 +11,7 @@ import { chartColorStyle } from './chartColor.ts'
 import { useBox } from './useBox.ts'
 import { PrecisionNote } from './PrecisionNote.tsx'
 import { TileMenu } from './TileMenu.tsx'
+import { Select } from '../../ui/Select.tsx'
 import { clampH, clampW } from './layout.ts'
 import type { Tile as TileState } from './layout.ts'
 
@@ -122,20 +123,13 @@ export function Tile(props: Props) {
           {spec.title}
         </h3>
         {types.length > 1 && w >= 5 && (
-          <label className="shrink-0">
-            <span className="sr-only">Chart type for {spec.title}</span>
-            <select
-              value={spec.type}
-              onChange={(e) => onChange({ ...spec, type: e.target.value as ChartType })}
-              className="h-7 rounded-control border-2 border-line bg-surface px-1.5 text-micro hover:border-ink focus-visible:border-ink focus-visible:outline-none"
-            >
-              {types.map((t) => (
-                <option key={t} value={t}>
-                  {CHART_LABEL[t]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label={`Chart type for ${spec.title}`}
+            value={spec.type}
+            onChange={(type) => onChange({ ...spec, type })}
+            options={types.map((t) => ({ value: t, label: CHART_LABEL[t] }))}
+            className="h-7 px-1.5 text-micro"
+          />
         )}
         <TileMenu
           spec={spec}

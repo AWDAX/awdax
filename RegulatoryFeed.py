@@ -18,6 +18,8 @@ from urllib.parse import urljoin
 import sqlite3
 import requests
 
+from url_guard import safe_get
+
 try:
     import certifi
 except ImportError:
@@ -42,6 +44,8 @@ try:
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
+
+from llm_client import llm_available, llm_text
 
 try:
     import fitz  # PyMuPDF
@@ -120,8 +124,11 @@ def _init_db(conn: sqlite3.Connection) -> None:
 
 def _get_db() -> sqlite3.Connection:
     global _DB_INITIALIZED
-    conn = sqlite3.connect(_db_path(), check_same_thread=False)
+    conn = sqlite3.connect(_db_path(), timeout=10.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
     if not _DB_INITIALIZED:
         with _DB_INIT_LOCK:
             if not _DB_INITIALIZED:
@@ -190,7 +197,8 @@ def _fetch_pdf_bytes(
     last_err: Exception | None = None
     for verify in verify_opts:
         try:
-            resp = sess.get(pdf_url, timeout=timeout, verify=verify)
+            # The URL can come from an LLM-written template or a scraped viewer page: every hop is checked (SSRF).
+            resp = safe_get(pdf_url, session=sess, timeout=timeout, verify=verify)
             if resp.status_code == 200 and len(resp.content) >= 100:
                 return resp.content
             return None
@@ -318,14 +326,9 @@ class AISummarizer:
         return fb
 
     def _gemini_summary(self, text: str, subject: str) -> dict | None:
-        if not GEMINI_AVAILABLE:
-            return None
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key or api_key.startswith("your_"):
+        if not llm_available():
             return None
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-3.1-flash-lite-preview")
             prompt = f"""Analyze this government gazette document and provide a structured summary.
 
 Subject: {subject}
@@ -341,8 +344,7 @@ Provide ONLY a valid JSON response:
     "market_impact": "Brief market impact assessment",
     "industry_tags": ["2-8 short labels for industries/sectors this notification materially affects, e.g. Banking & finance, Pharmaceuticals, Energy & power, Manufacturing, IT & telecom, Agriculture, Real estate, Transport & logistics, Retail & e-commerce, Environment & waste, MSME, Defence, Education. Use Title Case. Omit generic tags like Government or Public sector unless that is the sole focus."]
 }}"""
-            resp = model.generate_content(prompt)
-            m = re.search(r"\{.*\}", resp.text.strip(), re.DOTALL)
+            m = re.search(r"\{.*\}", llm_text(prompt).strip(), re.DOTALL)
             return json.loads(m.group()) if m else None
         except Exception as e:
             logger.error(f"Gemini summary error: {e}")
@@ -415,14 +417,9 @@ Provide ONLY a valid JSON response:
 
     # ── brief summary ───────────────────────────────────────────────
     def generate_brief_summary(self, pdf_text: str, subject: str) -> str | None:
-        if not pdf_text or not GEMINI_AVAILABLE:
-            return None
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key or api_key.startswith("your_"):
+        if not pdf_text or not llm_available():
             return None
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-3.1-flash-lite-preview")
             trimmed = pdf_text[:10000]
             prompt = f"""You are a legal and business analyst. Summarize this gazette notification simply.
 
@@ -440,8 +437,7 @@ Your summary should:
 
 Use markdown: **bold** for key terms, bullet points for lists, ## for headings.
 Return only the markdown-formatted summary text."""
-            resp = model.generate_content(prompt)
-            out = resp.text.strip()
+            out = llm_text(prompt).strip()
             out = re.sub(r"```.*?```", "", out, flags=re.DOTALL).strip()
             return out or None
         except Exception as e:
@@ -459,12 +455,9 @@ Return only the markdown-formatted summary text."""
         has_summary = summary_text and summary_text.strip()
         if not has_pdf and not has_summary:
             return None
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key or not GEMINI_AVAILABLE:
+        if not llm_available():
             return None
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-3.1-flash-lite-preview")
             parts = [f"Subject: {subject}"]
             if has_summary:
                 parts.append(f"Summary: {summary_text}")
@@ -492,8 +485,7 @@ Provide ONLY valid JSON:
 }}
 
 IMPORTANT: Always produce meaningful analysis. Never say content is unavailable."""
-            resp = model.generate_content(prompt)
-            m = re.search(r"\{.*\}", resp.text.strip(), re.DOTALL)
+            m = re.search(r"\{.*\}", llm_text(prompt).strip(), re.DOTALL)
             if m:
                 data = json.loads(m.group())
                 bad = ["not available", "not possible", "cannot be determined", "no document"]
@@ -510,12 +502,9 @@ IMPORTANT: Always produce meaningful analysis. Never say content is unavailable.
     def generate_clause_comparison(self, pdf_text: str, subject: str) -> list | None:
         if not pdf_text or len(pdf_text.strip()) < 50:
             return None
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key or not GEMINI_AVAILABLE:
+        if not llm_available():
             return None
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-3.1-flash-lite-preview")
             trimmed = pdf_text[:12000]
             prompt = f"""You are a legal analyst specializing in Indian government gazette notifications.
 
@@ -545,8 +534,7 @@ Rules:
 - Write in plain English for a business audience
 - Return empty array [] only if genuinely no clause changes
 - No markdown code blocks, raw JSON only"""
-            resp = model.generate_content(prompt)
-            result = resp.text.strip()
+            result = llm_text(prompt).strip()
             if result.startswith("```"):
                 result = re.sub(r"^```(?:json)?\s*", "", result)
                 result = re.sub(r"\s*```$", "", result)
@@ -1014,7 +1002,12 @@ class RegulatoryFeedService:
                 daemon=True,
                 name="scrape-cycle",
             )
-            t.start()
+            self.is_running = True
+            try:
+                t.start()
+            except Exception:
+                self.is_running = False
+                raise
             return {"started": True, **self.get_scrape_status()}
 
     def _run_scrape_cycle(self, max_pages: int = 3) -> None:
@@ -1247,18 +1240,26 @@ class RegulatoryFeedService:
         try:
             cur.execute("SELECT pdf_text, pdf_url, gazette_id FROM gazettes WHERE id=?", (g_id,))
             row = _as_dict(cur.fetchone())
-            if not row:
-                return
-            pdf_text = (row.get("pdf_text") or "").strip()
-            pdf_url = row.get("pdf_url") or guess_pdf_url(row.get("gazette_id") or "")
-            if len(pdf_text) >= 50:
-                return
-            if not pdf_url:
-                return
-            fetched = download_and_extract_pdf(pdf_url)
-            if not fetched:
-                return
-            fetched = filter_hindi_text(fetched)
+        finally:
+            cur.close()
+            conn.close()
+
+        if not row:
+            return
+        pdf_text = (row.get("pdf_text") or "").strip()
+        pdf_url = row.get("pdf_url") or guess_pdf_url(row.get("gazette_id") or "")
+        if len(pdf_text) >= 50 or not pdf_url:
+            return
+
+        # Download outside any open DB connection (c590915 restructuring).
+        fetched = download_and_extract_pdf(pdf_url)
+        if not fetched:
+            return
+        fetched = filter_hindi_text(fetched)
+
+        conn = _get_db()
+        cur = conn.cursor()
+        try:
             cur.execute(
                 "UPDATE gazettes SET pdf_text=?, pdf_url=?, updated_at=datetime('now') WHERE id=?",
                 (fetched, pdf_url, g_id),
@@ -1275,8 +1276,15 @@ class RegulatoryFeedService:
         try:
             cur.execute("SELECT * FROM gazettes WHERE id=?", (g_id,))
             g = _as_dict(cur.fetchone())
-            if not g:
-                return
+        except Exception as e:
+            logger.error(f"Summary generation error: {e}")
+            g = None
+        finally:
+            cur.close()
+            conn.close()
+        if not g:
+            return
+        try:
             has_pdf = bool(g.get("pdf_text") and len((g.get("pdf_text") or "").strip()) >= 50)
             subject = g.get("subject") or "Government Notification"
             if has_pdf:
@@ -1294,6 +1302,14 @@ class RegulatoryFeedService:
                 s = self.ai._fallback(quick_text, subject)
             importance = self._compute_importance(g, s)
             industry_payload = self._wrap_industry_tags(s.get("industry_tags", []))
+        except Exception as e:
+            logger.error(f"Summary generation error: {e}")
+            return
+
+        # Reopen only now that the LLM call is finished.
+        conn = _get_db()
+        cur = conn.cursor()
+        try:
             cur.execute(
                 """INSERT INTO gazette_summaries
                    (gazette_id, topic, summary, key_highlights, legal_clauses, states, market_impact, industry_tags, importance)

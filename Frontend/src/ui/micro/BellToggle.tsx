@@ -84,7 +84,16 @@ export function BellToggle({
           </span>
         )}
       </span>
-      {!iconOnly && <span>{label}</span>}
+      {!iconOnly && (
+        <span className="grid text-left">
+          <span className={`col-start-1 row-start-1 transition-opacity duration-300 ${on ? 'opacity-100' : 'opacity-0 invisible'}`} aria-hidden={!on}>
+            {onLabel}
+          </span>
+          <span className={`col-start-1 row-start-1 transition-opacity duration-300 ${!on ? 'opacity-100' : 'opacity-0 invisible'}`} aria-hidden={on}>
+            {offLabel}
+          </span>
+        </span>
+      )}
     </button>
   )
 }

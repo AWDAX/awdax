@@ -13,12 +13,14 @@ export interface ProxyEnv {
   SUPABASE_URL?: string
   /** Optional comma-separated emails allowed through. Unset: any signed-in Google account. */
   ALLOWED_EMAILS?: string
+  /** Optional. When set, sent upstream as `x-proxy-secret` so the backend can refuse calls that skip this proxy. */
+  PROXY_SHARED_SECRET?: string
 }
 
 /** EventSource can't send headers, so the live stream carries the token in this cookie (src/api/client.ts). */
 export const STREAM_COOKIE = 'awdax_token'
 
-const FORWARD = ['accept', 'accept-language', 'content-type', 'last-event-id']
+const FORWARD = ['accept', 'accept-language', 'content-type', 'last-event-id', 'authorization']
 const PASS_BACK = ['content-type', 'etag', 'last-modified']
 
 const NOT_SET_UP =
@@ -61,12 +63,19 @@ export async function proxyToBackend(request: Request, env: ProxyEnv, verify?: V
   const allowed = (env.ALLOWED_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
   if (allowed.length > 0 && !allowed.includes(claims.email?.toLowerCase() ?? '')) return reply(403, NOT_LISTED)
 
-  // Only what the backend needs: never the user's token or cookies.
+  // Pass user info and required headers to backend
   const headers = new Headers()
   for (const name of FORWARD) {
     const value = request.headers.get(name)
     if (value) headers.set(name, value)
   }
+  if (claims.sub) {
+    headers.set('x-user-id', claims.sub)
+  }
+  if (token) {
+    headers.set('authorization', `Bearer ${token}`)
+  }
+  if (env.PROXY_SHARED_SECRET) headers.set('x-proxy-secret', env.PROXY_SHARED_SECRET)
   const url = new URL(request.url)
   let upstream: Response
   try {

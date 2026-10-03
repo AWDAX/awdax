@@ -8,6 +8,7 @@ import { CHART_LABEL } from '../../analytics/spec.ts'
 import type { ChartSpec, ChartType } from '../../analytics/spec.ts'
 import { queryTitle } from '../../analytics/suggest.ts'
 import { Button } from '../../ui/Button.tsx'
+import { Select } from '../../ui/Select.tsx'
 import { ChartView } from './charts/ChartView.tsx'
 import { draftFor, GALLERY, unavailable } from './chartTypes.ts'
 import { ChartTypeIcon } from './ChartTypeIcon.tsx'
@@ -96,44 +97,58 @@ export function ChartBuilder({ profile, initial, startType, onSave, onCancel }: 
             <ColumnSelect label="Measure" value={q.measure} options={measures} none="Rows (count)" onChange={(v) => set({ measure: v, agg: v === undefined ? 'count' : q.agg === 'count' ? 'sum' : q.agg })} />
             {q.measure !== undefined && (
               <Labeled label="Aggregate">
-                <select value={q.agg} onChange={(e) => set({ agg: e.target.value as Agg })} className={field}>
-                  {AGGS.map((a) => (
-                    <option key={a} value={a}>
-                      {AGG_LABEL[a]}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  label="Aggregate"
+                  value={q.agg}
+                  onChange={(agg) => set({ agg })}
+                  options={AGGS.map((a) => ({ value: a, label: AGG_LABEL[a] }))}
+                  className="w-full"
+                />
               </Labeled>
             )}
             {group?.kind === 'period' && (group.grain === 'day' || group.grain === 'month' || group.grain === 'quarter') && (
               <Labeled label="Group dates by">
-                <select value={q.bucket ?? ''} onChange={(e) => set({ bucket: (e.target.value || undefined) as Query['bucket'] })} className={field}>
-                  <option value="">{group.grain === 'day' ? 'Each date' : group.grain === 'month' ? 'Each month' : 'Each quarter'}</option>
-                  {group.grain === 'day' && <option value="month">Month</option>}
-                  {group.grain !== 'quarter' && <option value="quarter">Quarter</option>}
-                  <option value="year">Year</option>
-                </select>
+                <Select
+                  label="Group dates by"
+                  value={q.bucket ?? ''}
+                  onChange={(bucket) => set({ bucket: (bucket || undefined) as Query['bucket'] })}
+                  options={[
+                    { value: '', label: group.grain === 'day' ? 'Each date' : group.grain === 'month' ? 'Each month' : 'Each quarter' },
+                    ...(group.grain === 'day' ? [{ value: 'month', label: 'Month' }] : []),
+                    ...(group.grain !== 'quarter' ? [{ value: 'quarter', label: 'Quarter' }] : []),
+                    { value: 'year', label: 'Year' }
+                  ]}
+                  className="w-full"
+                />
               </Labeled>
             )}
             {group && (
               <div className="grid grid-cols-2 gap-2">
                 <Labeled label="Sort">
-                  <select value={q.sort ?? (group.kind === 'period' ? 'time' : 'value-desc')} onChange={(e) => set({ sort: e.target.value as SortBy })} className={field}>
-                    <option value="value-desc">Largest first</option>
-                    <option value="value-asc">Smallest first</option>
-                    <option value="label">A to Z</option>
-                    {group.kind === 'period' && <option value="time">In time order</option>}
-                  </select>
+                  <Select
+                    label="Sort"
+                    value={q.sort ?? (group.kind === 'period' ? 'time' : 'value-desc')}
+                    onChange={(sort) => set({ sort: sort as SortBy })}
+                    options={[
+                      { value: 'value-desc', label: 'Largest first' },
+                      { value: 'value-asc', label: 'Smallest first' },
+                      { value: 'label', label: 'A to Z' },
+                      ...(group.kind === 'period' ? [{ value: 'time', label: 'In time order' }] : [])
+                    ]}
+                    className="w-full"
+                  />
                 </Labeled>
                 <Labeled label="Show">
-                  <select value={q.limit ?? 0} onChange={(e) => set({ limit: Number(e.target.value) || undefined, other: Number(e.target.value) > 0 })} className={field}>
-                    <option value={0}>All groups</option>
-                    {[3, 5, 10, 15, 20].map((n) => (
-                      <option key={n} value={n}>
-                        Top {n} + Other
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    label="Show"
+                    value={q.limit ?? 0}
+                    onChange={(limit) => set({ limit: Number(limit) || undefined, other: Number(limit) > 0 })}
+                    options={[
+                      { value: 0, label: 'All groups' },
+                      ...[3, 5, 10, 15, 20].map((n) => ({ value: n, label: `Top ${n} + Other` }))
+                    ]}
+                    className="w-full"
+                  />
                 </Labeled>
               </div>
             )}
@@ -172,14 +187,16 @@ type ColumnOption = { index: number; label: string }
 function ColumnSelect({ label, value, options, none, onChange }: { label: string; value?: number; options: ColumnOption[]; none?: string; onChange: (v: number | undefined) => void }) {
   return (
     <Labeled label={label}>
-      <select value={value ?? ''} onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))} className={field}>
-        {none !== undefined ? <option value="">{none}</option> : <option value="" disabled>Pick a column</option>}
-        {options.map((c) => (
-          <option key={c.index} value={c.index}>
-            {c.label}
-          </option>
-        ))}
-      </select>
+      <Select
+        label={label}
+        value={value ?? ''}
+        onChange={(v) => onChange(v === '' ? undefined : Number(v))}
+        options={[
+          { value: '', label: none ?? 'Pick a column', disabled: none === undefined },
+          ...options.map((c) => ({ value: c.index, label: c.label }))
+        ]}
+        className="w-full"
+      />
     </Labeled>
   )
 }

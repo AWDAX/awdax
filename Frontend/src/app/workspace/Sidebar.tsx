@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router'
+import { setStreamToken } from '../../api/client.ts'
 import { useAuth } from '../auth/authContext.ts'
 import { DatabaseIcon, LogoutIcon, PlusIcon, ReportIcon, SearchIcon, SidebarIcon } from '../../ui/appIcons.tsx'
 import { buttonClass } from '../../ui/buttonClass.ts'
+import { Tooltip } from '../../ui/Tooltip.tsx'
+import { TutorialTrigger } from '../../ui/tutorial/TutorialTrigger.tsx'
 import { FEATURES } from '../features.ts'
 import { HistoryList } from './HistoryList.tsx'
 
@@ -23,7 +26,7 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
   const [query, setQuery] = useState('')
 
   return (
-    <div className="flex h-full w-72 flex-col border-r-2 border-ink bg-surface">
+    <div className="flex h-full w-full flex-col border-r-2 border-ink bg-surface">
       <div className="flex h-14 shrink-0 items-center justify-between gap-2 px-4">
         <Link
           to="/"
@@ -31,14 +34,21 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
         >
           AWDAX
         </Link>
-        <button
-          type="button"
-          onClick={onCollapse}
-          aria-label="Close sidebar"
-          className="grid size-8 place-items-center rounded-control text-ink-2 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink"
-        >
-          <SidebarIcon />
-        </button>
+        <div className="flex items-center gap-1">
+          <Tooltip content="Watch tutorial" placement="bottom">
+            <TutorialTrigger iconOnly label="Watch tutorial" />
+          </Tooltip>
+          <Tooltip content="Collapse" placement="bottom-end">
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label="Close sidebar"
+              className="grid size-8 place-items-center rounded-control text-ink-2 hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink"
+            >
+              <SidebarIcon />
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       <div className="flex flex-col gap-1 px-3 pb-3">
@@ -88,6 +98,8 @@ function Account() {
 
   // Leave first: once the session is gone, RequireAuth would send this page to /login instead.
   const leave = async () => {
+    // AuthProvider unmounts on navigate, before SIGNED_OUT can clear the stream cookie, so clear it here.
+    setStreamToken(null)
     navigate('/', { replace: true })
     await signOut()
   }
@@ -117,3 +129,4 @@ function Account() {
     </div>
   )
 }
+

@@ -1,0 +1,85 @@
+WEBVTT
+
+1
+00:00:00.300 --> 00:00:02.900
+1 · Start a request.
+
+2
+00:00:03.000 --> 00:00:07.400
+In New chat, describe the data you need in plain English.
+
+3
+00:00:07.600 --> 00:00:11.000
+Press Send, and the run starts right away.
+
+4
+00:00:11.200 --> 00:00:15.300
+Already have the data? Upload a CSV or Excel file instead.
+
+5
+00:00:15.700 --> 00:00:18.300
+2 · AWDAX plans the run. This is the sample run, with fictional data.
+
+6
+00:00:18.400 --> 00:00:20.500
+It searches the web and checks each source.
+
+7
+00:00:20.600 --> 00:00:23.100
+Then it inspects the pages and plans how to read them.
+
+8
+00:00:23.200 --> 00:00:25.900
+3 · Watch the live run: rows arrive page by page.
+
+9
+00:00:26.000 --> 00:00:29.100
+Everything is merged into one table, with a report.
+
+10
+00:00:29.200 --> 00:00:32.800
+Web requests keep refreshing every 5 minutes.
+
+11
+00:00:33.300 --> 00:00:36.400
+4 · Read your project reports.
+
+12
+00:00:36.500 --> 00:00:41.300
+Projects report lists every request and upload, with its status, rows and last update.
+
+13
+00:00:41.800 --> 00:00:45.700
+Open a chat. Report shows totals and charts built from your rows.
+
+14
+00:00:46.000 --> 00:00:50.400
+Data lists every row, with the page it came from.
+
+15
+00:00:50.700 --> 00:00:55.000
+Graphs turns the rows into charts you can add and edit.
+
+16
+00:00:55.400 --> 00:00:58.900
+Sources shows each website, how it was read, and what it gave.
+
+17
+00:00:59.300 --> 00:01:04.400
+Ask a question in words, right under the dashboard.
+
+18
+00:01:04.800 --> 00:01:09.400
+The answer comes from these rows, exactly. Nothing is scraped again.
+
+19
+00:01:09.800 --> 00:01:13.500
+Export the data when you need it somewhere else.
+
+20
+00:01:13.600 --> 00:01:16.700
+CSV, Excel, JSON, SQL and more.
+
+21
+00:01:17.000 --> 00:01:19.100
+That’s it. Start a new chat whenever you’re ready.

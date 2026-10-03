@@ -25,6 +25,7 @@ export function HowItWorks() {
   return (
     <Section id="how" labelledBy="how-title" fit={false}>
       <Container>
+
         <SectionHead
           id="how-title"
           index="01"

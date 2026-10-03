@@ -56,12 +56,16 @@ export interface QueryResult {
   matched: number
   /** Rows that passed the filters and had a usable value. */
   used: number
+  /** Used rows whose value was a range, counted at its lowest value. */
+  ranged: number
   /** Cells left out of the numbers, with the reason. */
   excluded: (Excluded & { column: string })[]
   /** Rows that passed the filters but had no value (empty or "N/A" in the source) for the group or measure. */
   blank: { row: number; column: string }[]
   /** Decimals to show: the source's precision, plus 2 for averages. */
   scale: number
+  /** The query names a column this table doesn't have (saved state outlived a re-run); the result is empty. */
+  stale: boolean
 }
 
 export const OTHER_KEY = '__other'
@@ -89,12 +93,30 @@ function valueKey(col: ColumnProfile, row: number, bucket?: Bucket): { key: stri
   return { key: groupKey(label), label: label.replace(/\s+/g, ' ') }
 }
 
+/** A column by index, or undefined for an index this table can't have (saved state is not trusted). */
+const columnAt = (p: TableProfile, i: number | undefined): ColumnProfile | undefined =>
+  i !== undefined && Number.isInteger(i) ? p.columns[i] : undefined
+
+/** True when the group and measure columns of a query exist; a sum with no measure column can't be answered. */
+export function columnsExist(p: TableProfile, q: Query): boolean {
+  if (q.groupBy !== undefined && !columnAt(p, q.groupBy)) return false
+  if (q.measure !== undefined) return !!columnAt(p, q.measure)
+  return q.agg === 'count' || q.agg === 'distinct'
+}
+
+/** True when every column filter points at a column that exists ('search' reads whole rows). */
+export function filterColumnsExist(p: TableProfile, filters: Filter[] = []): boolean {
+  return filters.every((f) => f.op === 'search' || !!columnAt(p, f.column))
+}
+
 function passes(p: TableProfile, f: Filter, row: number): boolean {
   if (f.op === 'search') {
     const needle = (f.values[0] ?? '').trim().toLowerCase()
     return !needle || p.raw[row].some((cell) => cell.toLowerCase().includes(needle))
   }
-  const col = p.columns[f.column]
+  // A filter on a column that is gone has nothing to test, so it lets the row through. Saved answers are
+  // checked with filterColumnsExist first, so they never show numbers computed without their filter.
+  const col = columnAt(p, f.column)
   if (!col) return true
   if (f.op === 'present') {
     if (col.numbers) return col.numbers[row] !== null
@@ -146,10 +168,16 @@ function reduce(agg: Agg, values: Dec[], rows: number, distinctKeys: Set<string>
   }
 }
 
+/** What a query that can't be run returns: nothing counted, and `stale` says why. */
+function staleResult(q: Query): QueryResult {
+  return { query: q, rows: [], overall: null, matched: 0, used: 0, ranged: 0, excluded: [], blank: [], scale: 0, stale: true }
+}
+
 /** Runs one query: filter, group, aggregate, sort, top N. Every number is exact; nothing is guessed. */
 export function runQuery(p: TableProfile, q: Query): QueryResult {
-  const measure = q.measure !== undefined ? p.columns[q.measure] : undefined
-  const group = q.groupBy !== undefined ? p.columns[q.groupBy] : undefined
+  if (!columnsExist(p, q)) return staleResult(q)
+  const measure = columnAt(p, q.measure)
+  const group = columnAt(p, q.groupBy)
   const needsValue = q.agg !== 'count' && q.agg !== 'distinct'
   const matched = filterRows(p, q.filters)
   const excluded: QueryResult['excluded'] = []
@@ -161,17 +189,16 @@ export function runQuery(p: TableProfile, q: Query): QueryResult {
   for (const r of matched) {
     const g = group ? valueKey(group, r, q.bucket) : { key: 'all', label: 'All rows' }
     if (!g) {
-      blank.push({ row: r, column: group!.label })
+      blank.push({ row: r, column: group?.label ?? '' })
       continue
     }
     let v: Dec | null = null
     if (needsValue) {
       v = measure?.numbers?.[r] ?? null
       if (v === null) {
-        if (excludedRows.has(r)) {
-          const e = measure!.excluded.find((x) => x.row === r)!
-          excluded.push({ ...e, column: measure!.label })
-        } else blank.push({ row: r, column: measure!.label })
+        const e = excludedRows.has(r) ? measure?.excluded.find((x) => x.row === r) : undefined
+        if (e && measure) excluded.push({ ...e, column: measure.label })
+        else blank.push({ row: r, column: measure?.label ?? '' })
         continue
       }
     }
@@ -187,6 +214,7 @@ export function runQuery(p: TableProfile, q: Query): QueryResult {
   }
 
   const scale = measure?.scale ?? 0
+  const numbersAt = (rowIds: number[]) => (needsValue ? rowIds.map((r) => measure?.numbers?.[r]).filter((v): v is Dec => !!v) : [])
   let rows: ResultRow[] = [...buckets.entries()].map(([key, b]) => ({
     key,
     label: b.label,
@@ -206,7 +234,7 @@ export function runQuery(p: TableProfile, q: Query): QueryResult {
     if (q.other) {
       const rest = rows.slice(q.limit)
       const restRows = rest.flatMap((x) => x.rows)
-      const restValues = rest.flatMap((x) => (needsValue ? x.rows.map((r) => measure!.numbers![r]!) : []))
+      const restValues = rest.flatMap((x) => numbersAt(x.rows))
       const restKeys = new Set(restRows.map((r) => (measure ? valueKey(measure, r)?.key : undefined)).filter((k): k is string => !!k))
       kept.push({
         key: OTHER_KEY,
@@ -219,7 +247,7 @@ export function runQuery(p: TableProfile, q: Query): QueryResult {
     rows = kept
   }
 
-  const allValues = needsValue ? usedRows.map((r) => measure!.numbers![r]!) : []
+  const allValues = numbersAt(usedRows)
   const allKeys = new Set(usedRows.map((r) => (measure ? valueKey(measure, r)?.key : undefined)).filter((k): k is string => !!k))
   return {
     query: q,
@@ -227,9 +255,11 @@ export function runQuery(p: TableProfile, q: Query): QueryResult {
     overall: reduce(q.agg, allValues, usedRows.length, allKeys, scale),
     matched: matched.length,
     used: usedRows.length,
+    ranged: needsValue && measure?.ranged ? usedRows.filter((r) => measure.ranged![r]).length : 0,
     excluded,
     blank,
     scale: q.agg === 'avg' ? scale + AVG_EXTRA : scale,
+    stale: false,
   }
 }
 

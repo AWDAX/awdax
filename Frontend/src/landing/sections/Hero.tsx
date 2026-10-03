@@ -5,6 +5,8 @@ import { Mark } from '../../ui/Mark.tsx'
 import { useArrived } from '../../ui/useArrived.ts'
 import { HeroRun } from '../hero/HeroRun.tsx'
 
+
+
 export function Hero() {
   const arrived = useArrived()
   return (
@@ -24,6 +26,7 @@ export function Hero() {
             AWDAX plans the collection, reads only permitted sources, cleans the results and links every value back to
             the sentence it came from.
           </p>
+
           <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
             <ButtonLink to="/app" size="lg">
               Start a request <ArrowIcon />
@@ -37,6 +40,8 @@ export function Hero() {
               </Mark>
             </a>
           </div>
+
+
         </div>
       </Container>
 
@@ -44,5 +49,6 @@ export function Hero() {
         <HeroRun />
       </Container>
     </section>
+
   )
 }

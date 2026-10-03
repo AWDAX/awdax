@@ -35,10 +35,12 @@ React Bits (David Haz, MIT + Commons Clause) — `TS-TW` variants adapted from
   @hugeicons → `MicIcon`/`StopIcon` (`src/ui/appIcons.tsx`); `motion` → plain CSS transitions + a
   canvas waveform (`useMicLevel.ts`, `drawWaveform.ts`); colors → `border-ink`/`bg-signal` tokens;
   shape fixed to the rounded square (4px radius), no pill.
-- **ThoughtLine** — https://reactbits.dev/micro/thought-line — `src/ui/micro/ThoughtLine.tsx`.
-  Changed: @hugeicons sparkle/chevron/check → `CheckIcon`/`ChevronIcon`; text-shimmer gradient →
-  an opacity pulse between `text-ink`/`text-ink-3` (`m.span`, disabled under reduced motion);
-  step trace uses `text-micro`/`text-ink-3` tokens, no color mixing.
+- **ThoughtLine** — https://reactbits.dev/micro/thought-line — `src/ui/micro/ThoughtLine.tsx` +
+  `ThoughtLine.css` (the JS + CSS variant, ported to TypeScript). Changed: @hugeicons sparkle/chevron/check →
+  `SparkleIcon`/`ChevronIcon`/`CheckIcon`; easings → `--ease-soft`/`--ease-draw` (`EASE_SOFT`/`EASE_DRAW`);
+  the line's color is `--color-ink`, not `currentColor` (a `currentColor` shimmer painted the label
+  transparent); the clock is React state and takes a `startedAt` origin so a page opened mid-run shows the
+  run's real time; long steps end in an ellipsis; dropped `renderLabel`, `settleAfter`, `color`, `glyphColor`.
 - **CallChip** — https://reactbits.dev/micro/call-chip — `src/ui/micro/CallChip.tsx`.
   Changed: @hugeicons terminal/file/search/edit/check/retry → our `appIcons.tsx`/`icons.tsx`;
   arbitrary surface/progress/done/error colors → `bg-signal-soft` (running/done wash) and

@@ -15,6 +15,7 @@ from typing import Any
 
 from discovery import SourceCandidate, normalize_https, probe_https
 from reasoning import ScrapeIntent, gemini_json
+from url_guard import check_browser_url, check_url
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +209,29 @@ def egazette_preset_plan() -> ScrapePlan:
     )
 
 
+def page_load_seconds() -> float:
+    """Selenium waits 300 s for a page's load event by default; listing sites full of ads can take that long."""
+    try:
+        return float(os.getenv("SELENIUM_PAGE_LOAD_SECONDS") or 45)
+    except ValueError:
+        return 45.0
+
+
+def load_page(driver: Any, url: str) -> None:
+    """Open a page; one still loading at the limit is stopped and read as it is (its tables are usually there).
+
+    Raises UnsafeURL (before the browser is touched) for a URL that is not public http(s), and after the load when
+    Chrome's own redirects ended somewhere that is not allowed.
+    """
+    check_url(url)
+    try:
+        driver.get(url)
+    except TimeoutException:
+        logger.info("Page load limit reached, reading it as loaded so far: %s", url)
+        driver.execute_script("window.stop();")
+    check_browser_url(driver)
+
+
 def _setup_driver(headless: bool = True):
     opts = Options()
     opts.add_argument("--no-sandbox")
@@ -215,7 +239,9 @@ def _setup_driver(headless: bool = True):
     if headless:
         opts.add_argument("--headless=new")
         opts.add_argument("--window-size=1920,1080")
-    return webdriver.Chrome(options=opts)
+    driver = webdriver.Chrome(options=opts)
+    driver.set_page_load_timeout(page_load_seconds())
+    return driver
 
 
 def _hard_blocked(html_lower: str) -> bool:
@@ -241,7 +267,7 @@ def _probe_page_selenium(url: str) -> dict[str, Any]:
     driver = _setup_driver()
     signals: dict[str, Any] = {"url": url, "title": "", "tables": [], "buttons": []}
     try:
-        driver.get(url)
+        load_page(driver, url)
         time.sleep(2)
         signals["title"] = driver.title
         tables = driver.find_elements(By.TAG_NAME, "table")[:8]
@@ -358,6 +384,15 @@ def inspect_source(
         return plan
 
     https_probe = probe_https(url)
+    if https_probe.get("blocked"):
+        return ScrapePlan(
+            source_name=source.title or source.domain,
+            entry_url=url,
+            source_url=url,
+            blocked=True,
+            confidence=0.0,
+            warnings=[str(https_probe.get("error") or "Blocked: address not allowed")],
+        )
     if not https_probe.get("https_ok"):
         err = https_probe.get("error") or "unreachable"
         return ScrapePlan(

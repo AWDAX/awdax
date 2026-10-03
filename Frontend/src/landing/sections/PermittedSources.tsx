@@ -21,6 +21,7 @@ export function PermittedSources() {
   return (
     <Section id="sources" labelledBy="sources-title">
       <Container>
+
         <SectionHead
           id="sources-title"
           index="06"

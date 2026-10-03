@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { ClipboardEvent, DragEvent, KeyboardEvent, ReactNode } from 'react'
-import { CloseIcon, FileIcon, SendIcon } from '../../ui/appIcons.tsx'
+import type { ClipboardEvent, DragEvent, KeyboardEvent } from 'react'
+import { CloseIcon, FileIcon, PlusIcon, SendIcon } from '../../ui/appIcons.tsx'
+import { Tooltip } from '../../ui/Tooltip.tsx'
 import { ACCEPT, formatBytes } from '../files/readFile.ts'
 import { VoiceInput } from '../voice/VoiceInput.tsx'
 
@@ -10,30 +11,28 @@ type Props = {
   onSubmit: (text: string, files: File[]) => void
   busy?: boolean
   placeholder?: string
-  /** Allow attaching data files (drag and drop, paste, or a control outside that opens `fileInputId`). */
+  /** Allow attaching data files: the + button in the box, drag and drop, paste, or a control outside that opens `fileInputId`. */
   allowFiles?: boolean
-  /** Files can be attached from outside too (a "Try" card, the strip below). */
+  /** Files can be attached from outside too (a "Try" card). */
   files?: File[]
   onFilesChange?: (files: File[]) => void
   size?: 'lg' | 'md'
   autoFocus?: boolean
-  /** A strip attached under the box, like ChatGPT's "Choose project · Files". */
-  footer?: ReactNode
-  /** An id for the hidden file input, so a <label htmlFor> elsewhere can open it. */
+  /** An id for the hidden file input, so a control elsewhere can open it. */
   fileInputId?: string
   label: string
 }
 
 /**
  * The one prompt box, used to start a chat and to ask follow-ups. Grows with the text, takes voice (speech to
- * text) and, where allowed, data files by drag and drop, paste or the strip's "Upload a file". Enter sends; Shift +
- * Enter breaks.
+ * text) and, where allowed, data files by the + button, drag and drop or paste. Enter sends; Shift + Enter breaks.
  */
 export function PromptBox({
   value, onChange, onSubmit, busy = false, placeholder, allowFiles = false, files = [], onFilesChange,
-  size = 'md', autoFocus, footer, fileInputId, label,
+  size = 'md', autoFocus, fileInputId, label,
 }: Props) {
   const area = useRef<HTMLTextAreaElement>(null)
+  const picker = useRef<HTMLInputElement>(null)
   const [interim, setInterim] = useState('')
   const [dragging, setDragging] = useState(false)
   const autoId = useId()
@@ -109,27 +108,42 @@ export function PromptBox({
           onKeyDown={onKey}
           onPaste={onPaste}
           rows={big ? 2 : 1}
+          maxLength={2000}
           disabled={busy}
           autoFocus={autoFocus}
           placeholder={placeholder}
-          className={`block w-full resize-none bg-transparent px-2 outline-none placeholder:text-ink-3 ${big ? 'min-h-16 py-1.5 text-lead' : 'min-h-9 py-1.5 text-body'}`}
+          className={`block w-full resize-none bg-transparent px-2 outline-none placeholder:text-ink-3 ${big ? 'min-h-14 py-1.5 text-body' : 'min-h-9 py-1.5 text-body'}`}
         />
         <div className="mt-1 flex items-center gap-1.5">
-          {/* No attach button in the box: "Upload a file" under it opens this input by id. */}
+          {/* The + opens this input; a control outside the box (a "Try" card) can open it by id too. */}
           {allowFiles && (
-            <input
-              id={inputId}
-              aria-label="Attach a data file"
-              type="file"
-              accept={ACCEPT}
-              multiple
-              tabIndex={-1}
-              className="sr-only"
-              onChange={(e) => {
-                if (e.target.files) addFiles(e.target.files)
-                e.target.value = ''
-              }}
-            />
+            <>
+              <input
+                id={inputId}
+                ref={picker}
+                aria-label="Attach a data file"
+                type="file"
+                accept={ACCEPT}
+                multiple
+                tabIndex={-1}
+                className="sr-only"
+                onChange={(e) => {
+                  if (e.target.files) addFiles(e.target.files)
+                  e.target.value = ''
+                }}
+              />
+              <Tooltip content="Upload a CSV, Excel or JSON file" placement="bottom-start">
+                <button
+                  type="button"
+                  onClick={() => picker.current?.click()}
+                  disabled={busy}
+                  aria-label="Upload a file"
+                  className="grid size-9 place-items-center rounded-control text-ink-2 transition-[background-color,color] duration-300 ease-soft hover:bg-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-ink disabled:opacity-35"
+                >
+                  <PlusIcon />
+                </button>
+              </Tooltip>
+            </>
           )}
           <span className="ml-auto" />
           <VoiceInput
@@ -156,7 +170,6 @@ export function PromptBox({
           <p className="pointer-events-none absolute inset-0 grid place-items-center rounded-panel text-small font-medium">Drop a CSV, Excel or JSON file</p>
         )}
       </div>
-      {footer && <div className="-mt-1 mx-3 rounded-b-panel border-2 border-t-0 border-ink bg-sunken px-3 pt-2.5 pb-2">{footer}</div>}
     </div>
   )
 }

@@ -14,15 +14,17 @@ export const PHASES: Phase[] = ['ask', 'plan', 'run', 'review', 'use']
 /** The first rows are read slowly, one source page at a time, so the trace from page to cell can be seen. */
 export const DETAILED_ROWS = 3
 
+// The lead-in (typing, plan, approve) is kept short so the first source page opens about 5 s in, not 8 s; the
+// reading and tracing below keep their slow pace. planItem stays a 130 ms stagger (DESIGN_SYSTEM.md "Timing").
 const MS = {
-  lead: 700,
-  char: 30,
-  think: 700,
+  lead: 200,
+  char: 22,
+  think: 350,
   planItem: 130,
-  approveHold: 1300,
+  approveHold: 600,
   press: 260,
-  runDelay: 500,
-  firstRow: 350,
+  runDelay: 250,
+  firstRow: 200,
   /**
    * A detailed row: its page opens, the values highlight, then the row lands. The rest of the step
    * holds the page while TraceLayer draws (450ms wait + 1000ms draw + 2 × 160ms stagger = 1770ms),

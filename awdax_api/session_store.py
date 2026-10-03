@@ -26,8 +26,8 @@ def ensure_awdax_defaults(sess: dict[str, Any]) -> dict[str, Any]:
     return sess
 
 
-def load_instance_session(instance_id: str) -> dict[str, Any] | None:
-    sess = get_session(instance_id)
+def load_instance_session(instance_id: str, user_id: str | None = None) -> dict[str, Any] | None:
+    sess = get_session(instance_id, user_id)
     if not sess:
         return None
     return ensure_awdax_defaults(sess)
@@ -35,7 +35,17 @@ def load_instance_session(instance_id: str) -> dict[str, Any] | None:
 
 def persist_session(sess: dict[str, Any]) -> dict[str, Any]:
     ensure_awdax_defaults(sess)
-    return save_session(sess)
+    return save_session(sess, allow_insert=False)
+
+
+USER_OWNED_FIELDS = ("title", "keep_live", "archived")
+
+
+def persist_run_state(sess: dict[str, Any]) -> dict[str, Any]:
+    """Write from a background run/live writer. The fields a user edits (title, keep_live, archived) are re-read
+    from the stored row under the write lock, so a PATCH landing mid-run is never reverted. Never inserts."""
+    ensure_awdax_defaults(sess)
+    return save_session(sess, allow_insert=False, preserve=USER_OWNED_FIELDS)
 
 
 def append_message(sess: dict[str, Any], *, role: str, content: str) -> dict[str, Any]:

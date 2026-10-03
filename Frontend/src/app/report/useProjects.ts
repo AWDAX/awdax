@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { isFresh, runPool } from './pollPool.ts'
 import { awdax } from '../../api/awdax.ts'
+import { sortedIdKey } from '../../api/singleFlight.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import type { LiveSnapshot, LivePhase } from '../../api/types.ts'
 import { WORKING } from '../chat/phases.ts'
@@ -39,14 +41,6 @@ function statusOf(s: LiveSnapshot | undefined): ProjectStatus {
   return 'idle'
 }
 
-/** Runs `fn` over `items`, at most `limit` at a time, so 50 projects don't open 50 requests at once. */
-async function pool<T>(items: T[], limit: number, fn: (x: T) => Promise<void>) {
-  let next = 0
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) await fn(items[next++])
-  }))
-}
-
 /**
  * Every project with its live status. The backend's list has no status or row count, so this asks
  * GET /api/instances/{id}/live for each one, six at a time, every 15 seconds.
@@ -55,20 +49,32 @@ export function useProjects() {
   const { list, loading } = useInstances()
   const local = useLocalProjects()
   const [snaps, setSnaps] = useState<Record<string, LiveSnapshot>>({})
-  const ids = list.map((i) => i.id).join(',')
+  const ids = sortedIdKey(list)
+  // When each project was last changed by hand (pause/resume); older in-flight polls must not undo it.
+  const changedAt = useRef<Record<string, number>>({})
 
   useEffect(() => {
     if (!ids) return
     let alive = true
-    const load = () =>
-      pool(ids.split(','), CONCURRENCY, async (id) => {
-        try {
-          const snap = await awdax.getLive(id)
-          if (alive) setSnaps((prev) => ({ ...prev, [id]: snap }))
-        } catch {
-          // a deleted or unreachable project keeps its last known status
-        }
-      })
+    let running = false
+    const load = async () => {
+      if (document.visibilityState === 'hidden') return
+      if (running) return // the last cycle is still in flight
+      running = true
+      try {
+        await runPool(ids.split(','), CONCURRENCY, async (id) => {
+          const startedAt = Date.now()
+          try {
+            const snap = await awdax.getLive(id)
+            if (alive && isFresh(startedAt, changedAt.current[id])) setSnaps((prev) => ({ ...prev, [id]: snap }))
+          } catch {
+            // a deleted or unreachable project keeps its last known status
+          }
+        }, () => alive)
+      } finally {
+        running = false
+      }
+    }
     const first = window.setTimeout(load, 0)
     const timer = window.setInterval(load, REFRESH_MS)
     return () => {
@@ -116,5 +122,10 @@ export function useProjects() {
     return [...web, ...files]
   }, [list, local, snaps])
 
-  return { projects, loading, setSnap: (id: string, snap: LiveSnapshot) => setSnaps((p) => ({ ...p, [id]: snap })) }
+  const setSnap = (id: string, snap: LiveSnapshot) => {
+    changedAt.current[id] = Date.now()
+    setSnaps((p) => ({ ...p, [id]: snap }))
+  }
+
+  return { projects, loading, setSnap }
 }

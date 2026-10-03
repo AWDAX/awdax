@@ -9,6 +9,9 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string
   /** `on` shows Ask database (src/app/features.ts). Anything else, or unset, hides it. */
   readonly VITE_FEATURE_ASK_DATABASE?: string
+  /** Optional hosted tutorial video URL. Unset: /tutorial/awdax-tutorial.mp4 from public/. */
+  readonly VITE_TUTORIAL_VIDEO_URL?: string
+  readonly VITE_TUTORIAL_CAPTIONS_URL?: string
 }
 
 interface ImportMeta {

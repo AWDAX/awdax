@@ -128,8 +128,9 @@ function Cell({ col, row, reason }: { col: ColumnProfile; row: number; reason?: 
     )
   }
   const parsed = col.numbers?.[row]
+  const lowest = col.ranged?.[row] ? ', the lowest value of the range' : ''
   return (
-    <td className={`px-3 py-1.5 ${align}`} title={parsed ? `Read as ${formatFor(col, parsed)}` : undefined}>
+    <td className={`px-3 py-1.5 ${align}`} title={parsed ? `Read as ${formatFor(col, parsed)}${lowest}` : undefined}>
       {raw}
     </td>
   )

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ColumnProfile, TableProfile } from '../../analytics/profile.ts'
 import { ChevronIcon, FilterIcon, SearchIcon } from '../../ui/appIcons.tsx'
 import { Popover } from '../../ui/Popover.tsx'
+import { Select } from '../../ui/Select.tsx'
 import { activeCount, EMPTY_SLICERS, periodKeys, slicerColumns, valuesOf } from './slicers.ts'
 import type { SlicerState } from './slicers.ts'
 
@@ -45,23 +46,19 @@ export function Slicers({ profile, value, onChange, shown, crossLabel, onClearCr
       {time && periods.length > 1 && (
         <span className="flex items-center gap-1.5 text-small">
           <span className="text-ink-3">{time.label}</span>
-          <select aria-label={`${time.label} from`} value={value.from ?? ''} onChange={(e) => onChange({ ...value, from: e.target.value || undefined })} className={field}>
-            <option value="">From start</option>
-            {periods.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+          <Select
+            label={`${time.label} from`}
+            value={value.from ?? ''}
+            onChange={(from) => onChange({ ...value, from: from || undefined })}
+            options={[{ value: '', label: 'From start' }, ...periods.map((p) => ({ value: p.key, label: p.label }))]}
+          />
           <span className="text-ink-3">to</span>
-          <select aria-label={`${time.label} to`} value={value.to ?? ''} onChange={(e) => onChange({ ...value, to: e.target.value || undefined })} className={field}>
-            <option value="">End</option>
-            {periods.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+          <Select
+            label={`${time.label} to`}
+            value={value.to ?? ''}
+            onChange={(to) => onChange({ ...value, to: to || undefined })}
+            options={[{ value: '', label: 'End' }, ...periods.map((p) => ({ value: p.key, label: p.label }))]}
+          />
         </span>
       )}
 

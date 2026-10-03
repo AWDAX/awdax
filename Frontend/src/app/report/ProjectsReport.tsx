@@ -5,6 +5,7 @@ import { SearchIcon } from '../../ui/appIcons.tsx'
 import { Select } from '../../ui/Select.tsx'
 import type { SelectOption } from '../../ui/Select.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
+import { TutorialTrigger } from '../../ui/tutorial/TutorialTrigger.tsx'
 import { useAlerts } from '../chat/alerts.ts'
 import { ExportDialog } from '../export/ExportDialog.tsx'
 import { PageHeader } from '../workspace/PageHeader.tsx'
@@ -68,7 +69,10 @@ export default function ProjectsReport() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-6">
-      <PageHeader eyebrow="Workspace" title="Projects report" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <PageHeader eyebrow="Workspace" title="Projects report" />
+        <TutorialTrigger label="Watch tutorial" variant="secondary" />
+      </div>
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {kpis.map((k) => (
@@ -149,3 +153,4 @@ export default function ProjectsReport() {
     </div>
   )
 }
+

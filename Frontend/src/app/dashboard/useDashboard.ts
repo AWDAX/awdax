@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TableProfile } from '../../analytics/profile.ts'
+import { columnSignature } from '../../analytics/signature.ts'
 import { newId } from '../../analytics/spec.ts'
 import type { ChartSpec } from '../../analytics/spec.ts'
 import { suggestCharts } from '../../analytics/suggest.ts'
@@ -16,7 +17,6 @@ interface Saved {
 
 // v2: tiles are sized in page rows (1–6) on a one-screen canvas. Older layouts (88px rows) are not reused.
 const keyFor = (instanceId: string) => `awdax.dashboard.v2.${instanceId}`
-const signatureOf = (p: TableProfile) => p.columns.filter((c) => !c.virtual).map((c) => c.name).join('|')
 const fresh = (specs: ChartSpec[]) => specs.map((spec) => ({ ...spec, id: newId() }))
 
 /** The default page: the number cards and the first four charts the table supports. */
@@ -32,7 +32,7 @@ function load(instanceId: string, p: TableProfile): Tile[] {
     const raw = localStorage.getItem(keyFor(instanceId))
     if (raw) {
       const saved = JSON.parse(raw) as Saved
-      if (saved.signature === signatureOf(p) && Array.isArray(saved.tiles)) {
+      if (saved.signature === columnSignature(p) && Array.isArray(saved.tiles)) {
         return saved.tiles.map((t) => ({ ...t, w: clampW(t.w), h: clampH(t.h) }))
       }
     }
@@ -47,7 +47,7 @@ function load(instanceId: string, p: TableProfile): Tile[] {
  * When the scraped table's columns change, the saved layout no longer fits and the suggestions return.
  */
 export function useDashboard(instanceId: string, profile: TableProfile) {
-  const signature = signatureOf(profile)
+  const signature = columnSignature(profile)
   const [state, setState] = useState(() => ({ signature, tiles: load(instanceId, profile) }))
   // A new column set (another scrape) replaces the tiles during render, not in an effect.
   const tiles = state.signature === signature ? state.tiles : load(instanceId, profile)

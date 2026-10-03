@@ -21,9 +21,10 @@ from urllib.parse import urlparse
 import sqlite3
 
 from discovery import SourceCandidate
-from inspector import ScrapePlan, egazette_preset_plan
+from inspector import ScrapePlan, egazette_preset_plan, load_page, page_load_seconds
 from reasoning import ScrapeIntent, parse_prompt
 from table_merge import merge_records
+from url_guard import UnresolvableHost, UnsafeURL, check_url
 
 logger = logging.getLogger(__name__)
 
@@ -318,6 +319,20 @@ def _should_exhaust_listing(url: str, intent: ScrapeIntent) -> bool:
     )
 
 
+def guard_detail_url(url: str) -> str:
+    """A detail/PDF URL built from an LLM-written template: dropped (empty) when it points somewhere not allowed."""
+    if not url:
+        return ""
+    try:
+        check_url(url)
+    except UnresolvableHost:
+        pass  # same as before: the download will simply fail
+    except UnsafeURL:
+        logger.warning("Dropped a detail URL that is not allowed")
+        return ""
+    return url
+
+
 def fill_url_template(template: str, row: dict[str, Any], id_field: str) -> str:
     ext_id = str(row.get(id_field) or row.get("Gazette ID") or "")
     num_m = re.search(r"-(\d+)\s*$", ext_id)
@@ -348,6 +363,7 @@ class PlanDrivenScraper:
             opts.add_argument("--headless=new")
             opts.add_argument("--window-size=1920,1080")
         self.driver = webdriver.Chrome(options=opts)
+        self.driver.set_page_load_timeout(page_load_seconds())
         return self.driver
 
     def quit(self):
@@ -389,7 +405,7 @@ class PlanDrivenScraper:
                     logger.warning("Ready step error: %s", e)
 
     def open_entry(self):
-        self.driver.get(self.plan.entry_url)
+        load_page(self.driver, self.plan.entry_url)
         time.sleep(2)
         self.run_ready_steps()
         try:
@@ -528,7 +544,9 @@ class PlanDrivenScraper:
 
             pdf_url = ""
             if self.plan.detail_mode == "url_template" and self.plan.direct_url_template:
-                pdf_url = fill_url_template(self.plan.direct_url_template, row, self.plan.id_field)
+                pdf_url = guard_detail_url(
+                    fill_url_template(self.plan.direct_url_template, row, self.plan.id_field)
+                )
             elif self.plan.detail_mode == "none" and self.fast_mode:
                 pdf_url = guess_pdf_url(str(ext))
 
@@ -871,7 +889,15 @@ class UniversalScrapeService:
             self._current_job = job
             self.save_job(job)
             self._live[jid] = runner
-            thread.start()
+            # Running from now, as trigger_scrape_all does, not from when the thread reaches _run_all: the
+            # orchestrator polls is_job_running right after this returns and would post "Run complete" with no rows.
+            self._running_jobs.add(jid)
+            try:
+                thread.start()
+            except Exception:
+                self._running_jobs.discard(jid)
+                self._live.pop(jid, None)
+                raise
         self._set_status(
             jid,
             phase="live",
@@ -930,6 +956,8 @@ class UniversalScrapeService:
                 break
         with self._lock:
             self._live.pop(job_id, None)
+            # start_live marked it running; a loop stopped before its first cycle never reached _run_all's clear.
+            self._running_jobs.discard(job_id)
         self._set_status(job_id, phase="idle", message="Live mode stopped", live_enabled=False)
 
     def list_raw_records(self, job_id: str, *, limit: int = 500) -> list[dict[str, Any]]:
@@ -1079,6 +1107,7 @@ class UniversalScrapeService:
             job.plans = plans
             self._current_job = job
             self.save_job(job)
+            self._running_jobs.add(jid)
             t = threading.Thread(
                 target=self._run_all,
                 args=(plans, job, max_pages),
@@ -1086,7 +1115,11 @@ class UniversalScrapeService:
                 daemon=True,
                 name=f"scrape-{jid[:8]}",
             )
-            t.start()
+            try:
+                t.start()
+            except Exception:
+                self._running_jobs.discard(jid)
+                raise
             return {"started": True, "sources": len(plans), "job_id": jid, **self.get_scrape_status(jid)}
 
     def _run_single(self, plan: ScrapePlan, job: ScrapeJob, max_pages: int) -> int:

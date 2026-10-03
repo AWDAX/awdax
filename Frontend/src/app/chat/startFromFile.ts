@@ -25,8 +25,9 @@ export async function startFromFile(file: File, question: string): Promise<{ id:
     note: read.note,
   })
   if (question) {
-    const parsed = parseQuestion(profileTable(read.table), question)
-    if (parsed.ok) seedAnswer(`file-${id}`, { question, intent: parsed.intent, chart: parsed.chart, query: parsed.query })
+    const profile = profileTable(read.table)
+    const parsed = parseQuestion(profile, question)
+    if (parsed.ok) seedAnswer(`file-${id}`, { question, intent: parsed.intent, chart: parsed.chart, query: parsed.query }, profile)
   }
   return { id }
 }

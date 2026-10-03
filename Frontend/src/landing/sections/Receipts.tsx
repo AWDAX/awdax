@@ -40,6 +40,7 @@ export function Receipts() {
   return (
     <Section labelledBy="receipts-title">
       <Container>
+
         <SectionHead
           id="receipts-title"
           index="03"

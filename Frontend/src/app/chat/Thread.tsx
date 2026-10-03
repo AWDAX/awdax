@@ -27,12 +27,13 @@ export function Thread({ messages, working }: { messages: ChatMessage[]; working
     <ol className="flex flex-col gap-5">
       {messages.map((m) =>
         m.role === 'user' ? (
-          <li key={m.id} className="ml-auto max-w-[85%] rounded-panel border-2 border-ink bg-signal-soft px-4 py-3">
-            <p className="text-body whitespace-pre-wrap">{m.text}</p>
+          <li key={m.id} className="ml-auto max-w-[min(85%,42rem)] rounded-panel border-2 border-ink bg-signal-soft px-4 py-3">
+            <p className="text-body break-words whitespace-pre-wrap">{m.text}</p>
             <p className="mt-1 text-right font-mono text-micro text-ink-3">{timeAgo(m.created_at)}</p>
           </li>
         ) : (
-          <li key={m.id} className="group flex gap-3">
+          // Replies keep a reading width on the left, so the thread spans the page without long lines.
+          <li key={m.id} className="group flex max-w-3xl gap-3">
             <AssistantOrb size="md" working={working && m.id === lastBot} className="mt-0.5 shrink-0" />
             <div className="min-w-0 flex-1">
               <BotText text={m.text} />

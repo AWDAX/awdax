@@ -21,9 +21,32 @@ const DB = 'awdax'
 const STORE = 'projects'
 const listeners = new Set<() => void>()
 
+// Before files were per account, every account on this browser shared the 'awdax' database. The first account to sign in
+// after that change keeps it as is (nothing is copied or deleted); every other account gets a database of its own.
+const OWNER_KEY = 'awdax.files.owner'
+
+/** The database for this account's files. Pure apart from `store`, so it is tested without a browser. */
+export function filesDbName(account: string, store: Pick<Storage, 'getItem' | 'setItem'>): string {
+  try {
+    const recorded = store.getItem(OWNER_KEY)
+    if (recorded === null) {
+      store.setItem(OWNER_KEY, account)
+      return DB
+    }
+    if (recorded === account) return DB
+  } catch {
+    // Storage is blocked, so this account can't be recorded: it must not get the shared database.
+  }
+  return `${DB}.${account}`
+}
+
+let owner: string | null = null
+
 function open(): Promise<IDBDatabase> {
+  if (owner === null) return Promise.reject(new Error('Sign in to use uploaded files'))
+  const account = owner
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1)
+    const req = indexedDB.open(filesDbName(account, localStorage), 1)
     req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' })
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -39,8 +62,14 @@ async function run<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRe
       db.close()
       resolve(req.result)
     }
-    tx.onerror = () => reject(tx.error)
-    tx.onabort = () => reject(tx.error ?? new Error('Storage was blocked'))
+    tx.onerror = () => {
+      db.close()
+      reject(tx.error)
+    }
+    tx.onabort = () => {
+      db.close()
+      reject(tx.error ?? new Error('Storage was blocked'))
+    }
   })
 }
 
@@ -51,6 +80,13 @@ export function onLocalChange(l: () => void) {
   return () => {
     listeners.delete(l)
   }
+}
+
+/** Called by the auth layer once an account is confirmed. Lists re-read when it changes. */
+export function setFilesOwner(account: string | null) {
+  if (account === owner) return
+  owner = account
+  changed()
 }
 
 export async function listLocal(): Promise<LocalMeta[]> {
@@ -67,19 +103,39 @@ export async function saveLocal(p: LocalProject) {
   changed()
 }
 
-/** Renames an uploaded-file chat. Its place in the history (last updated) doesn't change. */
+/** The record after a rename, or null when there is nothing to write. Last updated stays as it was. */
+export function renamed(p: LocalProject | undefined, title: string): LocalProject | null {
+  const next = title.trim()
+  return p && next ? { ...p, title: next } : null
+}
+
+/** Renames an uploaded-file chat. Read and write share one transaction, so a delete in between isn't undone. */
 export async function renameLocal(id: string, title: string) {
-  const p = await getLocal(id)
-  if (!p || !title.trim()) return
-  await run('readwrite', (s) => s.put({ ...p, title: title.trim() }))
-  changed()
+  const db = await open()
+  const wrote = await new Promise<boolean>((resolve, reject) => {
+    let did = false
+    const tx = db.transaction(STORE, 'readwrite')
+    const store = tx.objectStore(STORE)
+    const get = store.get(id)
+    get.onsuccess = () => {
+      const next = renamed(get.result as LocalProject | undefined, title)
+      if (next) {
+        store.put(next)
+        did = true
+      }
+    }
+    tx.oncomplete = () => resolve(did)
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error ?? new Error('Storage was blocked'))
+  }).finally(() => db.close())
+  if (wrote) changed()
 }
 
 export async function deleteLocal(id: string) {
   await run('readwrite', (s) => s.delete(id))
   try {
-    localStorage.removeItem(`awdax.answers.file-${id}`)
-    localStorage.removeItem(`awdax.dashboard.file-${id}`)
+    // The keys useAnswers, useDashboard and GraphsPanel save this chat under (plus the pre-v2 dashboard key).
+    for (const key of ['answers', 'dashboard', 'dashboard.v2', 'graphs.v2']) localStorage.removeItem(`awdax.${key}.file-${id}`)
   } catch {
     // nothing to clean
   }

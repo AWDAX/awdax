@@ -30,7 +30,7 @@ export function Donut({ data, fmt, height, selected, onSelect, pie = false }: Pr
   const size = Math.max(96, Math.min(160, height - 16))
 
   return (
-    <div className="flex h-full flex-wrap items-center gap-5" style={{ minHeight: Math.min(height, 180) }} aria-hidden>
+    <div className="flex flex-wrap items-center gap-5" style={{ height }} aria-hidden>
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg viewBox="0 0 128 128" className="size-full -rotate-90">
           <circle cx="64" cy="64" r={R} fill="none" className="stroke-sunken" strokeWidth={STROKE} />
@@ -54,7 +54,7 @@ export function Donut({ data, fmt, height, selected, onSelect, pie = false }: Pr
           </div>
         )}
       </div>
-      <ul className="flex min-w-0 flex-1 flex-col gap-1 text-small">
+      <ul className="flex min-w-0 flex-1 flex-col gap-1 text-small overflow-y-auto scrollbar-none" style={{ maxHeight: height }} data-lenis-prevent>
         {pie && (
           <li className="flex items-baseline justify-between gap-2 border-b border-line px-1 pb-1 text-micro text-ink-3">
             Total <span className="font-mono text-ink tabular-nums">{fmt.exact(total)}</span>

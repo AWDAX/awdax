@@ -1,20 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, matchPath, useLocation, useNavigate, useParams } from 'react-router'
 import { awdax } from '../../api/awdax.ts'
 import { ApiError } from '../../api/client.ts'
 import { timeAgo } from '../../api/dates.ts'
 import { useInstances } from '../../api/instancesContext.ts'
 import type { InstanceDetail } from '../../api/types.ts'
 import { useLiveStream } from '../../api/useLiveStream.ts'
-import { PauseIcon, PlayIcon } from '../../ui/icons.tsx'
-import { TrashIcon } from '../../ui/appIcons.tsx'
+import { createSingleFlight } from '../../api/singleFlight.ts'
 import { Button } from '../../ui/Button.tsx'
-import { BellToggle } from '../../ui/micro/BellToggle.tsx'
-import { FuseButton } from '../../ui/micro/FuseButton.tsx'
 import { useToast } from '../../ui/toast/toastContext.ts'
 import { useVisits } from '../sources/useVisits.ts'
 import { isUntitled } from '../workspace/groupByDay.ts'
 import { markSeen, notify, setWatched, useAlerts } from './alerts.ts'
+import { ChatMenu } from './ChatMenu.tsx'
 import { ChatView } from './ChatView.tsx'
 
 /**
@@ -24,7 +22,8 @@ import { ChatView } from './ChatView.tsx'
 export default function ChatPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const { remove, upsert, list, loading: listLoading } = useInstances()
+  const { pathname } = useLocation()
+  const { remove, upsert, list, loading: listLoading, listOk } = useInstances()
   const { toast } = useToast()
   const [chat, setChat] = useState<InstanceDetail | null>(null)
   const [missing, setMissing] = useState(false)
@@ -51,7 +50,9 @@ export default function ChatPage() {
     return () => window.clearTimeout(t)
   }, [refetch])
 
-  const live = useLiveStream(id, {
+  const gone = missing || (!listLoading && listOk && !!id && !list.some((instance) => instance.id === id))
+  // A chat known to be gone is not streamed: pass no id so no socket or dataset request is made for it.
+  const live = useLiveStream(gone ? null : id, {
     onChatUpdated: refetch,
     onPayload: (p) => {
       setOverride(null)
@@ -73,16 +74,24 @@ export default function ChatPage() {
     if (live.rowsTotal > 0) markSeen(id, live.rowsTotal)
   }, [id, live.rowsTotal])
 
+  const flight = useRef(createSingleFlight())
+  const [switching, setSwitching] = useState(false)
   const setLive = async (enabled: boolean) => {
-    try {
-      const detail = await awdax.setLive(id, enabled)
-      setOverride(detail.live_enabled)
-    } catch (err) {
-      toast({ title: enabled ? 'Couldn’t resume' : 'Couldn’t pause', description: err instanceof Error ? err.message : String(err), tone: 'error' })
-    }
+    // A second click while a pause/resume is pending is ignored.
+    await flight.current.run(async () => {
+      setSwitching(true)
+      try {
+        const snapshot = await awdax.setLive(id, enabled)
+        setOverride(snapshot.live_enabled)
+      } catch (err) {
+        toast({ title: enabled ? 'Couldn’t resume' : 'Couldn’t pause', description: err instanceof Error ? err.message : String(err), tone: 'error' })
+      } finally {
+        setSwitching(false)
+      }
+    })
   }
 
-  if (missing || live.missing || (!listLoading && !!id && !list.some((instance) => instance.id === id))) {
+  if (gone || live.missing) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
         <h1 className="font-display font-wide text-h2 font-extrabold">This chat no longer exists.</h1>
@@ -113,27 +122,17 @@ export default function ChatPage() {
   const raw = chat?.title
   const title = raw && !isUntitled(raw) ? raw : 'Untitled chat'
   const actions = (
-    <>
-      <BellToggle pressed={watched} onChange={(on) => setWatched(id, on, live.rowsTotal)} offLabel="Alert me on new rows" onLabel="Alerts on" />
-      {liveEnabled ? (
-        <FuseButton label="Pause tracking" undoLabel="Undo" doneLabel="Paused" icon={<PauseIcon />} undoWindow={3000} onCommit={() => void setLive(false)} />
-      ) : (
-        <Button variant="secondary" onClick={() => void setLive(true)}>
-          <PlayIcon /> Resume tracking
-        </Button>
-      )}
-      <FuseButton
-        label="Delete chat"
-        undoLabel="Undo"
-        doneLabel="Deleted"
-        tone="danger"
-        icon={<TrashIcon />}
-        onCommit={async () => {
-          navigate('/app', { replace: true })
-          await remove(id).catch(() => toast({ title: 'Couldn’t delete that chat', tone: 'error' }))
-        }}
-      />
-    </>
+    <ChatMenu
+      watched={watched}
+      onWatch={(on) => setWatched(id, on, live.rowsTotal)}
+      liveEnabled={liveEnabled}
+      switching={switching}
+      onLive={(enabled) => void setLive(enabled)}
+      onDelete={async () => {
+        if (matchPath(pathname, window.location.pathname)) navigate('/app', { replace: true })
+        await remove(id).catch(() => toast({ title: 'Couldn’t delete that chat', tone: 'error' }))
+      }}
+    />
   )
 
   return (
@@ -144,6 +143,7 @@ export default function ChatPage() {
       messages={chat?.messages ?? []}
       live={view}
       visits={visits}
+      runStartedAt={chat?.created_at}
       actions={actions}
       onRetry={async () => {
         await setLive(false)

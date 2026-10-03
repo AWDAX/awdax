@@ -13,11 +13,7 @@ from typing import Any, Callable
 
 from reasoning import ScrapeIntent
 
-_EGAZETTE_RE = re.compile(r"\b(e[\-\s]?gazette|egazz?et)\b|egazette\.gov", re.I)
-_EGAZETTE_USER_RE = re.compile(
-    r"\b(e[\-\s]?gazette|egazz?et|gazette\s+notification|official\s+gazette)\b|egazette\.gov",
-    re.I,
-)
+_EGAZETTE_RE = re.compile(r"\b(e[\-\s]?gazette|egazz?et|gazette)s?\b|egazette\.gov", re.I)
 _PARLIAMENT_RE = re.compile(
     r"\b("
     r"lok\s*sabha|lok\s*sabh|"
@@ -50,8 +46,8 @@ def _intent_blob(intent: ScrapeIntent) -> str:
 
 def user_explicitly_wants_egazette(intent: ScrapeIntent) -> bool:
     """Use the user's words (prompt + topic), not model-added sites/constraints."""
-    user = " ".join([intent.raw_prompt or "", intent.topic or ""]).strip()
-    return bool(_EGAZETTE_USER_RE.search(user))
+    user = (intent.raw_prompt or "").strip() or (intent.topic or "").strip()
+    return bool(_EGAZETTE_RE.search(user))
 
 
 def intent_is_parliament_sessions(intent: ScrapeIntent) -> bool:
@@ -105,11 +101,7 @@ def intent_uses_regulatory_feed(intent: ScrapeIntent | None) -> bool:
         return False
     if intent_is_parliament_sessions(intent) and not user_explicitly_wants_egazette(intent):
         return False
-    if not user_explicitly_wants_egazette(intent):
-        return False
-    if (intent.pipeline or "").strip() == "regulatory_feed":
-        return True
-    return bool(_EGAZETTE_RE.search(_intent_blob(intent)))
+    return user_explicitly_wants_egazette(intent)
 
 
 def load_intent(data: dict[str, Any]) -> ScrapeIntent:

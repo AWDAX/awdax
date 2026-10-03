@@ -24,7 +24,8 @@ export function PrecisionNote({ profile, result }: { profile: TableProfile; resu
   const measure = q.measure !== undefined ? profile.columns[q.measure] : undefined
   const how = q.agg === 'count' || !measure ? 'Count of rows' : `${AGG_LABEL[q.agg]} of ${measure.label}`
   const avgNote = q.agg === 'avg' ? `, rounded half-to-even to ${result.scale} decimals` : ''
-  const text = `${how}${avgNote} · ${plural(result.used, 'row')} used`
+  const rangeNote = result.ranged > 0 ? ` · ${plural(result.ranged, 'range')} counted at the lowest value` : ''
+  const text = `${how}${avgNote} · ${plural(result.used, 'row')} used${rangeNote}`
   const missing = result.blank.length + result.excluded.length
 
   return (

@@ -3,9 +3,13 @@ import { awdax } from './awdax.ts'
 import { mapLiveSnapshot, mapLiveStatus, type AwdaxpLiveState, type AwdaxpRun } from './awdaxpAdapter.ts'
 import { ApiError } from './client.ts'
 import { openLiveSocket } from './liveSocket.ts'
-import { asRows, EMPTY_LIVE, isRecord, mergeSources, type LiveState } from './liveState.ts'
+import { applyPatch, asRows, EMPTY_LIVE, isRecord, mergeSources, type LiveState } from './liveState.ts'
 import { canMerge, mergeStreamedRows } from './mergeRows.ts'
-import type { DatasetTable, LiveStreamPayload, ResearchSource, RunEvent, StreamedRows } from './types.ts'
+import { runActivityChanged, shouldPoll } from './pollGate.ts'
+import { createSnapshotGate } from './snapshotGate.ts'
+import { attachStreamListeners } from './sseStream.ts'
+import { createSseSupervisor } from './sseSupervisor.ts'
+import type { DatasetTable, LiveSnapshot, LiveStreamPayload, ResearchSource, RunEvent, StreamedRows } from './types.ts'
 
 export type { LiveState } from './liveState.ts'
 
@@ -32,10 +36,10 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
     let closed = false
     let poll: number | undefined
     let liveRefresh: number | undefined
-    let source: EventSource | null = null
     let stopSocket: (() => void) | null = null
     const datasetRef = { current: null as DatasetTable | null }
-    const pending = { current: [] as StreamedRows[] }
+    const gate = createSnapshotGate()
+    let current: LiveState = EMPTY_LIVE
     const loaded = { current: false }
     const loading = { current: false }
     const again = { current: false }
@@ -43,21 +47,19 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
     const includePartial = { current: false }
     const graphTick = { current: 0 }
 
-    const setState = (fn: (s: LiveState) => LiveState) =>
-      setTagged((t) => ({ ...fn(t.forId === id ? t : EMPTY_LIVE), forId: id }))
+    const filterKey = () => (includePartial.current ? 'partial' : 'accepted')
+    const update = (fn: (s: LiveState) => LiveState) => {
+      const before = current
+      current = fn(current)
+      setTagged({ ...current, forId: id })
+      // A run started or finished: fetch the table now (the first load is already in flight). The end matters on
+      // the event-stream fallback, which never announces the final re-merged, re-scored table.
+      if (loaded.current && runActivityChanged(before.status.phase, current.status.phase)) void loadFull()
+    }
 
     const publish = (patch: Partial<LiveState>, chatUpdated = false) => {
-      let next = EMPTY_LIVE
-      setState((s) => {
-        next = {
-          ...s,
-          ...patch,
-          sources: patch.sources ? mergeSources(s.sources, patch.sources) : s.sources,
-          status: patch.status ? { ...s.status, ...patch.status } : s.status,
-          connected: patch.connected ?? true,
-        }
-        return next
-      })
+      const next = applyPatch(current, patch)
+      update(() => next)
       handlersRef.current.onPayload?.({
         live_enabled: next.liveEnabled,
         status: next.status,
@@ -68,16 +70,18 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
       if (chatUpdated) handlersRef.current.onChatUpdated?.()
     }
 
-    const applyLive = (state: AwdaxpLiveState) => {
-      const snap = mapLiveSnapshot(state)
+    const applySnapshot = (snap: LiveSnapshot) => {
       publish({ status: { ...snap.status }, liveEnabled: snap.live_enabled, rowsTotal: snap.rows_total })
     }
+    const applyLive = (state: AwdaxpLiveState) => applySnapshot(mapLiveSnapshot(state))
 
     const applyRows = (message: StreamedRows) => {
-      if (!loaded.current || !canMerge(datasetRef.current)) {
-        pending.current.push(message)
+      const mergeable = loaded.current && canMerge(datasetRef.current)
+      if (!loaded.current || gate.isLoading() || !mergeable) gate.buffer(message)
+      if (!mergeable) {
         publish({ rowsTotal: message.accepted_total, partialAdded: message.partial_added, status: { lane: message.lane } })
-        if (loaded.current) void loadFull()
+        // Loaded but unmergeable: reload. Not loaded and nothing in flight: recover a failed first snapshot.
+        if (loaded.current || !gate.isLoading()) void loadFull()
         return
       }
       datasetRef.current = mergeStreamedRows(datasetRef.current, message)
@@ -90,23 +94,15 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
       window.clearTimeout(liveRefresh)
       liveRefresh = window.setTimeout(() => {
         graphTick.current += 1
-        setState((s) => ({ ...s, graphTick: graphTick.current }))
+        update((s) => ({ ...s, graphTick: graphTick.current }))
         void loadSide()
       }, 2500)
-    }
-
-    const drain = (table: DatasetTable) => {
-      let next = table
-      const queued = pending.current
-      pending.current = []
-      for (const message of queued) next = mergeStreamedRows(next, message)
-      return next
     }
 
     async function loadSide() {
       try {
         const [sources, stats] = await Promise.all([awdax.getSources(id!), awdax.getStats(id!)])
-        if (!closed) setState((s) => ({ ...s, sources: mergeSources(s.sources, sources.sources ?? []), stats }))
+        if (!closed) update((s) => ({ ...s, sources: mergeSources(s.sources, sources.sources ?? []), stats }))
       } catch {
         // Sources and scores catch up on the next batch; the table still streams.
       }
@@ -121,38 +117,40 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
       loading.current = true
       const force = forceGraph || forceNext.current
       forceNext.current = false
+      let generation = 0
       try {
         const previous = datasetRef.current?.rows.length ?? -1
-        const [table, sources, stats] = await Promise.all([
-          awdax.getDataset(id!, includePartial.current),
-          awdax.getSources(id!).catch(() => null),
-          awdax.getStats(id!).catch(() => null),
-        ])
+        generation = gate.begin(filterKey())
+        const table = await awdax.getDataset(id!, includePartial.current)
         if (closed) return
-        const merged = drain(table)
+        const merged = gate.finish(generation, filterKey(), table)
+        if (!merged) return
         datasetRef.current = merged
         loaded.current = true
         if (force || merged.rows.length !== previous) graphTick.current += 1
         publish({
           dataset: merged.rows.length ? merged : null,
           rowsTotal: merged.row_count ?? merged.rows.length,
-          sources: sources?.sources ?? [],
-          stats,
           graphTick: graphTick.current,
           includePartial: includePartial.current,
         })
+        void loadSide()
       } catch (err) {
         if (closed) return
         if (err instanceof ApiError && err.status === 404) {
-          setState((s) => ({ ...s, missing: true }))
+          update((s) => ({ ...s, missing: true }))
+          gate.reset()
+          again.current = false
           stopAll()
-        } else setState((s) => ({ ...s, connected: false }))
+        } else update((s) => ({ ...s, connected: false }))
       } finally {
+        // A failed snapshot must not leave the gate "loading", or frames would buffer forever.
+        gate.settle(generation)
         loading.current = false
-        if (again.current) {
+        if (again.current && !closed) {
           again.current = false
           void loadFull(forceNext.current)
-        }
+        } else if (closed) again.current = false
       }
     }
 
@@ -161,7 +159,7 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
       if (message.type === 'hello' && isRecord(message.state)) {
         applyLive(message.state as unknown as AwdaxpLiveState)
         if (Array.isArray(message.events)) {
-          setState((s) => ({ ...s, events: (message.events as RunEvent[]).slice(-12) }))
+          update((s) => ({ ...s, events: (message.events as RunEvent[]).slice(-12) }))
         }
         return
       }
@@ -171,7 +169,7 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
       }
       if (message.type === 'run' && isRecord(message.run)) {
         const run = message.run as unknown as AwdaxpRun
-        setState((s) => ({
+        update((s) => ({
           ...s,
           connected: true,
           rowsTotal: run.rows_total ?? s.rowsTotal,
@@ -181,13 +179,13 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
       }
       if (message.type === 'run_event' && isRecord(message.event)) {
         const event = message.event as unknown as RunEvent
-        setState((s) => ({ ...s, events: [...s.events.filter((item) => item.id !== event.id), event].slice(-12) }))
+        update((s) => ({ ...s, events: [...s.events.filter((item) => item.id !== event.id), event].slice(-12) }))
         return
       }
       if (message.type === 'source' && isRecord(message.source)) {
         const source = message.source as unknown as ResearchSource
         if (typeof source.url !== 'string' || !source.url) return
-        setState((s) => ({
+        update((s) => ({
           ...s,
           sources: mergeSources(s.sources, [source]),
         }))
@@ -199,52 +197,66 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
         return
       }
       if (message.type === 'batch_complete' || message.type === 'resync') {
-        setState((s) => ({ ...s, status: { ...s.status, lane: null } }))
+        update((s) => ({ ...s, status: { ...s.status, lane: null } }))
+        // Final scoring may have dropped rows the buffered frames still carry; the fresh snapshot is the truth.
+        gate.dropBuffer()
         void loadFull(true)
         handlersRef.current.onChatUpdated?.()
       }
     }
 
-    const startPolling = () => {
-      if (poll === undefined) poll = window.setInterval(() => void loadFull(), POLL_MS)
+    const sse = createSseSupervisor({
+      open: () => {
+        const source = new EventSource(awdax.streamUrl(id))
+        attachStreamListeners(source, {
+          onLive: applyLive,
+          onEvent: (event) => update((s) => ({ ...s, events: [...s.events, event].slice(-12) })),
+          onSource: (value) => onMessage({ type: 'source', source: value }),
+        })
+        return source
+      },
+      schedule: (fn, ms) => window.setTimeout(fn, ms),
+      cancel: (handle) => window.clearTimeout(handle),
+      onError: () => update((s) => ({ ...s, connected: false })),
+    })
+    const statusLoading = { current: false }
+    // With the stream down (503 on a restart, 401) the tick must fetch status itself: the phase gate below
+    // would otherwise stay on a stale phase forever.
+    const tick = async (force: boolean) => {
+      if (closed || document.visibilityState !== 'visible') return
+      let changed = false
+      if (!sse.isOpen() && !statusLoading.current) {
+        statusLoading.current = true
+        try {
+          const before = current.status.phase
+          applySnapshot(await awdax.getLive(id))
+          changed = loaded.current && runActivityChanged(before, current.status.phase)
+        } catch {
+          // Asked again next tick.
+        } finally {
+          statusLoading.current = false
+        }
+      }
+      // A phase change already fetched the table inside update().
+      if (!closed && !changed && (force || shouldPoll(true, current.status.phase))) void loadFull()
     }
+    const startPolling = () => {
+      if (poll === undefined) poll = window.setInterval(() => void tick(false), POLL_MS)
+    }
+    // Back on the tab while polling: catch up now instead of at the next tick.
+    const onVisible = () => poll !== undefined && void tick(true)
+    document.addEventListener('visibilitychange', onVisible)
     const stopPolling = () => {
       window.clearInterval(poll)
       poll = undefined
     }
     const stopSse = () => {
-      source?.close()
-      source = null
+      sse.stop()
       stopPolling()
     }
     const startSse = () => {
-      if (closed || source) return
-      source = new EventSource(awdax.streamUrl(id))
-      const take = (raw: string) => {
-        try {
-          const parsed = JSON.parse(raw) as unknown
-          if (isRecord(parsed) && 'enabled' in parsed && 'latest_run' in parsed) applyLive(parsed as unknown as AwdaxpLiveState)
-          else if (isRecord(parsed) && parsed.phase) {
-            setState((s) => ({ ...s, events: [...s.events, parsed as unknown as RunEvent].slice(-12) }))
-          }
-        } catch {
-          // ignore
-        }
-      }
-      source.addEventListener('status', (event) => take(event.data))
-      source.addEventListener('run_event', (event) => take(event.data))
-      source.addEventListener('source', (event) => {
-        try {
-          onMessage({ type: 'source', source: JSON.parse(event.data) as unknown })
-        } catch {
-          // An invalid source frame does not stop the stream.
-        }
-      })
-      source.onmessage = (event) => take(event.data)
-      source.onerror = () => {
-        setState((s) => ({ ...s, connected: false }))
-        startPolling()
-      }
+      if (closed) return
+      sse.start()
       startPolling()
     }
     const stopAll = () => {
@@ -258,24 +270,26 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
       refresh: () => loadFull(true),
       setIncludePartial: (value: boolean) => {
         includePartial.current = value
-        setState((s) => ({ ...s, includePartial: value }))
+        update((s) => ({ ...s, includePartial: value }))
         void loadFull(true)
       },
     }
-    setState((s) => ({ ...s, refresh: controls.refresh, setIncludePartial: controls.setIncludePartial }))
+    update((s) => ({ ...s, refresh: controls.refresh, setIncludePartial: controls.setIncludePartial }))
 
     void loadFull()
     stopSocket = openLiveSocket(awdax.liveSocketUrl(id), {
       onMessage,
       onConnection: (state) => {
         if (state === 'open') stopSse()
-        setState((s) => ({ ...s, connected: state === 'open' }))
+        update((s) => ({ ...s, connected: state === 'open' }))
       },
       onFallback: () => startSse(),
     })
 
     return () => {
       closed = true
+      document.removeEventListener('visibilitychange', onVisible)
+      gate.reset()
       stopAll()
     }
   }, [id])
