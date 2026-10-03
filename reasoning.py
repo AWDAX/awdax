@@ -6,20 +6,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any
-
-try:
-    import google.generativeai as genai
-
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-
 
 @dataclass
 class ScrapeIntent:
@@ -59,10 +50,6 @@ class ScrapeIntent:
     def validate(self) -> None:
         if not self.topic:
             raise ValueError("ScrapeIntent.topic is required")
-
-
-def _gemini_model_name() -> str:
-    return os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 
 def gemini_json(prompt: str, *, temperature: float = 0.2) -> Any:

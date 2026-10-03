@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "command": "node",
+  "args": [
+    "C:/Users/Godzilla/.agents/gates/verify.mjs",
+    "--json"
+  ],
+  "cwd": "X:\\Hackathons\\Codecubicle\\awdax-audit\\Frontend",
+  "shell": false,
+  "startedAt": "2026-10-02T09:42:38.320Z",
+  "finishedAt": "2026-10-02T09:42:52.404Z",
+  "durationMs": 14084,
+  "termination": "exit",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "treeKilled": false,
+  "outputHeldOpen": false,
+  "resolved": "C:\\Program Files\\nodejs\\node.exe",
+  "error": null,
+  "stdoutTail": "          \"lint\"\n        ],\n        \"termination\": \"exit\",\n        \"exitCode\": 0,\n        \"durationMs\": 7081,\n        \"timedOut\": false,\n        \"treeKilled\": false,\n        \"outputHeldOpen\": false,\n        \"shell\": false,\n        \"error\": null\n      }\n    },\n    {\n      \"name\": \"types\",\n      \"status\": \"PASS\",\n      \"detail\": \"\",\n      \"output\": \"\",\n      \"run\": {\n        \"command\": \"npx\",\n        \"args\": [\n          \"--no-install\",\n          \"tsc\",\n          \"--noEmit\",\n          \"-p\",\n          \"tsconfig.json\"\n        ],\n        \"termination\": \"exit\",\n        \"exitCode\": 0,\n        \"durationMs\": 895,\n        \"timedOut\": false,\n        \"treeKilled\": false,\n        \"outputHeldOpen\": false,\n        \"shell\": false,\n        \"error\": null\n      }\n    },\n    {\n      \"name\": \"build\",\n      \"status\": \"PASS\",\n      \"detail\": \"\",\n      \"output\": \"\",\n      \"run\": {\n        \"command\": \"npm\",\n        \"args\": [\n          \"run\",\n          \"build\"\n        ],\n        \"termination\": \"exit\",\n        \"exitCode\": 0,\n        \"durationMs\": 4901,\n        \"timedOut\": false,\n        \"treeKilled\": false,\n        \"outputHeldOpen\": false,\n        \"shell\": false,\n        \"error\": null\n      }\n    },\n    {\n      \"name\": \"test\",\n      \"status\": \"PASS\",\n      \"detail\": \"\",\n      \"output\": \"\",\n      \"run\": {\n        \"command\": \"npm\",\n        \"args\": [\n          \"run\",\n          \"test\"\n        ],\n        \"termination\": \"exit\",\n        \"exitCode\": 0,\n        \"durationMs\": 1017,\n        \"timedOut\": false,\n        \"treeKilled\": false,\n        \"outputHeldOpen\": false,\n        \"shell\": false,\n        \"error\": null\n      }\n    }\n  ]\n}",
+  "stderrTail": "",
+  "env": {
+    "msysPathConversionSuspected": false
+  },
+  "label": "verify-after-fixes",
+  "task": "_adhoc",
+  "seq": 6,
+  "logs": {
+    "stdout": "X:\\Hackathons\\Codecubicle\\awdax-audit\\.agent\\runs\\_adhoc\\006-verify-after-fixes.out.log",
+    "stderr": "X:\\Hackathons\\Codecubicle\\awdax-audit\\.agent\\runs\\_adhoc\\006-verify-after-fixes.err.log"
+  }
+}

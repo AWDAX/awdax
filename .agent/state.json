@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-02T09:20:52.183Z",
+  "updated": "2026-10-03T05:24:48.372Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -193,6 +193,179 @@
       "started": null,
       "finished": null,
       "blockedReason": null
+    },
+    {
+      "id": "Q1",
+      "title": "Backend: delete verified dead functions and unused imports",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:24:21.405Z",
+          "codeHash": "00aa1c520ddb87daafc3a88cc12bab896688c1b37783efb1d035570c03ed3770"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T05:24:47.698Z",
+          "text": "Boot check after Q1: backend restarted on the new code; /health 200, /api/instances 200, /api/instances/<id>/sources 200. runtime-verify.mjs cannot start Flask (no package.json) and reports UNVERIFIED; backend suite 172 OK (.agent/runs/q1-unittest.json)",
+          "kind": "caveat"
+        }
+      ],
+      "started": "2026-10-03T05:21:55.955Z",
+      "finished": "2026-10-03T05:24:48.371Z",
+      "blockedReason": null,
+      "base": "fdd7bc0549e4f0a29125eca3546330233e68112d",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q2",
+      "title": "Frontend: delete CallChip and unused exports",
+      "state": "TODO",
+      "deps": [],
+      "attempts": 0,
+      "ui": true,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q3",
+      "title": "Frontend: remove the switched-off Ask database page (chat's Ask box stays)",
+      "state": "WAITING",
+      "deps": [
+        "Q2"
+      ],
+      "attempts": 0,
+      "ui": true,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q4",
+      "title": "Backend: retire the legacy pre-React API and the old root page",
+      "state": "TODO",
+      "deps": [
+        "Q1"
+      ],
+      "attempts": 0,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q5",
+      "title": "Backend: one shared Selenium import, dependency list trimmed",
+      "state": "WAITING",
+      "deps": [
+        "Q4"
+      ],
+      "attempts": 0,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q6",
+      "title": "Backend: scrape sources in parallel, database writes serialized",
+      "state": "WAITING",
+      "deps": [
+        "Q5"
+      ],
+      "attempts": 0,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q7",
+      "title": "Frontend: no Untitled chat flash while a chat loads",
+      "state": "WAITING",
+      "deps": [
+        "Q3"
+      ],
+      "attempts": 0,
+      "ui": true,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q8",
+      "title": "Frontend: measure bundles, lazy-load what slows first paint",
+      "state": "WAITING",
+      "deps": [
+        "Q7"
+      ],
+      "attempts": 0,
+      "ui": true,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q9",
+      "title": "Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change",
+      "state": "WAITING",
+      "deps": [
+        "Q6"
+      ],
+      "attempts": 0,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q10",
+      "title": "CI at the repo root: backend tests + frontend gate on every PR",
+      "state": "WAITING",
+      "deps": [
+        "Q9"
+      ],
+      "attempts": 0,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q11",
+      "title": "Re-run /ponytail-audit, rate the codebase, update docs/HANDOFF.md",
+      "state": "WAITING",
+      "deps": [
+        "Q10",
+        "Q8"
+      ],
+      "attempts": 0,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
     }
   ],
   "log": [
@@ -260,7 +433,97 @@
       "ts": "2026-10-02T09:20:52.183Z",
       "event": "block",
       "detail": "A7 [HUMAN]: Per-user storage decides what happens to users' uploaded files — needs Owner picks: namespace + migrate (recommended) or clear on sign-out"
+    },
+    {
+      "ts": "2026-10-03T05:21:46.622Z",
+      "event": "decision",
+      "detail": "Previous phase A1-A9 were done on fix/fe-* and fix/stability-pass and merged into main as PR #4 (e824f6c), outside this board; A7 still waits on the owner"
+    },
+    {
+      "ts": "2026-10-03T05:21:46.900Z",
+      "event": "decision",
+      "detail": "Backend changes are allowed for agents when small and tested; supersedes 'Backend Python is read-only for agents'"
+    },
+    {
+      "ts": "2026-10-03T05:21:47.127Z",
+      "event": "decision",
+      "detail": "No stack change: SQLite stays (no Postgres), no new packages"
+    },
+    {
+      "ts": "2026-10-03T05:21:47.363Z",
+      "event": "add",
+      "detail": "Q1 Backend: delete verified dead functions and unused imports"
+    },
+    {
+      "ts": "2026-10-03T05:21:47.587Z",
+      "event": "add",
+      "detail": "Q2 Frontend: delete CallChip and unused exports"
+    },
+    {
+      "ts": "2026-10-03T05:21:47.804Z",
+      "event": "add",
+      "detail": "Q3 Frontend: remove the switched-off Ask database page (chat's Ask box stays)"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.022Z",
+      "event": "add",
+      "detail": "Q4 Backend: retire the legacy pre-React API and the old root page"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.252Z",
+      "event": "add",
+      "detail": "Q5 Backend: one shared Selenium import, dependency list trimmed"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.495Z",
+      "event": "add",
+      "detail": "Q6 Backend: scrape sources in parallel, database writes serialized"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.728Z",
+      "event": "add",
+      "detail": "Q7 Frontend: no Untitled chat flash while a chat loads"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.948Z",
+      "event": "add",
+      "detail": "Q8 Frontend: measure bundles, lazy-load what slows first paint"
+    },
+    {
+      "ts": "2026-10-03T05:21:49.173Z",
+      "event": "add",
+      "detail": "Q9 Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change"
+    },
+    {
+      "ts": "2026-10-03T05:21:49.401Z",
+      "event": "add",
+      "detail": "Q10 CI at the repo root: backend tests + frontend gate on every PR"
+    },
+    {
+      "ts": "2026-10-03T05:21:49.634Z",
+      "event": "add",
+      "detail": "Q11 Re-run /ponytail-audit, rate the codebase, update docs/HANDOFF.md"
+    },
+    {
+      "ts": "2026-10-03T05:21:55.955Z",
+      "event": "start",
+      "detail": "Q1 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T05:24:21.442Z",
+      "event": "evidence",
+      "detail": "Q1/code PASS"
+    },
+    {
+      "ts": "2026-10-03T05:24:47.698Z",
+      "event": "note",
+      "detail": "Q1 [caveat]: Boot check after Q1: backend restarted on the new code; /hea"
+    },
+    {
+      "ts": "2026-10-03T05:24:48.372Z",
+      "event": "done",
+      "detail": "Q1 (code:PASS)"
     }
   ],
-  "integrity": "1adddc22a3d172be395c7b181360a91c0554e44c9efff5bbae1573d7b16272aa"
+  "integrity": "aa36a634a4b8ec95b41d281b84f55912412af8cc6a642bb2c3b7ccdbe6b0995e"
 }

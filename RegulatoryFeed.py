@@ -39,12 +39,6 @@ try:
 except ImportError:
     SELENIUM_AVAILABLE = False
 
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-
 from llm_client import llm_available, llm_text
 
 try:
@@ -930,7 +924,6 @@ class GazetteScraper:
 class RegulatoryFeedService:
     def __init__(self):
         self.is_running = False
-        self._scrape_loop_running = False
         self._scrape_lock = threading.Lock()
         self._workers_started = False
         self.ai = AISummarizer()
@@ -982,7 +975,6 @@ class RegulatoryFeedService:
     def get_scrape_status(self) -> dict[str, Any]:
         self.scrape_status["gazette_count"] = self._gazette_count()
         self.scrape_status["is_running"] = self.is_running
-        self.scrape_status["loop_running"] = self._scrape_loop_running
         return dict(self.scrape_status)
 
     def trigger_scrape(self, max_pages: int = 3) -> dict[str, Any]:
@@ -1348,34 +1340,7 @@ class RegulatoryFeedService:
             cur.close()
             conn.close()
 
-    # ── continuous scrape loop ────────────────────────────────────────
-    SCRAPE_INTERVAL = 3600  # seconds between scrape cycles (1 hour)
     BOOTSTRAP_TARGET = 100  # keep backfilling history until at least this many notifications
-
-    def start_scraping(self, max_pages=20):
-        """Start hourly background loop (first cycle runs immediately)."""
-        if self._scrape_loop_running:
-            return
-        self._scrape_loop_running = True
-        if not self._workers_started:
-            self.start_background_workers()
-            self._workers_started = True
-        t = threading.Thread(
-            target=self._scrape_loop,
-            args=(max_pages,),
-            daemon=True,
-            name="scrape-loop",
-        )
-        t.start()
-
-    def _scrape_loop(self, max_pages=3):
-        while True:
-            self._run_scrape_cycle(max_pages)
-            self.scrape_status["phase"] = "sleeping"
-            self.scrape_status["message"] = (
-                f"Waiting {self.SCRAPE_INTERVAL // 60} min until next automatic scrape…"
-            )
-            time.sleep(self.SCRAPE_INTERVAL)
 
     def _process_scraped_row(self, row: dict[str, Any]):
         """Persist each scraped row; queue AI summary in background."""
@@ -1496,84 +1461,6 @@ class RegulatoryFeedService:
                 logger.info(f"Redline saved for summary {row['id']}")
         except Exception as e:
             logger.error(f"Redline gen error for {row['id']}: {e}")
-
-    def _clause_worker(self):
-        time.sleep(120)
-        while True:
-            try:
-                conn = _get_db()
-                cur = conn.cursor()
-                cur.execute("""
-                    SELECT s.id, g.pdf_text, g.subject, g.gazette_id
-                    FROM gazette_summaries s JOIN gazettes g ON s.gazette_id = g.id
-                    WHERE (s.clause_comparison IS NULL OR s.clause_comparison = '' OR s.clause_comparison = '[]')
-                      AND g.pdf_text IS NOT NULL AND length(g.pdf_text) > 50
-                    ORDER BY s.created_at DESC LIMIT 10
-                """)
-                rows = [_as_dict(r) for r in cur.fetchall()]
-                cur.close()
-                conn.close()
-                for row in rows:
-                    try:
-                        result = self.ai.generate_clause_comparison(row["pdf_text"], row["subject"] or "Notification")
-                        conn2 = _get_db()
-                        cur2 = conn2.cursor()
-                        cur2.execute(
-                            """UPDATE gazette_summaries SET
-                               clause_comparison=?, clause_comparison_generated_at=datetime('now'), updated_at=datetime('now')
-                               WHERE id=?""",
-                            (json.dumps(result) if result else "[]", row["id"]),
-                        )
-                        conn2.commit()
-                        cur2.close()
-                        conn2.close()
-                        if result:
-                            logger.info(f"Clause comparison saved for summary {row['id']} ({len(result)} clauses)")
-                    except Exception as e:
-                        logger.error(f"Clause comparison error for {row['id']}: {e}")
-                    time.sleep(30)
-            except Exception as e:
-                logger.error(f"Clause worker error: {e}")
-            time.sleep(600)
-
-    def _brief_worker(self):
-        time.sleep(90)
-        while True:
-            try:
-                conn = _get_db()
-                cur = conn.cursor()
-                cur.execute("""
-                    SELECT s.id, g.pdf_text, g.subject
-                    FROM gazette_summaries s JOIN gazettes g ON s.gazette_id = g.id
-                    WHERE (s.brief_summary IS NULL OR s.brief_summary = '')
-                      AND g.pdf_text IS NOT NULL AND length(g.pdf_text) > 50
-                    ORDER BY s.created_at DESC LIMIT 10
-                """)
-                rows = [_as_dict(r) for r in cur.fetchall()]
-                cur.close()
-                conn.close()
-                for row in rows:
-                    try:
-                        brief = self.ai.generate_brief_summary(row["pdf_text"], row["subject"] or "Notification")
-                        if brief:
-                            conn2 = _get_db()
-                            cur2 = conn2.cursor()
-                            cur2.execute(
-                                """UPDATE gazette_summaries SET
-                                   brief_summary=?, brief_summary_generated_at=datetime('now'), updated_at=datetime('now')
-                                   WHERE id=?""",
-                                (brief, row["id"]),
-                            )
-                            conn2.commit()
-                            cur2.close()
-                            conn2.close()
-                            logger.info(f"Brief summary saved for summary {row['id']}")
-                    except Exception as e:
-                        logger.error(f"Brief summary error for {row['id']}: {e}")
-                    time.sleep(25)
-            except Exception as e:
-                logger.error(f"Brief worker error: {e}")
-            time.sleep(600)
 
     def get_feed_item(self, g_id: int) -> dict[str, Any] | None:
         conn = _get_db()

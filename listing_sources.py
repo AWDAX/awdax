@@ -47,9 +47,3 @@ def is_aggregator_listing_url(url: str) -> bool:
         "carwale.com/electric",
     )
     return any(p in u for p in patterns)
-
-
-def listing_min_rows() -> int:
-    import os
-
-    return int(os.getenv("LISTING_MIN_ROWS", "35"))

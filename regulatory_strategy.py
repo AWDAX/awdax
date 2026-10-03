@@ -16,17 +16,6 @@ from reasoning import ScrapeIntent
 _EGAZETTE_RE = re.compile(r"\b(e[\-\s]?gazette|egazz?et|gazette)s?\b|egazette\.gov", re.I)
 
 
-def _intent_blob(intent: ScrapeIntent) -> str:
-    return " ".join(
-        [
-            intent.raw_prompt,
-            intent.topic,
-            intent.geography,
-            " ".join(intent.named_sites),
-            " ".join(intent.constraints),
-            " ".join(intent.entity_types),
-        ]
-    ).lower()
 
 
 def intent_uses_regulatory_feed(intent: ScrapeIntent | None) -> bool:

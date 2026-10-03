@@ -150,84 +150,6 @@ def extract_tables_from_html(html: str) -> list[dict[str, Any]]:
     return tables
 
 
-def scrape_via_https(
-    plan: ScrapePlan,
-    intent: ScrapeIntent | None,
-    *,
-    html: str | None = None,
-    table_schema: dict[str, Any] | None = None,
-) -> list[dict[str, Any]]:
-    """Try to extract listing rows from HTTPS HTML before Selenium."""
-    url = plan.entry_url or plan.source_url
-    if html is None:
-        fetched = fetch_html(url)
-        html = fetched.get("html") or ""
-    if len(html) < 400:
-        return []
-
-    columns = (table_schema or {}).get("columns") or []
-    if columns and intent:
-        from html_extract import extract_rows_from_page_html
-
-        structured = extract_rows_from_page_html(html, intent, columns, page_url=url)
-        if structured:
-            return _finalize_extract_rows(structured, plan, intent=intent, columns=columns)
-
-    tables = extract_tables_from_html(html)
-    if not tables:
-        if columns and intent:
-            from html_extract import ai_extract_rows_from_html
-
-            ai_rows = ai_extract_rows_from_html(html, intent, columns, page_url=url)
-            if ai_rows:
-                return _finalize_extract_rows(ai_rows, plan, intent=intent, columns=columns)
-        return []
-
-    best = max(tables, key=lambda t: len(t.get("rows") or []))
-    headers: list[str] = best.get("headers") or []
-    rows_raw: list[list[str]] = best.get("rows") or []
-    if not rows_raw:
-        return []
-
-    if not headers and rows_raw:
-        width = max(len(r) for r in rows_raw)
-        headers = [f"col_{i}" for i in range(width)]
-
-    column_map = dict(plan.column_map)
-    id_field = plan.id_field
-    if intent and (not column_map or len(column_map) < 2):
-        from inspector import ai_map_table_columns
-
-        mapping = ai_map_table_columns(intent, headers, rows_raw[:3], table_selector=plan.table_selector)
-        if mapping.get("column_map"):
-            column_map = dict(mapping["column_map"])
-        if mapping.get("id_field"):
-            id_field = str(mapping["id_field"])
-
-    out: list[dict[str, Any]] = []
-    for i, values in enumerate(rows_raw):
-        row: dict[str, Any] = {}
-        for field_name, header in column_map.items():
-            if not isinstance(header, str):
-                continue
-            if header in headers:
-                idx = headers.index(header)
-                row[field_name] = values[idx] if idx < len(values) else ""
-        for j, h in enumerate(headers):
-            if j < len(values):
-                row.setdefault(h, values[j])
-        ext = row.get(id_field) or row.get("id") or ""
-        if not ext and values:
-            row[id_field] = f"https_row_{i}"
-            row["_row_key"] = "|".join(values[:4])[:120]
-        elif ext:
-            row[id_field] = str(ext)[:120]
-        row["PDF_URL"] = ""
-        row["PDF_Text"] = ""
-        out.append(row)
-    return out
-
-
 def _finalize_extract_rows(
     rows: list[dict[str, Any]],
     plan: ScrapePlan,
@@ -373,11 +295,6 @@ class PlanDrivenScraper:
             except Exception:
                 pass
             self.driver = None
-
-    def _find(self, by: str, selector: str):
-        if by == "xpath":
-            return self.driver.find_element(By.XPATH, selector)
-        return self.driver.find_element(By.CSS_SELECTOR, selector)
 
     def run_ready_steps(self):
         for step in self.plan.listing_ready_steps:

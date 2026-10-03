@@ -18,4 +18,8 @@ as passing.
 
 ---
 
-_No verification recorded yet._
+## Q1 — Backend: delete verified dead functions and unused imports
+
+Verified 2026-10-03 05:24 against code `00aa1c520ddb`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 05:24

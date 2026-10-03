@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "command": ".venv/Scripts/python.exe",
+  "args": [
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-t",
+    "."
+  ],
+  "cwd": "X:\\Hackathons\\Codecubicle\\awdax-audit",
+  "shell": false,
+  "startedAt": "2026-10-02T09:31:14.786Z",
+  "finishedAt": "2026-10-02T09:31:15.054Z",
+  "durationMs": 268,
+  "termination": "exit",
+  "exitCode": 1,
+  "signal": null,
+  "timedOut": false,
+  "treeKilled": false,
+  "outputHeldOpen": false,
+  "resolved": ".venv/Scripts/python.exe",
+  "error": null,
+  "stdoutTail": "",
+  "stderrTail": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"C:\\Users\\Godzilla\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\__main__.py\", line 18, in <module>\n    main(module=None)\n  File \"C:\\Users\\Godzilla\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\main.py\", line 104, in __init__\n    self.parseArgs(argv)\n  File \"C:\\Users\\Godzilla\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\main.py\", line 130, in parseArgs\n    self._do_discovery(argv[2:])\n  File \"C:\\Users\\Godzilla\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\main.py\", line 253, in _do_discovery\n    self.createTests(from_discovery=True, Loader=Loader)\n  File \"C:\\Users\\Godzilla\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\main.py\", line 160, in createTests\n    self.test = loader.discover(self.start, self.pattern, self.top)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Godzilla\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\unittest\\loader.py\", line 308, in discover\n    raise ImportError('Start directory is not importable: %r' % start_dir)\nImportError: Start directory is not importable: 'X:\\\\Hackathons\\\\Codecubicle\\\\awdax-audit\\\\tests'",
+  "env": {
+    "msysPathConversionSuspected": false
+  },
+  "label": "backend-tests-baseline",
+  "task": "_adhoc",
+  "seq": 4,
+  "logs": {
+    "stdout": "X:\\Hackathons\\Codecubicle\\awdax-audit\\.agent\\runs\\_adhoc\\004-backend-tests-baseline.out.log",
+    "stderr": "X:\\Hackathons\\Codecubicle\\awdax-audit\\.agent\\runs\\_adhoc\\004-backend-tests-baseline.err.log"
+  }
+}

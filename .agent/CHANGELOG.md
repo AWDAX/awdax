@@ -9,4 +9,6 @@
 
 ---
 
-_Nothing shipped yet._
+## Q1 — Backend: delete verified dead functions and unused imports
+
+_2026-10-03 05:24_ · code:PASS · code `00aa1c520ddb`

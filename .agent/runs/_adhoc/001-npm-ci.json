@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "command": "npm",
+  "args": [
+    "ci"
+  ],
+  "cwd": "X:\\Hackathons\\Codecubicle\\awdax-audit\\Frontend",
+  "shell": false,
+  "startedAt": "2026-10-02T07:36:21.488Z",
+  "finishedAt": "2026-10-02T07:36:24.646Z",
+  "durationMs": 3158,
+  "termination": "exit",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "treeKilled": false,
+  "outputHeldOpen": false,
+  "resolved": "C:\\Program Files\\nodejs\\npm.cmd",
+  "error": null,
+  "stdoutTail": "\nadded 287 packages, and audited 288 packages in 3s\n\n52 packages are looking for funding\n  run `npm fund` for details\n\n2 moderate severity vulnerabilities\n\nTo address all issues (including breaking changes), run:\n  npm audit fix --force\n\nRun `npm audit` for details.",
+  "stderrTail": "npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.\nnpm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.\nnpm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported\nnpm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me\nnpm warn deprecated fstream@1.0.12: This package is no longer supported.\nnpm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).",
+  "env": {
+    "msysPathConversionSuspected": false
+  },
+  "label": "npm-ci",
+  "task": "_adhoc",
+  "seq": 1,
+  "logs": {
+    "stdout": "X:\\Hackathons\\Codecubicle\\awdax-audit\\.agent\\runs\\_adhoc\\001-npm-ci.out.log",
+    "stderr": "X:\\Hackathons\\Codecubicle\\awdax-audit\\.agent\\runs\\_adhoc\\001-npm-ci.err.log"
+  }
+}
