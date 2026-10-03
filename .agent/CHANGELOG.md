@@ -56,3 +56,7 @@ _2026-10-03 09:47_ · code:PASS · code `e27eb7f8e577`
 ## Q14 — Ask about this data: AI plans any question (guardrailed query or sandboxed calculation), answers shown with schema and meaning
 
 _2026-10-03 12:57_ · code:PASS ui:PASS · code `8c17b5a2d4f1`
+
+## Q15 — Fix the 2 sandbox tests CI fails on Linux: OS-independent nesting limit, CPU limit a second past the wall clock
+
+_2026-10-03 13:02_ · code:PASS · code `eeba246a308a`

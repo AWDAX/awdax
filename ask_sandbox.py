@@ -25,6 +25,7 @@ MAX_SOURCE = 4000
 TIMEOUT_S = 8
 MAX_RESULT_ROWS = 500
 MAX_RESULT_BYTES = 1_000_000
+MAX_DEPTH = 100  # syntax-tree levels; real analysis code stays well under 40
 MEMORY_LIMIT = 512 * 2**20
 # ponytail: one process-wide cap on concurrent children; a per-host pool if this ever runs on several workers.
 _SLOTS = threading.BoundedSemaphore(2)
@@ -59,6 +60,18 @@ class UnsafeCode(ValueError):
     pass
 
 
+def _too_deep(tree: ast.AST) -> bool:
+    """Nesting past MAX_DEPTH, counted without recursion: how deep Python can recurse differs by OS (Linux parses a
+    3000-deep expression Windows can't), so the limit is ours, not the interpreter's."""
+    stack = [(tree, 1)]
+    while stack:
+        node, depth = stack.pop()
+        if depth > MAX_DEPTH:
+            return True
+        stack.extend((child, depth + 1) for child in ast.iter_child_nodes(node))
+    return False
+
+
 def _drop_safe_imports(source: str) -> str:
     """Models write `import statistics` / `from math import sqrt` even when told the modules are already there.
     Those exact imports become plain names bound to the provided modules; any other import is left in place, and
@@ -67,6 +80,8 @@ def _drop_safe_imports(source: str) -> str:
         tree = ast.parse(source)
     except (SyntaxError, RecursionError, MemoryError, ValueError):
         return source  # validate() reports it
+    if _too_deep(tree):
+        return source  # validate() refuses it; rewriting would recurse that deep
 
     class Rewrite(ast.NodeTransformer):
         def visit_Import(self, node: ast.Import) -> Any:
@@ -94,6 +109,8 @@ def validate(source: str) -> None:
         raise UnsafeCode(f"syntax error: {e.msg}") from None
     except (RecursionError, MemoryError, ValueError):  # "- - - … 1" nested thousands deep
         raise UnsafeCode("expression nested too deep") from None
+    if _too_deep(tree):
+        raise UnsafeCode("expression nested too deep")
     if len(tree.body) != 1 or not isinstance(tree.body[0], ast.FunctionDef) or tree.body[0].name != "answer":
         raise UnsafeCode("must be a single `def answer(rows)`")
     fn = tree.body[0]
@@ -165,7 +182,8 @@ def _child() -> None:
 def _limits() -> None:  # POSIX only: CPU seconds and address space for the child
     import resource
 
-    resource.setrlimit(resource.RLIMIT_CPU, (TIMEOUT_S, TIMEOUT_S))
+    # A second past the wall clock, so the timeout (with its clear message) normally fires first.
+    resource.setrlimit(resource.RLIMIT_CPU, (TIMEOUT_S + 1, TIMEOUT_S + 2))
     resource.setrlimit(resource.RLIMIT_AS, (MEMORY_LIMIT, MEMORY_LIMIT))
 
 
@@ -199,7 +217,8 @@ def _windows_job(handle: int) -> Callable[[], None]:
     info = Extended()
     # PROCESS_TIME | ACTIVE_PROCESS | PROCESS_MEMORY | KILL_ON_JOB_CLOSE
     info.BasicLimitInformation.LimitFlags = 0x2 | 0x8 | 0x100 | 0x2000
-    info.BasicLimitInformation.PerProcessUserTimeLimit = TIMEOUT_S * 10_000_000  # 100 ns units
+    # 100 ns units; a second past the wall clock, as on POSIX, so the timeout's clear message normally wins.
+    info.BasicLimitInformation.PerProcessUserTimeLimit = (TIMEOUT_S + 1) * 10_000_000
     info.BasicLimitInformation.ActiveProcessLimit = 1
     info.ProcessMemoryLimit = MEMORY_LIMIT
     job = k32.CreateJobObjectW(None, None)
@@ -255,6 +274,8 @@ def _run_child(source: str, rows: list[dict[str, Any]]) -> Any:
     finally:
         if close_job:
             close_job()
+    if proc.returncode < 0:  # POSIX: killed by a signal, i.e. the CPU limit (SIGXCPU) or a kill
+        raise ValueError("the calculation took too long")
     if proc.returncode != 0:
         raise ValueError(((err or "").strip().splitlines() or ["the calculation failed"])[-1][:300])
     return json.loads(out)["value"]

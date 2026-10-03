@@ -79,6 +79,8 @@ class SandboxRefusesEscapesTests(unittest.TestCase):
         "rebind builtin": "def answer(rows):\n    len = 3\n    return len\n",
         "unknown name": "def answer(rows):\n    return os\n",
         "nested too deep": "def answer(rows):\n    return " + "-" * 3000 + "1\n",
+        # Deep enough to break our limit, shallow enough that every OS parses it (the CI failure on Linux).
+        "nested past the limit": "def answer(rows):\n    return " + "-" * 150 + "1\n",
     }
 
     def test_every_escape_is_refused_before_running(self):

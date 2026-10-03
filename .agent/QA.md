@@ -128,3 +128,9 @@ Verified 2026-10-03 12:57 against code `8c17b5a2d4f1`.
   - viewports: mobile, desktop
   - states: default
   - 48 assertion(s) · 0 console error(s) · 0 failed request(s)
+
+## Q15 — Fix the 2 sandbox tests CI fails on Linux: OS-independent nesting limit, CPU limit a second past the wall clock
+
+Verified 2026-10-03 13:02 against code `eeba246a308a`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 13:02
