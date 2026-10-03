@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T12:57:42.016Z",
+  "updated": "2026-10-03T13:02:46.936Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -780,6 +780,35 @@
         "failures": [],
         "stop": null
       }
+    },
+    {
+      "id": "Q15",
+      "title": "Fix the 2 sandbox tests CI fails on Linux: OS-independent nesting limit, CPU limit a second past the wall clock",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T13:02:45.695Z",
+          "codeHash": "eeba246a308a8506164a0e18e1369c2f7ff11eb6740c182c8f5afd84b7f9a845"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T13:02:46.160Z",
+          "text": "CI run 37124710958 (feat/ask-anything, merged as #26 while running) failed 2 tests on ubuntu: (1) Linux parses a 3000-deep expression Windows can't, then the import rewrite (NodeTransformer) hit RecursionError -> now an iterative depth limit (MAX_DEPTH 100) refuses before any recursion, new 150-deep test parses on every OS; (2) the CPU limit equalled the patched 1 s wall clock, so SIGXCPU (Linux) / the job's time limit (Windows, flaky locally too) could fire first -> CPU limit is wall clock + 1 s on both, and a signal-killed child reports 'took too long'. 195 tests OK, sandbox tests 5/5 repeats; Linux not available locally (no WSL distro/Docker), so CI on the PR is the Linux check."
+        }
+      ],
+      "started": "2026-10-03T13:02:42.330Z",
+      "finished": "2026-10-03T13:02:46.934Z",
+      "blockedReason": null,
+      "base": "17782dd448370db8be583f8b4dd6e73a5e97e46c",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     }
   ],
   "log": [
@@ -1237,7 +1266,32 @@
       "ts": "2026-10-03T12:57:42.016Z",
       "event": "done",
       "detail": "Q14 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T13:02:41.222Z",
+      "event": "add",
+      "detail": "Q15 Fix the 2 sandbox tests CI fails on Linux: OS-independent nesting limit, CPU limit a second past the wall clock"
+    },
+    {
+      "ts": "2026-10-03T13:02:42.330Z",
+      "event": "start",
+      "detail": "Q15 (attempt 1, checkpoint 2026-10-03T13-02-42-040)"
+    },
+    {
+      "ts": "2026-10-03T13:02:45.736Z",
+      "event": "evidence",
+      "detail": "Q15/code PASS"
+    },
+    {
+      "ts": "2026-10-03T13:02:46.160Z",
+      "event": "note",
+      "detail": "Q15: CI run 37124710958 (feat/ask-anything, merged as #26 while r"
+    },
+    {
+      "ts": "2026-10-03T13:02:46.936Z",
+      "event": "done",
+      "detail": "Q15 (code:PASS)"
     }
   ],
-  "integrity": "81b511f2ff2b56c212005d86b74ccde65663a1348223a67f01a5327ef469429f"
+  "integrity": "475732c624a7891ca4d0c37161327410937b30b5a032016b7f9f4b4f34cab251"
 }
