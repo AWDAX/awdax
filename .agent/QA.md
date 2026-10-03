@@ -62,3 +62,9 @@ Verified 2026-10-03 05:39 against code `931f7b734a43`.
 Verified 2026-10-03 05:40 against code `b7e5b01c9bb2`.
 
 - **code** — PASS via `verify.mjs` · recorded 2026-10-03 05:40
+
+## Q6 — Backend: scrape sources in parallel, database writes serialized
+
+Verified 2026-10-03 06:02 against code `51b508456861`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 06:01

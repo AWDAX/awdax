@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T05:40:52.662Z",
+  "updated": "2026-10-03T06:02:30.798Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -409,16 +409,33 @@
     {
       "id": "Q6",
       "title": "Backend: scrape sources in parallel, database writes serialized",
-      "state": "TODO",
+      "state": "DONE",
       "deps": [
         "Q5"
       ],
-      "attempts": 0,
-      "evidence": {},
-      "notes": [],
-      "started": null,
-      "finished": null,
-      "blockedReason": null
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:01:11.008Z",
+          "codeHash": "51b5084568617ae64195b08b9ef9f56e615fecb21aea55ebab3a5d8f0043b926"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:02:30.151Z",
+          "text": "Real run (cars, 6 sources): end to end OK with SCRAPE_WORKERS=3, first pass 70 rows at 871 s; wall time skewed by 5 NVIDIA 90 s timeouts during the scrape, so a same-source A/B (1 vs 3 workers) follows as a note."
+        }
+      ],
+      "started": "2026-10-03T05:41:02.769Z",
+      "finished": "2026-10-03T06:02:30.796Z",
+      "blockedReason": null,
+      "base": "22f48fdb67b9bca756c1a47689c8a094b8d968e2",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     },
     {
       "id": "Q7",
@@ -453,7 +470,7 @@
     {
       "id": "Q9",
       "title": "Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change",
-      "state": "WAITING",
+      "state": "TODO",
       "deps": [
         "Q6"
       ],
@@ -739,7 +756,27 @@
       "ts": "2026-10-03T05:40:52.662Z",
       "event": "done",
       "detail": "Q5 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T05:41:02.769Z",
+      "event": "start",
+      "detail": "Q6 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:01:11.053Z",
+      "event": "evidence",
+      "detail": "Q6/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:02:30.151Z",
+      "event": "note",
+      "detail": "Q6: Real run (cars, 6 sources): end to end OK with SCRAPE_WORKER"
+    },
+    {
+      "ts": "2026-10-03T06:02:30.798Z",
+      "event": "done",
+      "detail": "Q6 (code:PASS)"
     }
   ],
-  "integrity": "e06fc2c7a80b1485e123b1bf4c54a3686e96e9ca558cbb8b8bfc9226b9ea3da5"
+  "integrity": "359dfca0b451b205ec1c59c6438434d6e472f6b60045a9e8a3911ec984d20ff7"
 }

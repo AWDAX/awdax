@@ -12,6 +12,7 @@ import queue
 import re
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Callable
 from urllib.parse import urlparse
@@ -200,6 +201,14 @@ def _extract_listing_rows(
         column_labels=schema.get("column_labels"),
     )
     return _finalize_extract_rows(rows, plan, intent=intent, columns=columns)
+
+
+def _scrape_workers() -> int:
+    """How many listing pages the scrape fetches and reads at once (1 = one at a time). Some open a headless Chrome."""
+    try:
+        return max(1, int(os.getenv("SCRAPE_WORKERS", "3")))
+    except ValueError:
+        return 3
 
 
 def _is_regulatory_table_plan(plan: ScrapePlan) -> bool:
@@ -1037,43 +1046,98 @@ class UniversalScrapeService:
                 raise
             return {"started": True, "sources": len(plans), "job_id": jid, **self.get_scrape_status(jid)}
 
-    def _run_single(self, plan: ScrapePlan, job: ScrapeJob, max_pages: int) -> int:
+    def _on_row(self, plan: ScrapePlan, job: ScrapeJob, row: dict[str, Any]) -> None:
+        """Keep, store and announce one scraped row. Writes the database: call it from the run's own thread only."""
+        from row_quality import filter_vehicle_rows, intent_expects_priced_catalog
+
+        source_url = plan.source_url or plan.entry_url
+        columns = (job.table_schema or {}).get("columns") or []
+        if not filter_vehicle_rows(
+            [row],
+            columns,
+            catalog_with_prices=intent_expects_priced_catalog(
+                job.intent.raw_prompt if job.intent else "",
+                job.intent.topic if job.intent else "",
+            ),
+        ):
+            return
+        if "source_url" in columns and not row.get("source_url"):
+            row["source_url"] = source_url
+        item = self.store_record(job.job_id, source_url, row, plan=plan)
+        if item:
+            is_new = bool(item.pop("is_new", True))
+            jid = job.job_id
+            if is_new:
+                st = self._status_by_job.setdefault(jid, self._default_job_status(jid))
+                st["rows_this_run"] = int(st.get("rows_this_run") or 0) + 1
+                self.emit_event(
+                    "item",
+                    {"item": item, "update": False, "job_id": jid, "channel": "universal"},
+                )
+                self._set_status(jid, message=f"{plan.source_name}: new {item['external_id']}")
+            elif self.is_job_live(jid):
+                self.emit_event(
+                    "item",
+                    {"item": item, "update": True, "job_id": jid, "channel": "universal"},
+                )
+
+    def _store_rows(self, plan: ScrapePlan, job: ScrapeJob, rows: list[dict[str, Any]]) -> int:
+        for row in rows:
+            self._on_row(plan, job, row)
+        return len(rows)
+
+    def _listing_rows(self, plan: ScrapePlan, job: ScrapeJob) -> list[dict[str, Any]]:
+        """Fetch a listing page and pull its rows with the LLM. No database writes, so it is safe on a worker thread."""
         source_url = plan.source_url or plan.entry_url
         schema = job.table_schema or {}
         columns = schema.get("columns") or []
+        if not columns or not job.intent:
+            self.emit_event(
+                "log",
+                {"level": "warning", "message": f"{plan.source_name}: missing table schema or intent", "channel": "universal"},
+            )
+            return []
 
-        def on_row(row: dict[str, Any]):
-            from row_quality import filter_vehicle_rows, intent_expects_priced_catalog
+        scroll_listing = _should_exhaust_listing(source_url, job.intent)
+        self.emit_event(
+            "log",
+            {
+                "level": "info",
+                "message": f"{plan.source_name}: Gemini scrape — {'scroll + ' if scroll_listing else ''}fetch page…",
+                "channel": "universal",
+            },
+        )
+        html = _fetch_html_for_gemini(plan, source_url, scroll_listing=scroll_listing)
+        if len(html) < 400:
+            self.emit_event(
+                "log",
+                {"level": "warning", "message": f"{plan.source_name}: page HTML too short", "channel": "universal"},
+            )
+            return []
 
-            if not filter_vehicle_rows(
-                [row],
-                columns,
-                catalog_with_prices=intent_expects_priced_catalog(
-                    job.intent.raw_prompt if job.intent else "",
-                    job.intent.topic if job.intent else "",
-                ),
-            ):
-                return
-            if "source_url" in columns and not row.get("source_url"):
-                row["source_url"] = source_url
-            item = self.store_record(job.job_id, source_url, row, plan=plan)
-            if item:
-                is_new = bool(item.pop("is_new", True))
-                jid = job.job_id
-                if is_new:
-                    st = self._status_by_job.setdefault(jid, self._default_job_status(jid))
-                    st["rows_this_run"] = int(st.get("rows_this_run") or 0) + 1
-                    self.emit_event(
-                        "item",
-                        {"item": item, "update": False, "job_id": jid, "channel": "universal"},
-                    )
-                    self._set_status(jid, message=f"{plan.source_name}: new {item['external_id']}")
-                elif self.is_job_live(jid):
-                    self.emit_event(
-                        "item",
-                        {"item": item, "update": True, "job_id": jid, "channel": "universal"},
-                    )
+        self.emit_event(
+            "log",
+            {"level": "info", "message": f"{plan.source_name}: Gemini extracting rows…", "channel": "universal"},
+        )
+        rows = _extract_listing_rows(html, job.intent, schema, page_url=source_url, plan=plan)
+        if rows:
+            self.emit_event(
+                "log",
+                {
+                    "level": "info",
+                    "message": f"{plan.source_name}: Gemini extracted {len(rows)} rows",
+                    "channel": "universal",
+                },
+            )
+            return rows
 
+        self.emit_event(
+            "log",
+            {"level": "warning", "message": f"{plan.source_name}: Gemini returned 0 rows", "channel": "universal"},
+        )
+        return []
+
+    def _run_single(self, plan: ScrapePlan, job: ScrapeJob, max_pages: int) -> int:
         if plan.blocked:
             self.emit_event(
                 "log",
@@ -1099,57 +1163,11 @@ class UniversalScrapeService:
             try:
                 scraper.open_entry()
                 self._set_status(job.job_id, phase="scraping", message=f"Scraping {plan.source_name}…")
-                return scraper.scrape_all(max_pages=max_pages, on_row=on_row)
+                return scraper.scrape_all(max_pages=max_pages, on_row=lambda row: self._on_row(plan, job, row))
             finally:
                 scraper.quit()
 
-        if not columns or not job.intent:
-            self.emit_event(
-                "log",
-                {"level": "warning", "message": f"{plan.source_name}: missing table schema or intent", "channel": "universal"},
-            )
-            return 0
-
-        scroll_listing = _should_exhaust_listing(source_url, job.intent)
-        self.emit_event(
-            "log",
-            {
-                "level": "info",
-                "message": f"{plan.source_name}: Gemini scrape — {'scroll + ' if scroll_listing else ''}fetch page…",
-                "channel": "universal",
-            },
-        )
-        html = _fetch_html_for_gemini(plan, source_url, scroll_listing=scroll_listing)
-        if len(html) < 400:
-            self.emit_event(
-                "log",
-                {"level": "warning", "message": f"{plan.source_name}: page HTML too short", "channel": "universal"},
-            )
-            return 0
-
-        self.emit_event(
-            "log",
-            {"level": "info", "message": f"{plan.source_name}: Gemini extracting rows…", "channel": "universal"},
-        )
-        rows = _extract_listing_rows(html, job.intent, schema, page_url=source_url, plan=plan)
-        if rows:
-            self.emit_event(
-                "log",
-                {
-                    "level": "info",
-                    "message": f"{plan.source_name}: Gemini extracted {len(rows)} rows",
-                    "channel": "universal",
-                },
-            )
-            for row in rows:
-                on_row(row)
-            return len(rows)
-
-        self.emit_event(
-            "log",
-            {"level": "warning", "message": f"{plan.source_name}: Gemini returned 0 rows", "channel": "universal"},
-        )
-        return 0
+        return self._store_rows(plan, job, self._listing_rows(plan, job))
 
     def _run_all(self, plans: list[ScrapePlan], job: ScrapeJob, max_pages: int, *, from_live: bool = False) -> None:
         jid = job.job_id
@@ -1176,17 +1194,32 @@ class UniversalScrapeService:
         total_processed = 0
         errors: list[str] = []
         try:
-            for i, plan in enumerate(plans):
-                self.emit_event(
-                    "log",
-                    {"level": "info", "message": f"[{i + 1}/{len(plans)}] {plan.source_name}", "channel": "universal"},
-                )
-                try:
-                    total_processed += self._run_single(plan, job, max_pages)
-                except Exception as e:
-                    errors.append(f"{plan.source_name}: {e}")
-                    logger.error("Source scrape failed: %s", e)
-                    self.emit_event("log", {"level": "error", "message": str(e), "channel": "universal"})
+            # Listing pages are fetched and read SCRAPE_WORKERS at a time; rows are stored here, in source order,
+            # so the database and the merge see exactly what one-at-a-time scraping gave. Selenium-driven
+            # regulatory tables and blocked plans keep the sequential path (they write as they scrape).
+            workers = _scrape_workers()
+            ahead_plans = [p for p in plans if not p.blocked and not _is_regulatory_table_plan(p)]
+            pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="scrape") if workers > 1 and len(ahead_plans) > 1 else None
+            try:
+                ahead = {id(p): pool.submit(self._listing_rows, p, job) for p in ahead_plans} if pool else {}
+                for i, plan in enumerate(plans):
+                    self.emit_event(
+                        "log",
+                        {"level": "info", "message": f"[{i + 1}/{len(plans)}] {plan.source_name}", "channel": "universal"},
+                    )
+                    try:
+                        fetched = ahead.get(id(plan))
+                        if fetched is not None:
+                            total_processed += self._store_rows(plan, job, fetched.result())
+                        else:
+                            total_processed += self._run_single(plan, job, max_pages)
+                    except Exception as e:
+                        errors.append(f"{plan.source_name}: {e}")
+                        logger.error("Source scrape failed: %s", e)
+                        self.emit_event("log", {"level": "error", "message": str(e), "channel": "universal"})
+            finally:
+                if pool:
+                    pool.shutdown(wait=True)
             job.status = "completed" if not errors else "partial"
             st = self._status_by_job.get(jid) or {}
             job.records_saved = int(st.get("rows_this_run") or 0)

@@ -28,3 +28,7 @@ _2026-10-03 05:39_ · code:PASS ui:PASS · code `931f7b734a43`
 ## Q5 — Backend: one shared Selenium import, dependency list trimmed
 
 _2026-10-03 05:40_ · code:PASS · code `b7e5b01c9bb2`
+
+## Q6 — Backend: scrape sources in parallel, database writes serialized
+
+_2026-10-03 06:02_ · code:PASS · code `51b508456861`
