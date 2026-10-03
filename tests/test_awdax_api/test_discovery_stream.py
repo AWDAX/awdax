@@ -17,7 +17,13 @@ from ui_sessions import create_session, delete_session
 class DiscoveryStreamTests(unittest.TestCase):
     def test_inspection_emits_source_before_and_after_validation(self):
         candidate = SourceCandidate(url="https://example.org/cars", title="Cars", domain="example.org")
-        plan = ScrapePlan(source_name="Cars", entry_url=candidate.url, source_url=candidate.url)
+        plan = ScrapePlan(
+            source_name="Cars",
+            entry_url=candidate.url,
+            source_url=candidate.url,
+            dry_run_rows=5,
+            confidence=0.8,
+        )
         updates = []
         with (
             patch("listing_sources.anchor_listings_for_intent", return_value=[]),

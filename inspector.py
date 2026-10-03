@@ -19,6 +19,75 @@ from url_guard import check_browser_url, check_url
 
 logger = logging.getLogger(__name__)
 
+_NOT_FOUND_TITLE_RE = re.compile(
+    r"\b(404|not found|page not found|page doesn.t exist|couldn.t find|error 404|no longer available)\b",
+    re.I,
+)
+
+
+def page_looks_unreachable(*, http_status: int, title: str = "") -> str | None:
+    """Human-readable reason when a URL should not be accepted for scraping."""
+    if http_status in (404, 410):
+        return f"HTTP {http_status} (page not found)"
+    if 400 <= http_status < 500 and http_status not in (401, 403):
+        return f"HTTP {http_status}"
+    if _NOT_FOUND_TITLE_RE.search((title or "").strip()):
+        return "Page title indicates not found"
+    return None
+
+
+def _tables_with_data(signals: dict[str, Any]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for t in signals.get("tables") or []:
+        if not isinstance(t, dict):
+            continue
+        if t.get("headers") or t.get("sample_rows"):
+            out.append(t)
+    return out
+
+
+def inspection_reject_reason(
+    plan: ScrapePlan,
+    *,
+    https_probe: dict[str, Any],
+    signals: dict[str, Any],
+) -> str | None:
+    """Return rejection reason, or None if the source is acceptable."""
+    if os.getenv("INSPECT_ACCEPT_ZERO_ROWS", "").strip().lower() in ("1", "true", "yes"):
+        return None
+    status = int(https_probe.get("http_status") or 0)
+    title = str(signals.get("title") or https_probe.get("title") or plan.source_name or "")
+    missing = page_looks_unreachable(http_status=status, title=title)
+    if missing:
+        return missing
+    if not https_probe.get("https_ok"):
+        return str(https_probe.get("error") or "Unreachable over HTTPS")
+    if plan.dry_run_rows > 0:
+        return None
+    if _tables_with_data(signals):
+        return None
+    if int(https_probe.get("table_count") or 0) > 0 and (https_probe.get("table_headers_preview") or []):
+        return None
+    return "No table/list data detected (dry-run 0 rows)"
+
+
+def _finalize_inspection_plan(
+    plan: ScrapePlan,
+    *,
+    https_probe: dict[str, Any],
+    signals: dict[str, Any],
+) -> ScrapePlan:
+    reason = inspection_reject_reason(plan, https_probe=https_probe, signals=signals)
+    if reason:
+        plan.blocked = True
+        plan.confidence = 0.0
+        if reason not in plan.warnings:
+            plan.warnings.append(reason)
+    elif plan.dry_run_rows == 0:
+        plan.warnings.append("Dry run 0 rows but page has tables; scrape may need tuning")
+        plan.confidence = min(plan.confidence, 0.45)
+    return plan
+
 try:
     from selenium import webdriver
     from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -325,13 +394,28 @@ def inspect_source(
             warnings=[str(https_probe.get("error") or "Blocked: address not allowed")],
         )
     if not https_probe.get("https_ok"):
+        err = https_probe.get("error") or "unreachable"
         return ScrapePlan(
             source_name=source.title or source.domain,
             entry_url=url,
             source_url=url,
-            blocked=False,
-            confidence=0.1,
-            warnings=[f"HTTPS probe failed: {https_probe.get('error') or 'unreachable'} — will still attempt Selenium"],
+            blocked=True,
+            confidence=0.0,
+            warnings=[f"HTTPS probe failed: {err}"],
+        )
+
+    early = page_looks_unreachable(
+        http_status=int(https_probe.get("http_status") or 0),
+        title=str(https_probe.get("title") or source.title or ""),
+    )
+    if early:
+        return ScrapePlan(
+            source_name=source.title or source.domain,
+            entry_url=https_probe.get("final_url") or url,
+            source_url=url,
+            blocked=True,
+            confidence=0.0,
+            warnings=[early],
         )
 
     signals: dict[str, Any] = {"https_probe": https_probe}
@@ -363,11 +447,7 @@ def inspect_source(
             plan.warnings.append("Retry dry-run after AI column mapping")
             plan.dry_run_rows = dry_run_plan(plan, intent)
 
-    if plan.dry_run_rows == 0:
-        plan.warnings.append("Dry run extracted 0 rows; scrape may still collect via relaxed row ids")
-        plan.confidence = min(plan.confidence, 0.35)
-        plan.blocked = False
-    return plan
+    return _finalize_inspection_plan(plan, https_probe=https_probe, signals=signals)
 
 
 def _emit_discovery_source(on_source: Any | None, candidate: SourceCandidate, status: str, plan: ScrapePlan | None = None) -> None:
@@ -446,136 +526,139 @@ def discover_inspected_from_queries(
         else:
             parsed.append(GeneratedQuery(query=str(q)))
 
-    max_n = min(len(parsed), int(os.getenv("DISCOVERY_MAX_SOURCES", "6")))
-    workers = _inspect_workers()
+    target = min(int(intent.max_sources or 10), int(os.getenv("DISCOVERY_MAX_SOURCES", "10")))
+    max_inspect_attempts = int(os.getenv("DISCOVERY_MAX_INSPECT_ATTEMPTS", "60"))
     avoid_oem = intent_avoid_oem_sites(intent)
     sources: list[SourceCandidate] = []
     plans: list[ScrapePlan] = []
     seen_urls: set[str] = set()
-    seen_lock = threading.Lock()
-    pending: queue.Queue = queue.Queue()
+    all_queries: list[GeneratedQuery] = list(parsed)
+    known_queries = {q.query.strip().lower() for q in all_queries if q.query.strip()}
+    from query_generation import discovery_extra_queries
 
-    def _post_progress(message: str) -> None:
-        pending.put(("progress", message))
-
-    def _post_source(candidate: SourceCandidate, status: str, plan: ScrapePlan | None = None) -> None:
-        pending.put(("source", (candidate, status, plan)))
-
-    def _deliver() -> None:
-        while True:
-            try:
-                kind, payload = pending.get_nowait()
-            except queue.Empty:
-                return
-            if kind == "progress":
-                _progress(payload)
-            else:
-                _emit_discovery_source(on_source, *payload)
-
-    def _wave(fn: Any, items: list[Any]) -> list[Any]:
-        """Run fn over items on the pool, delivering callbacks here as they arrive; results in item order."""
-        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="inspect") as pool:
-            futures = [pool.submit(fn, item) for item in items]
-            # Wait only on the ones still running: a finished future would make wait() return at once and spin.
-            while running := [f for f in futures if not f.done()]:
-                wait(running, timeout=0.25, return_when=FIRST_COMPLETED)
-                _deliver()
-        _deliver()
-        return [f.result() for f in futures]
-
-    def _inspected(candidate: SourceCandidate) -> ScrapePlan:
-        """Inspect, and settle the source's card as soon as this one is done, not when its wave is."""
-        plan = _inspect_or_blocked(intent, candidate)
-        _post_source(candidate, "blocked" if plan.blocked else "validated", plan)
-        return plan
+    for extra in discovery_extra_queries(intent, existing=known_queries):
+        all_queries.append(extra)
+    query_idx = 0
+    inspect_attempts = 0
 
     # Anchor listings: curated pages for the intent, inspected before any search. Each joins seen_urls when it is
     # scheduled, so an anchor left out by the cap can still be found by a search.
     anchors: list[tuple[Any, SourceCandidate]] = []
     anchor_urls: set[str] = set()
     for anchor in anchor_listings_for_intent(intent):
-        if anchor.url in anchor_urls:
+        if len(plans) >= target:
+            break
+        if anchor.url in seen_urls:
             continue
         hit = {"url": anchor.url, "title": anchor.title, "snippet": "anchor listing"}
         candidate = candidate_from_serp_hit(hit, search_query=f"anchor:{anchor.title}", source_type_hint=anchor.source_category)
         if avoid_oem and is_oem_source(url=candidate.url, domain=candidate.domain):
             continue
-        anchors.append((anchor, candidate))
-        anchor_urls.update((anchor.url, candidate.url))
-
-    next_anchor = 0
-    while len(plans) < max_n and next_anchor < len(anchors):
-        batch = anchors[next_anchor : next_anchor + min(workers, max_n - len(plans))]
-        next_anchor += len(batch)
-        for k, (anchor, candidate) in enumerate(batch):
-            seen_urls.update((anchor.url, candidate.url))
-            _emit_discovery_source(on_source, candidate, "inspecting")
-            _progress(f"Anchor inspect ({len(plans) + k + 1}/{max_n}): {anchor.title}")
-        results = _wave(lambda item: _inspected(item[1]), batch)
-        for (anchor, candidate), plan in zip(batch, results):
-            if plan.blocked:
-                _progress(f"Skipped blocked anchor: {candidate.url}")
-                continue
-            sources.append(candidate)
-            plans.append(plan)
-            _progress(f"Accepted anchor ({len(plans)}/{max_n}): {anchor.title}")
-
-    def _search_and_inspect(item: tuple[int, int, GeneratedQuery]) -> tuple[SourceCandidate, ScrapePlan] | None:
-        # A failure here (the search API, a probe) loses only this query, never the rest of its wave.
+        seen_urls.add(candidate.url)
+        _emit_discovery_source(on_source, candidate, "inspecting")
+        _progress(f"Anchor inspect ({len(plans) + 1}/{target}): {anchor.title}")
         try:
             return _search_and_inspect_one(item)
         except Exception as e:
-            logger.warning("Source search failed for %s: %s", item[2].query, e)
-            _post_progress(f"Source search failed for: {item[2].query}")
-            return None
+            plan = ScrapePlan(
+                source_name=candidate.title or candidate.domain,
+                entry_url=candidate.final_url or candidate.url,
+                source_url=candidate.url,
+                blocked=True,
+                confidence=0.0,
+                warnings=[f"Inspect failed: {e}"],
+            )
+        if plan.blocked:
+            _emit_discovery_source(on_source, candidate, "blocked", plan)
+            reason = (plan.warnings or ["blocked"])[0]
+            _progress(f"Rejected anchor: {candidate.url} — {reason}")
+            continue
+        sources.append(candidate)
+        plans.append(plan)
+        _emit_discovery_source(on_source, candidate, "validated", plan)
+        _progress(f"Accepted anchor ({len(plans)}/{target}): dry-run {plan.dry_run_rows} rows")
 
-    def _search_and_inspect_one(item: tuple[int, int, GeneratedQuery]) -> tuple[SourceCandidate, ScrapePlan] | None:
-        i, slot, gq = item
-        _post_progress(f"Source search ({i + 1}/{max_n}): {gq.query}")
-        with seen_lock:
-            exclude = set(seen_urls)
-        hits = search_hits_for_query(gq.query, intent, exclude_urls=exclude)
+    while len(plans) < target and inspect_attempts < max_inspect_attempts:
+        if query_idx >= len(all_queries):
+            refill = discovery_extra_queries(intent, existing=known_queries)
+            if not refill:
+                _progress(f"Discovery stopped at {len(plans)}/{target} (no more queries)")
+                break
+            all_queries.extend(refill)
+            if query_idx >= len(all_queries):
+                break
+
+        gq = all_queries[query_idx]
+        query_idx += 1
+        _progress(f"Source search ({len(plans)}/{target}): {gq.query}")
+        hits = search_hits_for_query(gq.query, intent, exclude_urls=seen_urls)
         if not hits:
-            _post_progress(f"No sources found for: {gq.query}")
-            return None
-        candidate: SourceCandidate | None = None
-        for hit in hits:
-            cand = candidate_from_serp_hit(hit, search_query=gq.query, source_type_hint=gq.source_type_hint)
-            if avoid_oem and is_oem_source(source_category=cand.source_category, domain=cand.domain, url=cand.url):
-                _post_progress(f"Skipped OEM result: {cand.url}")
-                continue
-            # Claim the URL, so a parallel query that found the same page moves on to its next hit.
-            with seen_lock:
-                if cand.url in seen_urls:
-                    continue
-                seen_urls.add(cand.url)
-            candidate = cand
-            break
-        if not candidate:
-            _post_progress(f"No acceptable source for query: {gq.query}")
-            return None
-        _post_source(candidate, "inspecting")
-        _post_progress(f"Resolved → {candidate.url}")
-        _post_progress(f"Inspecting ({slot}/{max_n}): {candidate.title or candidate.url}")
-        return candidate, _inspected(candidate)
+            _progress(f"No sources found for: {gq.query}")
+            continue
 
-    next_query = 0
-    queries_left = parsed[:max_n]
-    while len(plans) < max_n and next_query < len(queries_left):
-        size = min(workers, max_n - len(plans))
-        batch = [(next_query + k, len(plans) + k + 1, queries_left[next_query + k]) for k in range(min(size, len(queries_left) - next_query))]
-        next_query += len(batch)
-        for result in _wave(_search_and_inspect, batch):
-            if result is None:
+        accepted = False
+        for hit in hits:
+            if len(plans) >= target:
+                break
+            inspect_attempts += 1
+            if inspect_attempts > max_inspect_attempts:
+                break
+            cand = candidate_from_serp_hit(
+                hit,
+                search_query=gq.query,
+                source_type_hint=gq.source_type_hint,
+            )
+            if cand.url in seen_urls:
                 continue
-            # The card already settled when its inspection finished (_inspected); this keeps the log in query order.
-            candidate, plan = result
+            if avoid_oem and is_oem_source(
+                source_category=cand.source_category,
+                domain=cand.domain,
+                url=cand.url,
+            ):
+                _progress(f"Skipped OEM result: {cand.url}")
+                seen_urls.add(cand.url)
+                continue
+            pre = page_looks_unreachable(http_status=cand.http_status, title=cand.title)
+            if pre:
+                _progress(f"Skipped unreachable: {cand.url} ({pre})")
+                seen_urls.add(cand.url)
+                continue
+
+            seen_urls.add(cand.url)
+            _emit_discovery_source(on_source, cand, "inspecting")
+            _progress(f"Resolved → {cand.url}")
+            _progress(f"Inspecting ({len(plans) + 1}/{target}): {cand.title or cand.url}")
+            try:
+                plan = inspect_source(intent, cand)
+            except Exception as e:
+                logger.warning("Inspect failed for %s: %s", cand.url, e)
+                plan = ScrapePlan(
+                    source_name=cand.title or cand.domain,
+                    entry_url=cand.final_url or cand.url,
+                    source_url=cand.url,
+                    blocked=True,
+                    confidence=0.0,
+                    warnings=[f"Inspect failed: {e}"],
+                )
             if plan.blocked:
-                _progress(f"Skipped blocked: {candidate.url}")
+                _emit_discovery_source(on_source, cand, "blocked", plan)
+                reason = (plan.warnings or ["blocked"])[0]
+                _progress(f"Rejected: {cand.url} — {reason}")
                 continue
-            sources.append(candidate)
+            sources.append(cand)
             plans.append(plan)
-            _progress(f"Accepted ({len(plans)}/{max_n}): dry-run {plan.dry_run_rows} rows, conf {plan.confidence:.2f}")
+            _emit_discovery_source(on_source, cand, "validated", plan)
+            _progress(
+                f"Accepted ({len(plans)}/{target}): dry-run {plan.dry_run_rows} rows, conf {plan.confidence:.2f}"
+            )
+            accepted = True
+            break
+
+        if not accepted:
+            _progress(f"No acceptable source for query: {gq.query}")
+
+    if len(plans) < target:
+        _progress(f"Discovery finished with {len(plans)}/{target} validated sources")
 
     return sources, plans
 

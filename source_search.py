@@ -172,7 +172,7 @@ def search_hits_for_query(
         return out
 
     if backend in ("auto", "api", "gemini"):
-        api_hits = _filter(_api_search(query))
+        api_hits = _filter(_api_search(query, max_results=12))
         if api_hits:
             return api_hits
 

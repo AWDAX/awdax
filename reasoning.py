@@ -89,7 +89,13 @@ def parse_prompt(raw: str, *, job_id: str | None = None) -> ScrapeIntent:
 - max_sources (integer 1-10)
 - pipeline (string: "universal" or "regulatory_feed")
 
-Be specific. If regulatory/government data, prefer official sources in constraints.
+Be specific. Prefer official sources in constraints for government data.
+
+Use pipeline "regulatory_feed" ONLY when the user explicitly asks for Indian eGazette /
+egazette.gov.in gazette notifications (PDF listings, ministry notifications on the gazette portal).
+Do NOT use regulatory_feed for Lok Sabha, Rajya Sabha, Sansad, or parliamentary session data —
+those use pipeline "universal", named_sites like https://sansad.in and loksabha.nic.in / rajyasabha.nic.in,
+and max_sources 6–10.
 
 Set pipeline to "regulatory_feed" ONLY when the user explicitly mentions eGazette, egazette.gov.in or gazette notifications; otherwise "universal".
 If the user wants Indian eGazette / egazette.gov.in notifications (latest gazettes, ministry notifications):

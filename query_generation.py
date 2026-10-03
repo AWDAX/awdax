@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from reasoning import ScrapeIntent, gemini_json, parse_prompt
-from regulatory_strategy import intent_uses_regulatory_feed, regulatory_feed_search_queries
+from regulatory_strategy import intent_is_parliament_sessions, intent_uses_regulatory_feed, regulatory_feed_search_queries
 
 # Queries that usually return shortlists, not full catalogs
 _NARROW_RE = re.compile(
@@ -138,6 +138,39 @@ Return JSON only: an array of {n} strings (each string is one search query)."""
         out.extend(_fallback_queries(user_prompt, n - len(out), seen, intent))
 
     return out[:n]
+
+
+def discovery_extra_queries(intent: ScrapeIntent, *, existing: set[str]) -> list[GeneratedQuery]:
+    """Additional search queries when discovery has not filled the source target yet."""
+    out: list[GeneratedQuery] = []
+    if intent_is_parliament_sessions(intent):
+        seeds = [
+            "List of sessions of the Lok Sabha wikipedia",
+            "Category Sessions of the Rajya Sabha wikipedia",
+            "site:en.wikipedia.org sessions Lok Sabha dates",
+            "site:en.wikipedia.org Rajya Sabha session list",
+            "site:prsindia.org parliament sessions list table",
+            "site:data.gov.in lok sabha session",
+            "site:data.gov.in rajya sabha session",
+            "Digital Sansad lok sabha session proceedings list",
+            "rajya sabha session dates archive official list",
+            "lok sabha session dates sittings table india",
+        ]
+    else:
+        topic = _user_prompt_text(intent)
+        seeds = [
+            topic,
+            f"{topic} data table",
+            f"{topic} complete list official",
+            f"{topic} wikipedia list",
+        ]
+    for s in seeds:
+        key = s.strip().lower()
+        if not key or key in existing:
+            continue
+        existing.add(key)
+        out.append(GeneratedQuery(query=s.strip()))
+    return out
 
 
 def _fallback_queries(
