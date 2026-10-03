@@ -5,8 +5,6 @@ import type { DatasetTable } from '../api/types.ts'
  * extraction/format.py) and the merged master table with `source` / `source_url` on every row. Fictional
  * numbers on .example domains. Test fixture only (runReport.test.ts); the /app/sample demo that also used it is gone.
  */
-export const SAMPLE_GOAL = 'Track Indian EV sales every month from 2024 to 2025, by segment'
-
 const SOURCES = [
   { name: 'Vahan EV dashboard', url: 'https://vahan.example/ev/monthly', segments: ['2W', '3W'] },
   { name: 'AutoData India', url: 'https://autodata.example/india/ev-sales', segments: ['4W'] },

@@ -1,11 +1,11 @@
 {
-  "generated": "2026-10-03T05:21:55.923Z",
-  "hasContract": false,
-  "baseUrl": null,
-  "start": null,
+  "generated": "2026-10-03T05:28:09.438Z",
+  "hasContract": true,
+  "baseUrl": "http://localhost:5174",
+  "start": "npm --prefix Frontend run dev:agent",
   "required": {
     "routes": [
-      "/"
+      "/app"
     ],
     "viewports": [
       "mobile",
@@ -22,6 +22,6 @@
   "noFailedRequests": true,
   "allowRemote": false,
   "why": [
-    "no route could be inferred — falling back to /"
+    "no route could be inferred — using the first declared route /app"
   ]
 }

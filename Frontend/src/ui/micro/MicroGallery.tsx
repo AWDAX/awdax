@@ -1,8 +1,6 @@
-import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { VoicePill } from './VoicePill.tsx'
 import { ThoughtLine } from './ThoughtLine.tsx'
-import { CallChip } from './CallChip.tsx'
 import { BellToggle } from './BellToggle.tsx'
 import { FuseButton } from './FuseButton.tsx'
 import { CopyButton } from './CopyButton.tsx'
@@ -34,10 +32,8 @@ function ToastDemo() {
   )
 }
 
-/** Not a route: a temporary visual check grid for all eight ported micro components. */
+/** Not a route: a visual check grid for the ported micro components (dev only, via DevPreview). */
 export function MicroGallery() {
-  const [retryCount, setRetryCount] = useState(0)
-
   return (
     <ToastProvider>
       <div className="grid gap-4 p-6 sm:grid-cols-2">
@@ -47,13 +43,6 @@ export function MicroGallery() {
 
         <Cell title="ThoughtLine">
           <ThoughtLine label="Searching sources…" steps={['Read plan', 'Fetch page', 'Extract rows']} working />
-        </Cell>
-
-        <Cell title="CallChip">
-          <CallChip icon="terminal" name="bash" argument="npm test" status="running" />
-          <CallChip icon="file" name="read" argument="report.csv" status="done" />
-          <CallChip icon="search" name="search" argument="query" status="error" onRetry={() => setRetryCount((c) => c + 1)} />
-          <span className="text-micro text-ink-3">retries: {retryCount}</span>
         </Cell>
 
         <Cell title="SwipeToast / ToastHost">

@@ -23,3 +23,14 @@ as passing.
 Verified 2026-10-03 05:24 against code `00aa1c520ddb`.
 
 - **code** — PASS via `verify.mjs` · recorded 2026-10-03 05:24
+
+## Q2 — Frontend: delete CallChip and unused exports
+
+Verified 2026-10-03 05:30 against code `3697a3a54295`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 05:30
+- **ui** — PASS via `playwright-core+chromium-1243 (headless)` · recorded 2026-10-03 05:30
+  - routes: /app, /, /app/demo/*
+  - viewports: mobile, desktop
+  - states: default
+  - 35 assertion(s) · 0 console error(s) · 0 failed request(s)

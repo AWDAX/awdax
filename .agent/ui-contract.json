@@ -1,0 +1,11 @@
+{
+  "target": "web",
+  "baseUrl": "http://localhost:5174",
+  "start": "npm --prefix Frontend run dev:agent",
+  "defaults": { "viewports": ["mobile", "desktop"], "states": ["default"] },
+  "routes": [
+    { "path": "/app" },
+    { "path": "/" },
+    { "path": "/app/demo/*", "sample": "/app/demo/phones-under-30k" }
+  ]
+}

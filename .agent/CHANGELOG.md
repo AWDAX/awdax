@@ -12,3 +12,7 @@
 ## Q1 — Backend: delete verified dead functions and unused imports
 
 _2026-10-03 05:24_ · code:PASS · code `00aa1c520ddb`
+
+## Q2 — Frontend: delete CallChip and unused exports
+
+_2026-10-03 05:30_ · code:PASS ui:PASS · code `3697a3a54295`

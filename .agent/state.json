@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T05:24:48.372Z",
+  "updated": "2026-10-03T05:30:43.798Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -227,20 +227,54 @@
     {
       "id": "Q2",
       "title": "Frontend: delete CallChip and unused exports",
-      "state": "TODO",
+      "state": "DONE",
       "deps": [],
-      "attempts": 0,
+      "attempts": 1,
       "ui": true,
-      "evidence": {},
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:30:37.526Z",
+          "codeHash": "3697a3a54295cf3060cae8b224a660de799030432b2b0b3b535ceb63d53efd81"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:30:43.066Z",
+          "codeHash": "3697a3a54295cf3060cae8b224a660de799030432b2b0b3b535ceb63d53efd81",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 6,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
       "notes": [],
-      "started": null,
-      "finished": null,
-      "blockedReason": null
+      "started": "2026-10-03T05:25:20.329Z",
+      "finished": "2026-10-03T05:30:43.796Z",
+      "blockedReason": null,
+      "base": "6d5d316378cd0461e8975741bb60a231c94103a9",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     },
     {
       "id": "Q3",
       "title": "Frontend: remove the switched-off Ask database page (chat's Ask box stays)",
-      "state": "WAITING",
+      "state": "TODO",
       "deps": [
         "Q2"
       ],
@@ -523,7 +557,27 @@
       "ts": "2026-10-03T05:24:48.372Z",
       "event": "done",
       "detail": "Q1 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T05:25:20.329Z",
+      "event": "start",
+      "detail": "Q2 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T05:30:37.564Z",
+      "event": "evidence",
+      "detail": "Q2/code PASS"
+    },
+    {
+      "ts": "2026-10-03T05:30:43.104Z",
+      "event": "evidence",
+      "detail": "Q2/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T05:30:43.798Z",
+      "event": "done",
+      "detail": "Q2 (code:PASS ui:PASS)"
     }
   ],
-  "integrity": "aa36a634a4b8ec95b41d281b84f55912412af8cc6a642bb2c3b7ccdbe6b0995e"
+  "integrity": "520489246fe85bf0cd0293aa763a773e860799e73ffbb49045956d2c739615d2"
 }

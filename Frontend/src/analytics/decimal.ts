@@ -67,7 +67,6 @@ export function cmp(a: Dec, b: Dec): number {
   return x < y ? -1 : x > y ? 1 : 0
 }
 
-export const isZero = (a: Dec) => a.n === 0n
 export const neg = (a: Dec): Dec => ({ n: -a.n, s: a.s })
 export const abs = (a: Dec): Dec => (a.n < 0n ? neg(a) : a)
 

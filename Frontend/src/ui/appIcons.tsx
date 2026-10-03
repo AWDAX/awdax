@@ -214,11 +214,3 @@ export const CompassIcon = (p: P) => (
   </Icon>
 )
 
-export const HelpCircleIcon = (p: P) => (
-  <Icon {...p}>
-    <circle cx="8" cy="8" r="6" />
-    <path d="M6.5 6.5a1.5 1.5 0 0 1 2.8.6c0 .8-.8 1.1-1.3 1.6-.3.3-.5.7-.5 1.3" />
-    <circle cx="7.5" cy="11.5" r="0.6" fill="currentColor" stroke="none" />
-  </Icon>
-)
-
