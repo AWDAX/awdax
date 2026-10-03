@@ -477,12 +477,15 @@ class InspectorCallSiteTests(GuardTestCase):
         self.assertEqual(plan.confidence, 0.0)
         self.assertIn("Blocked: address not allowed", " ".join(plan.warnings))
 
-    def test_an_ordinary_failed_probe_is_not_marked_blocked(self):
+    def test_an_ordinary_failed_probe_is_rejected_with_its_own_reason_not_as_an_address_block(self):
+        # Since d822c4e a source unreachable over HTTPS is rejected at inspect; it must never read as an SSRF block.
         failed = {"https_ok": False, "blocked": False, "error": "HTTP 500", "final_url": "https://x/"}
         src = discovery.SourceCandidate(url="https://example.test/", title="T", domain="example.test")
         with mock.patch("inspector.probe_https", return_value=failed):
             plan = inspector.inspect_source(mock.Mock(), src)
-        self.assertFalse(plan.blocked)
+        self.assertTrue(plan.blocked)
+        self.assertIn("HTTP 500", " ".join(plan.warnings))
+        self.assertNotIn("Blocked:", " ".join(plan.warnings))
 
 
 class ScraperCallSiteTests(GuardTestCase):

@@ -27,6 +27,8 @@ class ParallelDiscoveryTests(unittest.TestCase):
         with (
             patch.dict(os.environ, env or {}),
             patch("listing_sources.anchor_listings_for_intent", return_value=[]),
+            # A fixed query list: the extra queries that chase the source target are test_discovery_target's subject.
+            patch("query_generation.discovery_extra_queries", return_value=[]),
             patch("source_search.search_hits_for_query", side_effect=hits),
             patch("discovery.candidate_from_serp_hit", side_effect=_cand),
             patch("table_merge.intent_avoid_oem_sites", return_value=False),
@@ -76,6 +78,16 @@ class ParallelDiscoveryTests(unittest.TestCase):
 
         _sources, plans = self.run_discovery([f"q{i}" for i in range(5)], inspect=inspect, env={"DISCOVERY_INSPECT_WORKERS": "2", "DISCOVERY_MAX_SOURCES": "5"})
         self.assertEqual([p.source_url.rsplit("/", 1)[-1] for p in plans], ["q0", "q2", "q3", "q4"])
+
+    def test_a_rejected_page_moves_on_to_the_next_hit_of_its_query(self):
+        hits = lambda q, *_a, **_k: [{"url": f"https://example.org/{q}-dead"}, {"url": f"https://example.org/{q}-ok"}]  # noqa: E731
+        _sources, plans = self.run_discovery(
+            ["q0", "q1"],
+            inspect=lambda _i, cand: _plan(cand.url, blocked=cand.url.endswith("-dead")),
+            hits=hits,
+            env={"DISCOVERY_INSPECT_WORKERS": "2", "DISCOVERY_MAX_SOURCES": "2"},
+        )
+        self.assertEqual([p.source_url.rsplit("/", 1)[-1] for p in plans], ["q0-ok", "q1-ok"])
 
     def test_the_same_site_is_never_inspected_twice(self):
         calls = []
