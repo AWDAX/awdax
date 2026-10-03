@@ -16,6 +16,7 @@ import requests  # noqa: E402
 import inspector  # noqa: E402
 import llm_client  # noqa: E402
 import scraper  # noqa: E402
+import plan_scraper  # noqa: E402
 
 SECRET = "nvapi-SECRET-VALUE"
 
@@ -139,8 +140,8 @@ class PageLoadTests(unittest.TestCase):
             with mock.patch.object(inspector.webdriver, "Chrome") as chrome:
                 inspector._setup_driver()
             chrome.return_value.set_page_load_timeout.assert_called_once_with(45)
-            with mock.patch.object(scraper.webdriver, "Chrome") as chrome:
-                scraper.PlanDrivenScraper(mock.Mock(column_map={})).setup_driver()
+            with mock.patch.object(plan_scraper.webdriver, "Chrome") as chrome:
+                plan_scraper.PlanDrivenScraper(mock.Mock(column_map={})).setup_driver()
             chrome.return_value.set_page_load_timeout.assert_called_once_with(45)
 
 

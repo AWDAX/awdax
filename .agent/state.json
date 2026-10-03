@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-02T09:20:52.183Z",
+  "updated": "2026-10-03T12:57:42.016Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -193,6 +193,593 @@
       "started": null,
       "finished": null,
       "blockedReason": null
+    },
+    {
+      "id": "Q1",
+      "title": "Backend: delete verified dead functions and unused imports",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:24:21.405Z",
+          "codeHash": "00aa1c520ddb87daafc3a88cc12bab896688c1b37783efb1d035570c03ed3770"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T05:24:47.698Z",
+          "text": "Boot check after Q1: backend restarted on the new code; /health 200, /api/instances 200, /api/instances/<id>/sources 200. runtime-verify.mjs cannot start Flask (no package.json) and reports UNVERIFIED; backend suite 172 OK (.agent/runs/q1-unittest.json)",
+          "kind": "caveat"
+        }
+      ],
+      "started": "2026-10-03T05:21:55.955Z",
+      "finished": "2026-10-03T05:24:48.371Z",
+      "blockedReason": null,
+      "base": "fdd7bc0549e4f0a29125eca3546330233e68112d",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q2",
+      "title": "Frontend: delete CallChip and unused exports",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "ui": true,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:30:37.526Z",
+          "codeHash": "3697a3a54295cf3060cae8b224a660de799030432b2b0b3b535ceb63d53efd81"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:30:43.066Z",
+          "codeHash": "3697a3a54295cf3060cae8b224a660de799030432b2b0b3b535ceb63d53efd81",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 6,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [],
+      "started": "2026-10-03T05:25:20.329Z",
+      "finished": "2026-10-03T05:30:43.796Z",
+      "blockedReason": null,
+      "base": "6d5d316378cd0461e8975741bb60a231c94103a9",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q3",
+      "title": "Frontend: remove the switched-off Ask database page (chat's Ask box stays)",
+      "state": "DONE",
+      "deps": [
+        "Q2"
+      ],
+      "attempts": 1,
+      "ui": true,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:33:34.077Z",
+          "codeHash": "faed386b03da51b3cc66189699da099c1d617ba11e44649336455e10c0e88f7b"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:33:34.740Z",
+          "codeHash": "faed386b03da51b3cc66189699da099c1d617ba11e44649336455e10c0e88f7b",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 6,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T05:33:35.029Z",
+          "text": "Functional check: /app/ask redirects to /app; no 'Ask database' anywhere in the UI; a chat's own Ask box still answers ('highest price by model' -> OPPO K14 Plus 5G, Rs 29,999, 9 rows used)",
+          "kind": "finding"
+        }
+      ],
+      "started": "2026-10-03T05:30:54.788Z",
+      "finished": "2026-10-03T05:33:35.734Z",
+      "blockedReason": null,
+      "base": "61eca3b9901cff1ebb094da523c66894cd09885b",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q4",
+      "title": "Backend: retire the legacy pre-React API and the old root page",
+      "state": "DONE",
+      "deps": [
+        "Q1"
+      ],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:38:52.346Z",
+          "codeHash": "931f7b734a43c5a4a1fe0ed77c7ec091fdbe3e0d85f0361c5a1d84646b7d7093"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:39:12.950Z",
+          "codeHash": "931f7b734a43c5a4a1fe0ed77c7ec091fdbe3e0d85f0361c5a1d84646b7d7093",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 6,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T05:38:52.630Z",
+          "text": "Q4 boot check on the restarted backend: / /api/sessions /api/feed -> 404 {detail: Not found} (same as the old legacy guard gave); /health /ready /api/instances, a chat and its dataset -> 200. Backend suite 164 OK (.agent/runs/q4-unittest.json; 172 before, minus the guard's own tests, plus 3 retired-route tests). Two timing-based discovery tests were made deterministic after one flaked under full-suite load.",
+          "kind": "finding"
+        }
+      ],
+      "started": "2026-10-03T05:33:45.757Z",
+      "finished": "2026-10-03T05:39:13.687Z",
+      "blockedReason": null,
+      "base": "5f8c87a3d5324fd34baf30cecfdc53a1d146816a",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q5",
+      "title": "Backend: one shared Selenium import, dependency list trimmed",
+      "state": "DONE",
+      "deps": [
+        "Q4"
+      ],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T05:40:51.951Z",
+          "codeHash": "b7e5b01c9bb2d8c4d318c1fa3e00eae1da0b08f0006b320d4a1f787edd80bd08"
+        }
+      },
+      "notes": [],
+      "started": "2026-10-03T05:39:24.038Z",
+      "finished": "2026-10-03T05:40:52.660Z",
+      "blockedReason": null,
+      "base": "df82edd6a776398156e61367c24c6032bc3b979d",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q6",
+      "title": "Backend: scrape sources in parallel, database writes serialized",
+      "state": "DONE",
+      "deps": [
+        "Q5"
+      ],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:01:11.008Z",
+          "codeHash": "51b5084568617ae64195b08b9ef9f56e615fecb21aea55ebab3a5d8f0043b926"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:02:30.151Z",
+          "text": "Real run (cars, 6 sources): end to end OK with SCRAPE_WORKERS=3, first pass 70 rows at 871 s; wall time skewed by 5 NVIDIA 90 s timeouts during the scrape, so a same-source A/B (1 vs 3 workers) follows as a note."
+        },
+        {
+          "ts": "2026-10-03T06:21:49.426Z",
+          "text": "Same-source A/B of the scrape fetch+extract step (6 cars sources, same hour): SCRAPE_WORKERS=3 wall 482 s / 44 rows; =1 wall 655 s / 30 rows. 26% less wall time, not ~3x: NVIDIA serves concurrent calls slower (sum of per-source times 655 -> 1050 s) and 90 s read timeouts dominate both runs. One sample each; directional.",
+          "kind": "finding",
+          "afterDone": true
+        }
+      ],
+      "started": "2026-10-03T05:41:02.769Z",
+      "finished": "2026-10-03T06:02:30.796Z",
+      "blockedReason": null,
+      "base": "22f48fdb67b9bca756c1a47689c8a094b8d968e2",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q7",
+      "title": "Frontend: no Untitled chat flash while a chat loads",
+      "state": "DONE",
+      "deps": [
+        "Q3"
+      ],
+      "attempts": 1,
+      "ui": true,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:04:56.828Z",
+          "codeHash": "c3e3ce341a4ffa585140f155ce06087483b3ba667fe6d5f5f46846c6b4945571"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:05:17.997Z",
+          "codeHash": "c3e3ce341a4ffa585140f155ce06087483b3ba667fe6d5f5f46846c6b4945571",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:05:23.891Z",
+          "text": "Chat title falls back to the sidebar list's copy while the chat loads; unknown (cold deep link) shows an empty line + sr-only 'Loading chat'. Producer check holds GET /api/instances/<id> 3 s: old code showed ['Untitled chat','timing check'], new ['Loading chat','timing check']."
+        }
+      ],
+      "started": "2026-10-03T06:02:35.273Z",
+      "finished": "2026-10-03T06:05:24.531Z",
+      "blockedReason": null,
+      "base": "520f7487c52684e2919cf754f6cc113c8676ea25",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q8",
+      "title": "Frontend: measure bundles, lazy-load what slows first paint",
+      "state": "DONE",
+      "deps": [
+        "Q7"
+      ],
+      "attempts": 1,
+      "ui": true,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:10:03.569Z",
+          "codeHash": "3a497929fa35c21ab7a5764971eadc2ed5e9bff35eb0b148e7607c29d10852cb"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:10:27.590Z",
+          "codeHash": "3a497929fa35c21ab7a5764971eadc2ed5e9bff35eb0b148e7607c29d10852cb",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:10:34.360Z",
+          "text": "Bundles (gzip): app chunk 139.9 -> 107.9 KB (Supabase AuthClient only, no new dep; equivalence of url/storageKey/flowType/headers vs createClient checked in node), landing chunk 163.0 -> 135.1 KB (LazyMotion loads domMax async, 18.7 KB chunk). Simulated slow phone (CPU x4, 1.6 Mbps + 150 ms, median of 3): landing FCP 2012 -> 1776 ms, login 2408 -> 2080 ms; features chunk at 2038 ms, no element stuck at opacity 0 after 6 s, no console errors."
+        }
+      ],
+      "started": "2026-10-03T06:05:25.803Z",
+      "finished": "2026-10-03T06:10:35.052Z",
+      "blockedReason": null,
+      "base": "9ddfdf9425842c0bca338344d87250cdb96b6e6d",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q9",
+      "title": "Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change",
+      "state": "DONE",
+      "deps": [
+        "Q6"
+      ],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:14:39.672Z",
+          "codeHash": "1b48e6b74ffb22498bd89c7dc5365dcd82866cca690145338e23a1d544f757b6"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:14:47.602Z",
+          "text": "Moves only, verbatim blocks: scraper.py 1171->883 (+ plan_scraper.py 300: Selenium listing engine; listing_extract.py 129: HTML tables + LLM listing extract); RegulatoryFeed.py 1460->727 (+ gazette_pdf.py 171, gazette_summary.py 203, gazette_scraper.py 411). Importers (inspector, html_extract) and tests point at the new modules, no re-export shims. symtable check: no undefined or unused globals in any of the 7 modules; each imports cleanly alone (no cycles); 168 tests OK; backend restarted, /health /ready /api/instances + chat dataset/sources/dashboard 200, retired route 404. Left over 300: UniversalScrapeService (~650 lines) and RegulatoryFeedService (~600) are single classes; GazetteScraper is one 375-line class. Splitting them means mixins or delegating wrappers, not a move: left as known debt."
+        },
+        {
+          "ts": "2026-10-03T06:14:47.835Z",
+          "text": "Live re-check rebuilt the test chat's merged table from 70 to 54 rows (06:02 UTC, before Q9 code ran): rebuild_merged_table re-merges all stored records, so more fields per car let merge_records fold near-duplicates. Pre-existing behaviour; looks like dedup, not loss, but unconfirmed.",
+          "kind": "finding"
+        }
+      ],
+      "started": "2026-10-03T06:10:45.374Z",
+      "finished": "2026-10-03T06:14:48.524Z",
+      "blockedReason": null,
+      "base": "ae3c5d4c9d7ad1d9feed75049801652a48331c6c",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q10",
+      "title": "CI at the repo root: backend tests + frontend gate on every PR",
+      "state": "BLOCKED",
+      "deps": [
+        "Q9"
+      ],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:16:35.510Z",
+          "codeHash": "91e8d5ce2cf6f25bbc4a45a7423114ec5f9096f2515dc61316048b529b490969"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:16:56.832Z",
+          "text": "Root .github/workflows/ci.yml: backend (py 3.12, pip install -r requirements.txt, compileall, unittest) + frontend (node 24, npm ci, lint, test, audit high, build). Checks only, no secrets, no deploy; actions pinned by SHA (checkout/setup-node copied from Frontend/.github/workflows/deploy.yml, setup-python v6 ece7cb0 looked up via gh api). Dry run of every step in a clean worktree of 7b2f1fe with no .env/.env.local: compile ok, 168 tests OK, lint/test/audit(2 moderate)/build exit 0. Finding: Frontend/.github/workflows/deploy.yml never runs in this monorepo (GitHub reads only root .github); its Cloudflare deploy is the owner's to move."
+        }
+      ],
+      "started": "2026-10-03T06:14:54.818Z",
+      "finished": null,
+      "blockedReason": "CI evidence needs a real GitHub Actions run of .github/workflows/ci.yml, which exists only after the owner pushes the branch",
+      "base": "7b2f1fe57a57a50b43d96e0c33fa43131da01223",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      },
+      "blocked": {
+        "category": "HUMAN",
+        "why": "CI evidence needs a real GitHub Actions run of .github/workflows/ci.yml, which exists only after the owner pushes the branch",
+        "needs": "Owner pushes fix/polish-and-run-speed and opens a PR; then loop evidence delivery from: node ~/.agents/gates/delivery.mjs ci --run <run-id>",
+        "at": "2026-10-03T06:16:57.060Z",
+        "attempts": 1,
+        "failures": []
+      }
+    },
+    {
+      "id": "Q11",
+      "title": "Re-run /ponytail-audit, rate the codebase, update docs/HANDOFF.md",
+      "state": "WAITING",
+      "deps": [
+        "Q10",
+        "Q8"
+      ],
+      "attempts": 0,
+      "evidence": {},
+      "notes": [],
+      "started": null,
+      "finished": null,
+      "blockedReason": null
+    },
+    {
+      "id": "Q12",
+      "title": "Apply the re-audit cuts: dead html_extract extractors + dev CLIs + unused service methods, write-only LiveBridge map, duplicate helpers, unused frontend exports",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T09:44:51.144Z",
+          "codeHash": "4065e34c7ae60130b0840d1b78c4b28d9f01ab33e58dc5d977c9c1dc314cde08"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T09:45:49.709Z",
+          "codeHash": "4065e34c7ae60130b0840d1b78c4b28d9f01ab33e58dc5d977c9c1dc314cde08",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T09:45:55.731Z",
+          "text": "Re-audit cuts: html_extract.py removed (3 dead extractors; build_page_digest moved into its one caller gemini_scrape.py, digest checked by an assert smoke on JSON-LD, tables, visible text); dev CLIs main() in reasoning/query_generation/inspector/discovery and the then-dead discover_sources; UniversalScrapeService.list_records + load_intent; LiveBridge write-only _instance_jobs/register_job; duplicate _strip_html_tags (x2) and _now; NVIDIA_BASE_URL alias; reportError.ts (console.error inline); TerminalIcon. Kept setChatTitle: the test's only seed (Node has no usable localStorage). Dead-def scan now 0; 168 backend tests OK; frontend gate PASS; backend restarted, endpoints 200, retired route 404."
+        }
+      ],
+      "started": "2026-10-03T06:20:12.251Z",
+      "finished": "2026-10-03T09:45:56.416Z",
+      "blockedReason": null,
+      "base": "50700e692285fb64e60273e933dc17ed542d2b8e",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q13",
+      "title": "Backend: import PyMuPDF by its current name so a future release can't silently drop PDF text extraction",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T09:47:30.390Z",
+          "codeHash": "e27eb7f8e57734fa88431e26d1e19b08e2085fe0867124b659ba08b4f3c72154"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T09:47:30.657Z",
+          "text": "gazette_pdf imports 'pymupdf as fitz' (PyMuPDF 1.28.2; 'fitz' is deprecated and requirements are unpinned, and the import is optional, so a removal would have silently dropped to pdfminer). New test asserts PYMUPDF_AVAILABLE. Smoke: text extracted from a generated PDF through download_and_extract_pdf; 169 tests OK; backend restarts without the deprecation warning."
+        }
+      ],
+      "started": "2026-10-03T09:46:43.097Z",
+      "finished": "2026-10-03T09:47:31.364Z",
+      "blockedReason": null,
+      "base": "fc129fa71b2a75d41f763dbd14de3b7348d88062",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "Q14",
+      "title": "Ask about this data: AI plans any question (guardrailed query or sandboxed calculation), answers shown with schema and meaning",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T12:57:10.377Z",
+          "codeHash": "8c17b5a2d4f16cb59091412412d6fcc896042ce583632758d43587e337cf769f"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T12:57:31.715Z",
+          "codeHash": "8c17b5a2d4f16cb59091412412d6fcc896042ce583632758d43587e337cf769f",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T12:57:41.091Z",
+          "text": "Ask about this data (owner chose: AI plans, engine runs, no code shown; heavy maths as a hidden sandboxed Python function; dynamic guardrails). Typed questions -> POST /api/ask -> ask_data: model returns a query (checked against this table's columns/kinds by check_query, then again in the browser by toEngineQuery) or a compute function (ask_sandbox: AST allowlist incl. imports of math/statistics only, child python -I -S with empty env, 8 s, Windows Job Object 512 MB + no child processes, RLIMIT on POSIX, 1 MB result cap, 2 at once) or a refusal. Route: 8 MB body cap, 20 asks/5 min per user, guardrail refusals are answers (200), AI down is 503 (60 s budget via llm_json(budget_s)). Answers show meaning + schema-labelled result table. Reviewer pass: no escape found; its DoS findings (Windows memory, result size, nesting crash, body size, rate) fixed with tests. Live with the real AI: query, filtered query, computed and refusal answers all correct, 0 console errors."
+        },
+        {
+          "ts": "2026-10-03T12:57:41.318Z",
+          "text": "NVIDIA: the .env's LLM_MODEL (nemotron-3.5-lightning) timed out for the whole 60 s on every ask this evening; nemotron-3-super-120b now returns HTTP 410 (retired) but is still in llm_client's default chain; nemotron-3-ultra-550b answered in 25-33 s.",
+          "kind": "finding"
+        }
+      ],
+      "started": "2026-10-03T12:18:36.848Z",
+      "finished": "2026-10-03T12:57:42.013Z",
+      "blockedReason": null,
+      "base": "836479b7c97ee59f8a45778ebaa474299fb8bb22",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     }
   ],
   "log": [
@@ -260,7 +847,397 @@
       "ts": "2026-10-02T09:20:52.183Z",
       "event": "block",
       "detail": "A7 [HUMAN]: Per-user storage decides what happens to users' uploaded files — needs Owner picks: namespace + migrate (recommended) or clear on sign-out"
+    },
+    {
+      "ts": "2026-10-03T05:21:46.622Z",
+      "event": "decision",
+      "detail": "Previous phase A1-A9 were done on fix/fe-* and fix/stability-pass and merged into main as PR #4 (e824f6c), outside this board; A7 still waits on the owner"
+    },
+    {
+      "ts": "2026-10-03T05:21:46.900Z",
+      "event": "decision",
+      "detail": "Backend changes are allowed for agents when small and tested; supersedes 'Backend Python is read-only for agents'"
+    },
+    {
+      "ts": "2026-10-03T05:21:47.127Z",
+      "event": "decision",
+      "detail": "No stack change: SQLite stays (no Postgres), no new packages"
+    },
+    {
+      "ts": "2026-10-03T05:21:47.363Z",
+      "event": "add",
+      "detail": "Q1 Backend: delete verified dead functions and unused imports"
+    },
+    {
+      "ts": "2026-10-03T05:21:47.587Z",
+      "event": "add",
+      "detail": "Q2 Frontend: delete CallChip and unused exports"
+    },
+    {
+      "ts": "2026-10-03T05:21:47.804Z",
+      "event": "add",
+      "detail": "Q3 Frontend: remove the switched-off Ask database page (chat's Ask box stays)"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.022Z",
+      "event": "add",
+      "detail": "Q4 Backend: retire the legacy pre-React API and the old root page"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.252Z",
+      "event": "add",
+      "detail": "Q5 Backend: one shared Selenium import, dependency list trimmed"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.495Z",
+      "event": "add",
+      "detail": "Q6 Backend: scrape sources in parallel, database writes serialized"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.728Z",
+      "event": "add",
+      "detail": "Q7 Frontend: no Untitled chat flash while a chat loads"
+    },
+    {
+      "ts": "2026-10-03T05:21:48.948Z",
+      "event": "add",
+      "detail": "Q8 Frontend: measure bundles, lazy-load what slows first paint"
+    },
+    {
+      "ts": "2026-10-03T05:21:49.173Z",
+      "event": "add",
+      "detail": "Q9 Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change"
+    },
+    {
+      "ts": "2026-10-03T05:21:49.401Z",
+      "event": "add",
+      "detail": "Q10 CI at the repo root: backend tests + frontend gate on every PR"
+    },
+    {
+      "ts": "2026-10-03T05:21:49.634Z",
+      "event": "add",
+      "detail": "Q11 Re-run /ponytail-audit, rate the codebase, update docs/HANDOFF.md"
+    },
+    {
+      "ts": "2026-10-03T05:21:55.955Z",
+      "event": "start",
+      "detail": "Q1 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T05:24:21.442Z",
+      "event": "evidence",
+      "detail": "Q1/code PASS"
+    },
+    {
+      "ts": "2026-10-03T05:24:47.698Z",
+      "event": "note",
+      "detail": "Q1 [caveat]: Boot check after Q1: backend restarted on the new code; /hea"
+    },
+    {
+      "ts": "2026-10-03T05:24:48.372Z",
+      "event": "done",
+      "detail": "Q1 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T05:25:20.329Z",
+      "event": "start",
+      "detail": "Q2 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T05:30:37.564Z",
+      "event": "evidence",
+      "detail": "Q2/code PASS"
+    },
+    {
+      "ts": "2026-10-03T05:30:43.104Z",
+      "event": "evidence",
+      "detail": "Q2/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T05:30:43.798Z",
+      "event": "done",
+      "detail": "Q2 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T05:30:54.788Z",
+      "event": "start",
+      "detail": "Q3 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T05:33:34.114Z",
+      "event": "evidence",
+      "detail": "Q3/code PASS"
+    },
+    {
+      "ts": "2026-10-03T05:33:34.780Z",
+      "event": "evidence",
+      "detail": "Q3/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T05:33:35.029Z",
+      "event": "note",
+      "detail": "Q3 [finding]: Functional check: /app/ask redirects to /app; no 'Ask databa"
+    },
+    {
+      "ts": "2026-10-03T05:33:35.736Z",
+      "event": "done",
+      "detail": "Q3 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T05:33:45.757Z",
+      "event": "start",
+      "detail": "Q4 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T05:38:52.385Z",
+      "event": "evidence",
+      "detail": "Q4/code PASS"
+    },
+    {
+      "ts": "2026-10-03T05:38:52.630Z",
+      "event": "note",
+      "detail": "Q4 [finding]: Q4 boot check on the restarted backend: / /api/sessions /api"
+    },
+    {
+      "ts": "2026-10-03T05:39:12.989Z",
+      "event": "evidence",
+      "detail": "Q4/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T05:39:13.689Z",
+      "event": "done",
+      "detail": "Q4 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T05:39:24.038Z",
+      "event": "start",
+      "detail": "Q5 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T05:40:12.839Z",
+      "event": "decision",
+      "detail": "Skipped the shared Selenium import module from the audit: four 11-line try/except blocks would become four import lines plus a new ~25-line module, saving ~10 lines for one more file; not worth it by ponytail's own rule. Removed inspector.py's three unused Selenium imports instead."
+    },
+    {
+      "ts": "2026-10-03T05:40:51.990Z",
+      "event": "evidence",
+      "detail": "Q5/code PASS"
+    },
+    {
+      "ts": "2026-10-03T05:40:52.662Z",
+      "event": "done",
+      "detail": "Q5 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T05:41:02.769Z",
+      "event": "start",
+      "detail": "Q6 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:01:11.053Z",
+      "event": "evidence",
+      "detail": "Q6/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:02:30.151Z",
+      "event": "note",
+      "detail": "Q6: Real run (cars, 6 sources): end to end OK with SCRAPE_WORKER"
+    },
+    {
+      "ts": "2026-10-03T06:02:30.798Z",
+      "event": "done",
+      "detail": "Q6 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T06:02:35.273Z",
+      "event": "start",
+      "detail": "Q7 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:04:56.866Z",
+      "event": "evidence",
+      "detail": "Q7/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:05:18.034Z",
+      "event": "evidence",
+      "detail": "Q7/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T06:05:23.891Z",
+      "event": "note",
+      "detail": "Q7: Chat title falls back to the sidebar list's copy while the c"
+    },
+    {
+      "ts": "2026-10-03T06:05:24.533Z",
+      "event": "done",
+      "detail": "Q7 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T06:05:25.803Z",
+      "event": "start",
+      "detail": "Q8 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:10:03.611Z",
+      "event": "evidence",
+      "detail": "Q8/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:10:27.631Z",
+      "event": "evidence",
+      "detail": "Q8/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T06:10:34.360Z",
+      "event": "note",
+      "detail": "Q8: Bundles (gzip): app chunk 139.9 -> 107.9 KB (Supabase AuthCl"
+    },
+    {
+      "ts": "2026-10-03T06:10:35.055Z",
+      "event": "done",
+      "detail": "Q8 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T06:10:45.374Z",
+      "event": "start",
+      "detail": "Q9 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:14:39.711Z",
+      "event": "evidence",
+      "detail": "Q9/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:14:47.602Z",
+      "event": "note",
+      "detail": "Q9: Moves only, verbatim blocks: scraper.py 1171->883 (+ plan_sc"
+    },
+    {
+      "ts": "2026-10-03T06:14:47.835Z",
+      "event": "note",
+      "detail": "Q9 [finding]: Live re-check rebuilt the test chat's merged table from 70 t"
+    },
+    {
+      "ts": "2026-10-03T06:14:48.525Z",
+      "event": "done",
+      "detail": "Q9 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T06:14:54.818Z",
+      "event": "start",
+      "detail": "Q10 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:16:35.553Z",
+      "event": "evidence",
+      "detail": "Q10/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:16:56.832Z",
+      "event": "note",
+      "detail": "Q10: Root .github/workflows/ci.yml: backend (py 3.12, pip install"
+    },
+    {
+      "ts": "2026-10-03T06:16:57.060Z",
+      "event": "block",
+      "detail": "Q10 [HUMAN]: CI evidence needs a real GitHub Actions run of .github/workflows/ci.yml, which exists only after the owner pushes the branch — needs Owner pushes fix/polish-and-run-speed and opens a PR; then loop evidence delivery from: node ~/.agents/gates/delivery.mjs ci --run <run-id>"
+    },
+    {
+      "ts": "2026-10-03T06:20:11.575Z",
+      "event": "add",
+      "detail": "Q12 Apply the re-audit cuts: dead html_extract extractors + dev CLIs + unused service methods, write-only LiveBridge map, duplicate helpers, unused frontend exports"
+    },
+    {
+      "ts": "2026-10-03T06:20:12.251Z",
+      "event": "start",
+      "detail": "Q12 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:21:49.428Z",
+      "event": "note",
+      "detail": "Q6 [finding]: Same-source A/B of the scrape fetch+extract step (6 cars sou"
+    },
+    {
+      "ts": "2026-10-03T09:44:51.186Z",
+      "event": "evidence",
+      "detail": "Q12/code PASS"
+    },
+    {
+      "ts": "2026-10-03T09:45:49.749Z",
+      "event": "evidence",
+      "detail": "Q12/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T09:45:55.731Z",
+      "event": "note",
+      "detail": "Q12: Re-audit cuts: html_extract.py removed (3 dead extractors; b"
+    },
+    {
+      "ts": "2026-10-03T09:45:56.419Z",
+      "event": "done",
+      "detail": "Q12 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T09:46:42.504Z",
+      "event": "add",
+      "detail": "Q13 Backend: import PyMuPDF by its current name so a future release can't silently drop PDF text extraction"
+    },
+    {
+      "ts": "2026-10-03T09:46:43.097Z",
+      "event": "start",
+      "detail": "Q13 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T09:47:30.431Z",
+      "event": "evidence",
+      "detail": "Q13/code PASS"
+    },
+    {
+      "ts": "2026-10-03T09:47:30.657Z",
+      "event": "note",
+      "detail": "Q13: gazette_pdf imports 'pymupdf as fitz' (PyMuPDF 1.28.2; 'fitz"
+    },
+    {
+      "ts": "2026-10-03T09:47:31.366Z",
+      "event": "done",
+      "detail": "Q13 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T12:18:35.789Z",
+      "event": "add",
+      "detail": "Q14 Ask about this data: AI plans any question (guardrailed query or sandboxed calculation), answers shown with schema and meaning"
+    },
+    {
+      "ts": "2026-10-03T12:18:36.848Z",
+      "event": "start",
+      "detail": "Q14 (attempt 1, checkpoint 2026-10-03T12-18-36-588)"
+    },
+    {
+      "ts": "2026-10-03T12:57:10.417Z",
+      "event": "evidence",
+      "detail": "Q14/code PASS"
+    },
+    {
+      "ts": "2026-10-03T12:57:31.754Z",
+      "event": "evidence",
+      "detail": "Q14/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T12:57:41.091Z",
+      "event": "note",
+      "detail": "Q14: Ask about this data (owner chose: AI plans, engine runs, no "
+    },
+    {
+      "ts": "2026-10-03T12:57:41.318Z",
+      "event": "note",
+      "detail": "Q14 [finding]: NVIDIA: the .env's LLM_MODEL (nemotron-3.5-lightning) timed "
+    },
+    {
+      "ts": "2026-10-03T12:57:42.016Z",
+      "event": "done",
+      "detail": "Q14 (code:PASS ui:PASS)"
     }
   ],
-  "integrity": "1adddc22a3d172be395c7b181360a91c0554e44c9efff5bbae1573d7b16272aa"
+  "integrity": "81b511f2ff2b56c212005d86b74ccde65663a1348223a67f01a5327ef469429f"
 }

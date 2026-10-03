@@ -1,5 +1,5 @@
 import { formatDate, formatMoney, monthLabel } from './format.ts'
-import type { CellValue, Column, Dataset, Row } from './types.ts'
+import type { CellValue, Column, Row } from './types.ts'
 
 /**
  * The charts rule from docs/PRODUCT.md, as code:
@@ -176,16 +176,4 @@ export function chartFor(column: Column, rows: Row[], domainRows: Row[] = rows):
     missing: rows.length - shown.length,
     max: Math.max(1, ...count(b, all).map((d) => d.value)),
   }
-}
-
-const PRIORITY: Record<string, number> = { date: 0, category: 1, money: 2, number: 3, location: 4 }
-
-/** Up to four charts for a dataset, chosen by column type. */
-export function autoCharts(dataset: Dataset, limit = 4): ChartSpec[] {
-  return dataset.columns
-    .filter((c) => c.type in PRIORITY)
-    .sort((a, b) => PRIORITY[a.type] - PRIORITY[b.type])
-    .map((c) => chartFor(c, dataset.rows))
-    .filter((s): s is ChartSpec => s !== null)
-    .slice(0, limit)
 }

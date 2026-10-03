@@ -10,19 +10,53 @@ import os
 import re
 from typing import Any
 
+from listing_extract import _strip_html_tags, extract_tables_from_html
 from reasoning import ScrapeIntent, gemini_json
 
 logger = logging.getLogger(__name__)
 
 
-def _strip_html_tags(text: str) -> str:
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text or "")).strip()
+def _strip_scripts_styles(html: str) -> str:
+    html = re.sub(r"<script\b[^>]*>.*?</script>", " ", html, flags=re.I | re.S)
+    html = re.sub(r"<style\b[^>]*>.*?</style>", " ", html, flags=re.I | re.S)
+    return re.sub(r"\s+", " ", html).strip()
+
+
+def build_page_digest(html: str, *, max_text: int = 55_000) -> dict[str, Any]:
+    json_ld: list[Any] = []
+    for block in re.findall(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.I | re.S):
+        try:
+            json_ld.append(json.loads(block.strip()[:8000]))
+        except Exception:
+            json_ld.append(block.strip()[:2000])
+        if len(json_ld) >= 4:
+            break
+
+    next_m = re.search(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.I | re.S)
+    next_snip = (next_m.group(1)[:80000] if next_m else "")
+
+    tables = extract_tables_from_html(html)
+    table_preview = []
+    for t in tables[:3]:
+        table_preview.append(
+            {
+                "headers": (t.get("headers") or [])[:20],
+                "sample_rows": (t.get("rows") or [])[:5],
+            }
+        )
+
+    text = _strip_html_tags(_strip_scripts_styles(html))[:max_text]
+
+    return {
+        "json_ld": json_ld,
+        "next_data_snippet": next_snip,
+        "tables": table_preview,
+        "visible_text_sample": text,
+    }
 
 
 def build_gemini_page_context(html: str, *, page_url: str = "") -> dict[str, Any]:
     """Rich context for Gemini (JSON blobs + visible text)."""
-    from html_extract import build_page_digest
-
     ctx = build_page_digest(html, max_text=int(os.getenv("GEMINI_SCRAPE_MAX_TEXT", "70000")))
     ctx["page_url"] = page_url
 

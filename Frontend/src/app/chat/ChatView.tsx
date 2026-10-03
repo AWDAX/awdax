@@ -78,7 +78,8 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-6">
       <header className="flex flex-wrap items-start gap-3 border-b-2 border-ink pb-4">
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-h3 font-extrabold break-words">{title}</h1>
+          {/* min-h keeps the line while a title is still unknown, so the header doesn't jump when it arrives. */}
+          <h1 className="min-h-[1lh] font-display text-h3 font-extrabold break-words">{title || <span className="sr-only">Loading chat</span>}</h1>
           <p className="mt-1 font-mono text-micro text-ink-3">{meta}</p>
         </div>
         {/* A real chat's ⋯ menu stays beside the title at every width (the tutorial is in it and on the sidebar). */}

@@ -1,19 +1,24 @@
 import { useMemo, useState } from 'react'
 import { answer, STALE_MESSAGE } from '../../analytics/answer.ts'
+import type { Dec } from '../../analytics/decimal.ts'
 import type { TableProfile } from '../../analytics/profile.ts'
 import type { ChartSpec } from '../../analytics/spec.ts'
 import { ChartIcon, DownloadIcon, TrashIcon } from '../../ui/appIcons.tsx'
 import { AssistantOrb } from '../../ui/micro/AssistantOrb.tsx'
 import { CopyButton } from '../../ui/micro/CopyButton.tsx'
+import { formatFor } from '../../analytics/format.ts'
+import { measureTitle } from '../../analytics/suggest.ts'
 import { isStaleAnswer } from '../chat/answerStore.ts'
-import type { SavedAnswer } from '../chat/useAnswers.ts'
+import type { QueryAnswer, SavedAnswer } from '../chat/answerStore.ts'
+import { ComputedAnswerCard } from './ComputedAnswerCard.tsx'
+import { ResultTable } from './ResultTable.tsx'
 import { ChartView } from '../dashboard/charts/ChartView.tsx'
 import { PrecisionNote } from '../dashboard/PrecisionNote.tsx'
 import { ExportDialog } from '../export/ExportDialog.tsx'
 
 type Props = {
   profile: TableProfile
-  saved: SavedAnswer
+  saved: QueryAnswer
   /** Used in export file names. */
   title: string
   onAddToDashboard?: (spec: ChartSpec) => void
@@ -23,8 +28,10 @@ type Props = {
 const action = 'inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-micro text-ink-2 hover:bg-sunken hover:text-ink'
 
 /** One question answered from the table, or, when its columns are gone, a note saying so (and the way to remove it). */
-export function AnswerCard(props: Props) {
-  return isStaleAnswer(props.saved, props.profile) ? <StaleAnswer saved={props.saved} onRemove={props.onRemove} /> : <LiveAnswer {...props} />
+export function AnswerCard(props: Omit<Props, 'saved'> & { saved: SavedAnswer }) {
+  const { saved } = props
+  if (saved.computed) return <ComputedAnswerCard profile={props.profile} saved={saved} onRemove={props.onRemove} />
+  return isStaleAnswer(saved, props.profile) ? <StaleAnswer saved={saved} onRemove={props.onRemove} /> : <LiveAnswer {...props} saved={saved} />
 }
 
 /** Kept, not deleted: the table may get its columns back, and only the user decides to drop a question. */
@@ -48,6 +55,25 @@ function StaleAnswer({ saved, onRemove }: Pick<Props, 'saved' | 'onRemove'>) {
         </div>
       </div>
     </article>
+  )
+}
+
+/** The grouped numbers behind the chart, with their schema, folded away until asked for. */
+function GroupTable({ profile, saved, rows, scale }: { profile: TableProfile; saved: QueryAnswer; rows: { label: string; value: Dec | null }[]; scale: number }) {
+  const q = saved.query
+  const group = profile.columns[q.groupBy!]
+  const measure = q.measure !== undefined && q.agg !== 'count' && q.agg !== 'distinct' ? profile.columns[q.measure] : undefined
+  const columns = [
+    { name: group?.label ?? 'Group', type: group?.kind ?? 'text' },
+    { name: measureTitle(profile, q), type: measure?.kind ?? 'number' },
+  ]
+  return (
+    <details className="mt-3 text-small">
+      <summary className="cursor-pointer text-ink-2 hover:text-ink">Result table</summary>
+      <div className="mt-2">
+        <ResultTable columns={columns} rows={rows.map((r) => [r.label, formatFor(measure, r.value, scale)])} caption={saved.question} />
+      </div>
+    </details>
   )
 }
 
@@ -76,6 +102,7 @@ function LiveAnswer({ profile, saved, title, onAddToDashboard, onRemove }: Props
               <ChartView spec={{ ...spec, type: saved.chart === 'kpi' ? 'bar' : saved.chart }} profile={profile} height={200} />
             </div>
           )}
+          {grouped && <GroupTable profile={profile} saved={saved} rows={a.result.rows} scale={a.result.scale} />}
           <div className="mt-3 border-t border-line pt-2">
             <PrecisionNote profile={profile} result={a.result} />
           </div>

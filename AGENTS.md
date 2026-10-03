@@ -33,10 +33,13 @@ Agents never change a live service, key, deployment setting or production databa
 
 - Backend `.env`: `NVIDIA_API_KEY`, `NVIDIA_API_BASE`, `LLM_MODEL` (NVIDIA first; `openai/<org>/<model>` names are accepted),
   optional `NVIDIA_MODELS`, `NVIDIA_TIMEOUT_SECONDS`, `GEMINI_API_KEY` (fallback),
+  optional `DISCOVERY_MAX_SOURCES` (default 6, the source target discovery keeps searching for), `DISCOVERY_MAX_INSPECT_ATTEMPTS`
+  (default 60) and `DISCOVERY_INSPECT_WORKERS` (default 3; each worker runs its own headless Chrome),
+  optional `SCRAPE_WORKERS` (default 3; listing pages fetched and read at once, rows still stored one source at a time in order; 1 = old behaviour),
   `PROXY_SHARED_SECRET` (REQUIRED in production; set the same value on Pages: when set the backend is in strict mode and accepts an identity only from
   `X-User-Id` with a matching `X-Proxy-Secret` or from a token verified with `SUPABASE_JWT_SECRET`, answering 401 otherwise instead of trusting an
   unsigned token or using the `anonymous` user; unset (local dev) keeps the permissive, unverified behaviour and logs one warning),
-  `AWDAX_LEGACY_API` (`1`/`true` re-enables the old pre-React routes in `app.py`; leave unset in production, where they answer 404).
+  (`AWDAX_LEGACY_API` is gone: the pre-React routes were removed from `app.py` on 3 Oct 2026.)
   Leave `SUPABASE_JWT_SECRET` unset: this project's tokens are ES256 and an HS256 secret would reject them.
 - Frontend `Frontend/.env.local`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (public values).
 - Run locally: `.venv/Scripts/python.exe app.py` (port 8000) and `npm run dev:agent` in `Frontend/` (port 5174, no sign-in).

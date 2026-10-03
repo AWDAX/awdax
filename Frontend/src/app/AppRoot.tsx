@@ -5,7 +5,6 @@ import { AuthProvider } from './auth/AuthProvider.tsx'
 import { RequireAuth } from './auth/RequireAuth.tsx'
 import ChatPage from './chat/ChatPage.tsx'
 import DemoReplay from './demo/DemoReplay.tsx'
-import { FEATURES } from './features.ts'
 import FilePage from './chat/FilePage.tsx'
 import NewChat from './chat/NewChat.tsx'
 import LoginPage from './LoginPage.tsx'
@@ -14,8 +13,6 @@ import Layout from './workspace/Layout.tsx'
 
 // Dev-only preview of components and the dashboard on sample tables; Vite drops it from production builds.
 const DevPreview = import.meta.env.DEV ? lazy(() => import('./dev/DevPreview.tsx')) : null
-// Behind a flag (off for everyone for now): with it off, /app/ask falls through to New chat.
-const AskPage = FEATURES.askDatabase ? lazy(() => import('./ask/AskPage.tsx')) : null
 
 /**
  * Everything that is not the landing page, loaded as one lazy chunk so Supabase never ships with the
@@ -40,16 +37,6 @@ export default function AppRoot() {
           <Route path="f/:id" element={<FilePage />} />
           <Route path="demo/:slug" element={<DemoReplay />} />
           <Route path="projects" element={<ProjectsReport />} />
-          {AskPage && (
-            <Route
-              path="ask"
-              element={
-                <Suspense fallback={null}>
-                  <AskPage />
-                </Suspense>
-              }
-            />
-          )}
           {DevPreview && (
             <Route
               path="dev"

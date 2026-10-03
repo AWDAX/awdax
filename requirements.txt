@@ -6,5 +6,4 @@ selenium
 pymupdf
 pdfminer.six
 flask-sock
-simple-websocket
 PyJWT

@@ -41,11 +41,6 @@ React Bits (David Haz, MIT + Commons Clause) — `TS-TW` variants adapted from
   the line's color is `--color-ink`, not `currentColor` (a `currentColor` shimmer painted the label
   transparent); the clock is React state and takes a `startedAt` origin so a page opened mid-run shows the
   run's real time; long steps end in an ellipsis; dropped `renderLabel`, `settleAfter`, `color`, `glyphColor`.
-- **CallChip** — https://reactbits.dev/micro/call-chip — `src/ui/micro/CallChip.tsx`.
-  Changed: @hugeicons terminal/file/search/edit/check/retry → our `appIcons.tsx`/`icons.tsx`;
-  arbitrary surface/progress/done/error colors → `bg-signal-soft` (running/done wash) and
-  `bg-blocked/15` (error), `border-ink`, `rounded-control`; `motion` import → imperative `animate()`
-  from `motion/react` on a plain ref (allowed outside LazyMotion's strict `m.*` requirement).
 - **SwipeToast** — https://reactbits.dev/micro/swipe-toast — `src/ui/toast/SwipeToast.tsx` +
   `src/ui/toast/ToastHost.tsx` + `src/ui/toast/toastContext.ts`.
   Changed: @hugeicons close → `CloseIcon`; `motion.div` → `m.div`; fixed inline positioning →

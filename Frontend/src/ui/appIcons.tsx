@@ -104,12 +104,6 @@ export const SparkleIcon = (p: P) => (
     <path d="M12.5 11l.5 1.3 1.3.5-1.3.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5z" fill="currentColor" stroke="none" />
   </Icon>
 )
-export const TerminalIcon = (p: P) => (
-  <Icon {...p}>
-    <rect x="2" y="3" width="12" height="10" rx="1.5" />
-    <path d="M4.75 6.25L6.75 8l-2 1.75M8.5 10h2.75" />
-  </Icon>
-)
 export const FileIcon = (p: P) => (
   <Icon {...p}>
     <path d="M9.5 2H4.5v12h7V4z" />
@@ -211,14 +205,6 @@ export const CompassIcon = (p: P) => (
   <Icon {...p}>
     <circle cx="8" cy="8" r="6" />
     <polygon points="10.5,5.5 9,9 5.5,10.5 7,7" fill="currentColor" stroke="none" />
-  </Icon>
-)
-
-export const HelpCircleIcon = (p: P) => (
-  <Icon {...p}>
-    <circle cx="8" cy="8" r="6" />
-    <path d="M6.5 6.5a1.5 1.5 0 0 1 2.8.6c0 .8-.8 1.1-1.3 1.6-.3.3-.5.7-.5 1.3" />
-    <circle cx="7.5" cy="11.5" r="0.6" fill="currentColor" stroke="none" />
   </Icon>
 )
 

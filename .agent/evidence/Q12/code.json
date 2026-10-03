@@ -1,0 +1,123 @@
+{
+  "task": "Q12",
+  "class": "code",
+  "verdict": "PASS",
+  "recorded": "2026-10-03T09:44:51.144Z",
+  "codeHash": "4065e34c7ae60130b0840d1b78c4b28d9f01ab33e58dc5d977c9c1dc314cde08",
+  "head": "50700e6",
+  "tool": "verify.mjs",
+  "resources": {
+    "measuredAt": "2026-10-03T09:44:51.176Z",
+    "cpus": 20,
+    "freeMemMB": 2478,
+    "freeDiskMB": 40807,
+    "root": "X:/",
+    "budget": {
+      "maxParallel": null,
+      "testWorkers": null,
+      "from": {
+        "maxParallel": "default",
+        "testWorkers": "none applied"
+      }
+    }
+  },
+  "detail": {
+    "verdict": "PASS",
+    "kind": "node",
+    "root": "X:\\Hackathons\\Codecubicle\\awdax\\Frontend",
+    "producer": "verify.mjs",
+    "codeHash": "4065e34c7ae60130b0840d1b78c4b28d9f01ab33e58dc5d977c9c1dc314cde08",
+    "finishedAt": "2026-10-03T09:44:50.366Z",
+    "testKnob": null,
+    "testKnobWhy": "no usable worker count was requested (null)",
+    "checks": [
+      {
+        "name": "lint",
+        "status": "PASS",
+        "detail": "",
+        "output": "",
+        "run": {
+          "command": "npm",
+          "args": [
+            "run",
+            "lint"
+          ],
+          "termination": "exit",
+          "exitCode": 0,
+          "durationMs": 27899,
+          "timedOut": false,
+          "treeKilled": false,
+          "outputHeldOpen": false,
+          "shell": false,
+          "error": null
+        }
+      },
+      {
+        "name": "types",
+        "status": "PASS",
+        "detail": "",
+        "output": "",
+        "run": {
+          "command": "npx",
+          "args": [
+            "--no-install",
+            "tsc",
+            "--noEmit",
+            "-p",
+            "tsconfig.json"
+          ],
+          "termination": "exit",
+          "exitCode": 0,
+          "durationMs": 1364,
+          "timedOut": false,
+          "treeKilled": false,
+          "outputHeldOpen": false,
+          "shell": false,
+          "error": null
+        }
+      },
+      {
+        "name": "build",
+        "status": "PASS",
+        "detail": "",
+        "output": "",
+        "run": {
+          "command": "npm",
+          "args": [
+            "run",
+            "build"
+          ],
+          "termination": "exit",
+          "exitCode": 0,
+          "durationMs": 8144,
+          "timedOut": false,
+          "treeKilled": false,
+          "outputHeldOpen": false,
+          "shell": false,
+          "error": null
+        }
+      },
+      {
+        "name": "test",
+        "status": "PASS",
+        "detail": "",
+        "output": "",
+        "run": {
+          "command": "npm",
+          "args": [
+            "run",
+            "test"
+          ],
+          "termination": "exit",
+          "exitCode": 0,
+          "durationMs": 1161,
+          "timedOut": false,
+          "treeKilled": false,
+          "outputHeldOpen": false,
+          "shell": false,
+          "error": null
+        }
+      }
+    ]
+  }
+}

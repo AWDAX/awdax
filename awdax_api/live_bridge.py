@@ -9,8 +9,6 @@ from awdax_api.dataset_export import build_dataset_table
 from awdax_api.run_registry import active_regulatory_instances, instance_for_job
 from awdax_api.serializers import to_awdax_live_state
 from awdax_api.session_store import load_instance_session, persist_run_state, set_awdax_run
-from reasoning import ScrapeIntent
-from regulatory_strategy import intent_uses_regulatory_feed
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,6 @@ class LiveBridge:
         self._lock = threading.Lock()
         self._subscribers: dict[str, list[queue.Queue]] = {}
         self._ws_clients: dict[str, list[Any]] = {}
-        self._instance_jobs: dict[str, str] = {}
         self._started = False
 
     def start(self) -> None:
@@ -32,11 +29,6 @@ class LiveBridge:
 
         threading.Thread(target=self._fan_in, args=(universal_service.subscribe_events(), "universal"), daemon=True).start()
         threading.Thread(target=self._fan_in, args=(feed_service.subscribe_events(), "regulatory"), daemon=True).start()
-
-    def register_job(self, instance_id: str, job_id: str | None) -> None:
-        with self._lock:
-            if job_id:
-                self._instance_jobs[instance_id] = job_id
 
     def subscribe(self, instance_id: str) -> queue.Queue:
         q: queue.Queue = queue.Queue(maxsize=256)

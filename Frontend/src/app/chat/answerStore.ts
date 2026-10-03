@@ -6,21 +6,42 @@ import type { ChartType } from '../../analytics/spec.ts'
 import type { Intent } from '../../analytics/suggest.ts'
 
 /**
- * Questions asked about one chat's data, kept in this browser. Only the question and its query are stored;
- * the numbers are recomputed from the current table every time, so an answer never goes stale.
+ * Questions asked about one chat's data, kept in this browser. A query answer stores only the question and its
+ * query; the numbers are recomputed from the current table every time, so it never goes stale. A computed
+ * answer (heavier maths, run on the server) stores its result table, a snapshot of the rows it was given.
  */
-export interface SavedAnswer {
+interface AnswerBase {
   id: string
   question: string
-  intent: Intent
-  chart: ChartType
-  query: Query
   createdAt: string
   /** The table's columns when the question was asked; the query's column numbers only mean something while it holds. */
   signature?: string
 }
 
-export type NewAnswer = Omit<SavedAnswer, 'id' | 'createdAt' | 'signature'>
+export interface QueryAnswer extends AnswerBase {
+  intent: Intent
+  chart: ChartType
+  query: Query
+  computed?: undefined
+}
+
+/** A calculation's result: its schema (column names and types), its rows, and what it means in one sentence. */
+export interface ComputedResult {
+  columns: { name: string; type: string }[]
+  rows: (string | number | null)[][]
+  meaning: string
+  /** Rows in the table it was computed from. */
+  basis: number
+}
+
+export interface ComputedAnswer extends AnswerBase {
+  computed: ComputedResult
+}
+
+export type SavedAnswer = QueryAnswer | ComputedAnswer
+
+type Fresh<T> = T extends unknown ? Omit<T, 'id' | 'createdAt' | 'signature'> : never
+export type NewAnswer = Fresh<SavedAnswer>
 
 export function newAnswer(a: NewAnswer, signature: string): SavedAnswer {
   return { ...a, id: `q${Date.now().toString(36)}`, createdAt: new Date().toISOString(), signature }
@@ -43,7 +64,7 @@ function isQuery(q: unknown): q is Query {
  * True when the answer can't be run against this table: its columns changed since it was asked, or a column
  * it names isn't there. Answers saved before signatures existed have none, so only their column numbers are checked.
  */
-export function isStaleAnswer(a: SavedAnswer, profile: TableProfile): boolean {
+export function isStaleAnswer(a: QueryAnswer, profile: TableProfile): boolean {
   if (a.signature !== undefined && a.signature !== columnSignature(profile)) return true
   return !isQuery(a.query) || !columnsExist(profile, a.query) || !filterColumnsExist(profile, a.query.filters)
 }
@@ -53,7 +74,12 @@ export function parseAnswers(raw: string | null): SavedAnswer[] {
   try {
     const v: unknown = JSON.parse(raw ?? '[]')
     if (!Array.isArray(v)) return []
-    return v.filter((x): x is SavedAnswer => typeof x === 'object' && x !== null && typeof x.id === 'string' && typeof x.question === 'string')
+    return v.filter(
+      (x): x is SavedAnswer =>
+        typeof x === 'object' && x !== null && typeof x.id === 'string' && typeof x.question === 'string' &&
+        // A computed answer must carry a whole table, or there is nothing to show.
+        (x.computed === undefined || (Array.isArray(x.computed.columns) && Array.isArray(x.computed.rows))),
+    )
   } catch {
     return []
   }

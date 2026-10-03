@@ -15,8 +15,8 @@ The signed-in app at `/app`: a ChatGPT-style workspace on top of the existing AW
 4. **Below the dashboard**: follow-up question chips plus **the same prompt box**, answered exactly in the browser from
    the rows. This replaced the earlier "input bar disappears" idea.
 5. **Uploaded files** (CSV, TSV, JSON, XLSX) become a dashboard straight away, in the browser (the backend has no upload endpoint).
-6. **Ask database**: question any project's data in words, by chips, or with a query builder. **Off for everyone**
-   behind `FEATURES.askDatabase` (`src/app/features.ts`) while the owner decides whether to keep it.
+6. ~~Ask database~~ (removed 3 Oct 2026; it had been off for everyone since 28 Sep). Questions about one chat's rows
+   live on in each chat's "Ask about this data" section (`AskBox`, `AnswerCard`).
 7. **Projects report**: every project with status, rows, KPIs, a search bar, filter buttons and quick-query buttons.
 8. **Data export**: SQL (four dialects), JSON, JSON Lines, CSV, TSV, Excel, XML, Markdown. Data only, no dashboard pictures.
 9. **Owner-picked micro components**: VoicePill, ThoughtLine, SwipeToast, BellToggle, CallChip, FuseButton, CopyButton, and an avatar orb.
@@ -90,7 +90,7 @@ Then look at it in a browser at 1536×864 (the owner's laptop), 1024, 768 and 39
 - `src/app/dashboard/`: Dashboard, Tile, TileMenu, charts/*, Slicers, DataGrid, ChartPicker, ChartBuilder, PrecisionNote, useDashboard
 - `src/app/export/`: ExportDialog, scope (typed Sheet), formats, sql, xlsx, download
 - `src/app/report/`: ProjectsReport, ProjectRow, reportFilters, useProjects, loadTable
-- `src/app/ask/`: AskPage, ProjectAsk, AskBox, AnswerCard (flagged off: `src/app/features.ts`)
+- `src/app/ask/`: AskBox and AnswerCard, used by each chat's "Ask about this data" (the Ask database page was removed)
 - `src/app/workspace/HistoryItem.tsx`: a history row with its ⋯ menu (Rename, Delete + Undo); `src/api/chatTitles.ts`
   keeps web-chat names in this browser
 - `src/ui/Select.tsx`: the styled single-choice dropdown (Sort in the projects report)

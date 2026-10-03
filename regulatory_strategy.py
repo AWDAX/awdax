@@ -31,6 +31,8 @@ _PARLIAMENT_PORTALS = (
 )
 
 
+
+
 def _intent_blob(intent: ScrapeIntent) -> str:
     return " ".join(
         [

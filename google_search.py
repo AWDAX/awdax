@@ -187,20 +187,3 @@ def google_search(
         return []
 
     return _parse_organic_results(driver, max_results=max_results)
-
-
-def google_search_batch(queries: list[str], *, max_results_per_query: int = 5) -> list[tuple[str, list[dict[str, str]]]]:
-    driver = create_google_driver()
-    out: list[tuple[str, list[dict[str, str]]]] = []
-    try:
-        for q in queries:
-            try:
-                hits = google_search(driver, q, max_results=max_results_per_query)
-            except Exception as e:
-                logger.warning("Google search failed for %r: %s", q, e)
-                hits = []
-            out.append((q, hits))
-            time.sleep(float(__import__("os").getenv("GOOGLE_SEARCH_DELAY", "1.2")))
-    finally:
-        driver.quit()
-    return out

@@ -74,7 +74,6 @@ def _on_source(instance_id: str, source: dict[str, Any]) -> None:
 
 def _on_job(instance_id: str, job_id: str) -> None:
     register_job(instance_id, job_id)
-    live_bridge.register_job(instance_id, job_id)
     sess = load_instance_session(instance_id)
     if sess:
         sess["job_id"] = job_id

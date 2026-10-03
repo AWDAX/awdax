@@ -45,6 +45,22 @@ class LlmClientTests(unittest.TestCase):
             self.assertEqual(llm_client.llm_json("p"), {"n": 2})
         self.assertEqual([c.kwargs["json"]["model"] for c in post.call_args_list], ["slow", "fast", "fast"])
 
+    def test_a_budget_caps_each_wait_and_stops_trying_models_when_spent(self):
+        import requests
+
+        env = {"NVIDIA_API_KEY": SECRET, "NVIDIA_MODELS": "a,b,c", "NVIDIA_TIMEOUT_SECONDS": "90"}
+        clock = [1000.0]
+
+        def slow(*_a, **kw):
+            clock[0] += kw["timeout"]  # each model uses its whole wait
+            raise requests.Timeout("t")
+
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch("llm_client.time.monotonic", lambda: clock[0]), \
+                mock.patch("requests.post", side_effect=slow) as post, self.assertRaises(RuntimeError):
+            llm_client.llm_json("p", budget_s=60)
+        # One model, waited the 60 s budget rather than 90; the rest were never tried.
+        self.assertEqual([c.kwargs["timeout"] for c in post.call_args_list], [60])
+
     def test_busy_model_cools_down_and_cooled_models_are_a_last_resort(self):
         env = {"NVIDIA_API_KEY": SECRET, "NVIDIA_MODELS": "a,b", "NVIDIA_COOLDOWN_SECONDS": "300"}
         with mock.patch.dict(os.environ, env, clear=True), \

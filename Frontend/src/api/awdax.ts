@@ -8,7 +8,14 @@ import {
   type AwdaxpLiveState,
   type AwdaxpMessage,
 } from './awdaxpAdapter.ts'
+import type { Query } from '../analytics/aggregate.ts'
+import type { AskColumn } from '../analytics/askPayload.ts'
 import { request } from './client.ts'
+
+export type AskReply =
+  | { kind: 'query'; query: Query }
+  | { kind: 'computed'; columns: { name: string; type: string }[]; rows: (string | number | null)[][]; meaning: string }
+  | { kind: 'refuse'; reason: string }
 import type {
   DashboardResponse,
   DatasetStats,
@@ -122,6 +129,10 @@ export const awdax = {
 
   /** Re-apply scoring after a run. The backend answers 409 while a run is still active. */
   rescore: (id: string) => request<{ accepted: number; partial: number; rejected: number }>(`${at(id)}/dataset/rescore`, { method: 'POST' }),
+
+  /** A question about a table the browser holds: the AI's checked plan, a computed result, or a refusal. */
+  ask: (body: { question: string; columns: AskColumn[]; rows: Record<string, string | number | null>[] }) =>
+    request<AskReply>('/api/ask', { method: 'POST', body: JSON.stringify(body) }),
 
   streamUrl: (id: string) => `${import.meta.env.VITE_API_BASE_URL ?? ''}${at(id)}/live/stream`,
 

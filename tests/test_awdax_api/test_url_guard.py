@@ -17,8 +17,8 @@ from requests.structures import CaseInsensitiveDict  # noqa: E402
 
 import discovery  # noqa: E402
 import inspector  # noqa: E402
-import RegulatoryFeed  # noqa: E402
-import scraper  # noqa: E402
+import gazette_pdf  # noqa: E402
+import plan_scraper  # noqa: E402
 import url_guard  # noqa: E402
 
 PUBLIC = "93.184.216.34"
@@ -477,12 +477,15 @@ class InspectorCallSiteTests(GuardTestCase):
         self.assertEqual(plan.confidence, 0.0)
         self.assertIn("Blocked: address not allowed", " ".join(plan.warnings))
 
-    def test_an_ordinary_failed_probe_is_not_marked_blocked(self):
+    def test_an_ordinary_failed_probe_is_rejected_with_its_own_reason_not_as_an_address_block(self):
+        # Since d822c4e a source unreachable over HTTPS is rejected at inspect; it must never read as an SSRF block.
         failed = {"https_ok": False, "blocked": False, "error": "HTTP 500", "final_url": "https://x/"}
         src = discovery.SourceCandidate(url="https://example.test/", title="T", domain="example.test")
         with mock.patch("inspector.probe_https", return_value=failed):
             plan = inspector.inspect_source(mock.Mock(), src)
-        self.assertFalse(plan.blocked)
+        self.assertTrue(plan.blocked)
+        self.assertIn("HTTP 500", " ".join(plan.warnings))
+        self.assertNotIn("Blocked:", " ".join(plan.warnings))
 
 
 class ScraperCallSiteTests(GuardTestCase):
@@ -491,7 +494,7 @@ class ScraperCallSiteTests(GuardTestCase):
     def test_open_entry_refuses_an_internal_entry_url(self):
         for url in ("http://169.254.169.254/latest/meta-data/", "file:///etc/passwd", "http://127.0.0.1:8000/api"):
             with self.subTest(url=url):
-                s = scraper.PlanDrivenScraper(inspector.ScrapePlan(source_name="s", entry_url=url))
+                s = plan_scraper.PlanDrivenScraper(inspector.ScrapePlan(source_name="s", entry_url=url))
                 s.driver = mock.Mock()
                 with self.assertRaises(url_guard.UnsafeURL) as cm:
                     s.open_entry()
@@ -501,7 +504,7 @@ class ScraperCallSiteTests(GuardTestCase):
     def test_a_blocked_source_is_one_failed_source_not_a_crashed_run(self):
         # _run_all records "<source>: <reason>" for any per-source exception and carries on; the reason must be short.
         plan = inspector.ScrapePlan(source_name="Evil", entry_url="http://169.254.169.254/")
-        s = scraper.PlanDrivenScraper(plan)
+        s = plan_scraper.PlanDrivenScraper(plan)
         s.driver = mock.Mock()
         try:
             s.open_entry()
@@ -510,10 +513,10 @@ class ScraperCallSiteTests(GuardTestCase):
         self.assertEqual(text, "Evil: Blocked: address not allowed")
 
     def test_template_pdf_urls_to_internal_addresses_are_dropped(self):
-        self.assertEqual(scraper.guard_detail_url("http://169.254.169.254/x.pdf"), "")
-        self.assertEqual(scraper.guard_detail_url("file:///etc/passwd"), "")
-        self.assertEqual(scraper.guard_detail_url("https://example.test/a.pdf"), "https://example.test/a.pdf")
-        self.assertEqual(scraper.guard_detail_url(""), "")
+        self.assertEqual(plan_scraper.guard_detail_url("http://169.254.169.254/x.pdf"), "")
+        self.assertEqual(plan_scraper.guard_detail_url("file:///etc/passwd"), "")
+        self.assertEqual(plan_scraper.guard_detail_url("https://example.test/a.pdf"), "https://example.test/a.pdf")
+        self.assertEqual(plan_scraper.guard_detail_url(""), "")
 
 
 class RegulatoryPdfDownloadTests(GuardTestCase):
@@ -522,8 +525,12 @@ class RegulatoryPdfDownloadTests(GuardTestCase):
         for url in ("http://169.254.169.254/latest/meta-data/", "http://127.0.0.1:8000/api/feed", "file:///etc/passwd"):
             with self.subTest(url=url):
                 with self.assertRaises(url_guard.UnsafeURL):
-                    RegulatoryFeed._fetch_pdf_bytes(sess, url, timeout=5)
+                    gazette_pdf._fetch_pdf_bytes(sess, url, timeout=5)
         sess.get.assert_not_called()
+
+    def test_pymupdf_loads(self):
+        # The import is optional (try/except), so a renamed module would silently fall back to pdfminer.
+        self.assertTrue(gazette_pdf.PYMUPDF_AVAILABLE)
 
 
 if __name__ == "__main__":

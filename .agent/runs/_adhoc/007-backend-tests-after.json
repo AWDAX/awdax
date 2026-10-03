@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "command": ".venv/Scripts/python.exe",
+  "args": [
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests/test_awdax_api",
+    "-t",
+    "tests/test_awdax_api"
+  ],
+  "cwd": "X:\\Hackathons\\Codecubicle\\awdax-audit",
+  "shell": false,
+  "startedAt": "2026-10-02T09:42:53.288Z",
+  "finishedAt": "2026-10-02T09:42:54.894Z",
+  "durationMs": 1606,
+  "termination": "exit",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "treeKilled": false,
+  "outputHeldOpen": false,
+  "resolved": ".venv/Scripts/python.exe",
+  "error": null,
+  "stdoutTail": "warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.",
+  "stderrTail": "X:\\Hackathons\\Codecubicle\\awdax-audit\\reasoning.py:17: FutureWarning: \n\nAll support for the `google.generativeai` package has ended. It will no longer be receiving \nupdates or bug fixes. Please switch to the `google.genai` package as soon as possible.\nSee README for more details:\n\nhttps://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md\n\n  import google.generativeai as genai\n..2026-10-02 15:12:54,597 WARNING root: JWT signature verification failed (Signature verification failed).\n.............2026-10-02 15:12:54,670 INFO inspector: Source search (1/1): cars\n2026-10-02 15:12:54,670 INFO inspector: Resolved \\u2192 https://example.org/cars\n2026-10-02 15:12:54,670 INFO inspector: Inspecting (1/1): Cars\n2026-10-02 15:12:54,670 INFO inspector: Accepted (1/1): dry-run 0 rows, conf 0.50\n.......2026-10-02 15:12:54,725 WARNING llm_client: NVIDIA model m1 failed: RuntimeError: NVIDIA key rejected (HTTP 401)\n.2026-10-02 15:12:54,725 WARNING llm_client: NVIDIA model m1 failed: RuntimeError: NVIDIA m1: HTTP 500\n......\n----------------------------------------------------------------------\nRan 29 tests in 0.222s\n\nOK",
+  "env": {
+    "msysPathConversionSuspected": false
+  },
+  "label": "backend-tests-after",
+  "task": "_adhoc",
+  "seq": 7,
+  "logs": {
+    "stdout": "X:\\Hackathons\\Codecubicle\\awdax-audit\\.agent\\runs\\_adhoc\\007-backend-tests-after.out.log",
+    "stderr": "X:\\Hackathons\\Codecubicle\\awdax-audit\\.agent\\runs\\_adhoc\\007-backend-tests-after.err.log"
+  }
+}

@@ -4,44 +4,44 @@
 > Authored by you and the agent together. The only file here that is written
 > by hand. Tasks in `loop` should mirror this.
 
-## Goal
+## Goal (phase from 3 Oct 2026: quality pass to 8.5/10)
 
-The AWDAX web app (`Frontend/`) shows correct, current state under slow, failing or reordered network responses, and never keeps the microphone
-or background requests running after the user leaves a screen. Every claim in the owner's ZIP is either fixed, refuted with evidence, or handed to the backend owner.
-Details: `docs/audit/REMEDIATION_PLAN.md`.
+Raise the codebase from ~6.5/10 (frontend 8, backend 5, results 5) to 8.5/10, and make runs faster and leaner, without breaking
+production. Driven by `/ponytail-audit` (3 Oct): cut what is dead or over-built, make the slow parts fast, then audit again.
+Owner (3 Oct): "start … keep going until you reach the goal like a loop … we don't change the tech stack (no SQLite → Postgres)".
 
 ## Constraints
 
-- Baseline `main` @ `6fc90ba`; the gate passes there. Every batch keeps it passing.
-- No new packages without the owner's yes. Files under 300 lines. One concern per branch.
-- Backend Python is read-only for agents (Track B goes to the owner).
-- Agents never push, deploy or change production, keys or Supabase settings.
+- Same stack: Flask + SQLite + Selenium + NVIDIA/Gemini backend; React + Vite + Tailwind frontend. No new packages.
+- Nothing may break production: every task keeps the backend suite (172 tests), the frontend gate and a real local run green.
+  The root `verify.mjs` only compiles Python here, so each task also records the backend unittest run and `Frontend` verify.
+- Backend changes are allowed (owner, 2 and 3 Oct), small and tested. Agents never push, deploy or touch production.
+- Product behaviour stays the same unless a task says otherwise; files under 300 lines where a task touches them.
 
-## Out of scope
+## Out of scope (owner decisions or stack changes)
 
-- Backend changes (B1–B4) unless the owner approves them explicitly.
-- Merging `origin/frontend` wholesale; `233fb40` until the owner decides on midpoints.
-- Redesign or visual changes beyond what a fix requires.
+- Counting or labelling the backend's "reference" rows differently (product decision).
+- Replacing the deprecated `google-generativeai` SDK with REST: no `GEMINI_API_KEY` locally, so it can't be verified.
+- Dropping `pdfminer.six`: it is the PDF fallback for eGazette runs, which can't be tested here.
+- Postgres, Sentry (new account + package), plan caching across runs (changes freshness).
 
 ## Tasks
 
 | ID | Task | Depends on | UI? | Type |
 |----|------|-----------|-----|------|
-| A1 | FE-02 + FE-07: honest API errors, no false "chat deleted" | — | yes | — |
-| A2 | FE-10 + FE-12: microphone and dictation lifecycle | — | yes | — |
-| A3 | FE-01: list request ordering across mutations | A1 | yes | — |
-| A4a | FE-04: one state source for live callbacks | — | yes | — |
-| A4b | FE-03/05/06/08: snapshot gate for the live dataset | A4a | yes | — |
-| A5 | FE-09: single project-polling cycle | — | yes | — |
-| A6 | FE-11: atomic uploaded-file rename | — | no | — |
-| A7 | FE-13: per-user browser storage (owner decision first) | A6 | yes | — |
-| A8 | N4 + N5: proxy JWKS/timeouts, auth gate catch | — | no | — |
-| A9 | Sweep of the unchecked frontend files | — | no | — |
+| Q1 | Backend: delete verified dead functions and unused imports | — | no | — |
+| Q2 | Frontend: delete CallChip and unused exports | — | yes | — |
+| Q3 | Frontend: remove the switched-off Ask database page (chat's Ask box stays) | Q2 | yes | — |
+| Q4 | Backend: retire the legacy pre-React API and the old root page | Q1 | no | — |
+| Q5 | Backend: one shared Selenium import, dependency list trimmed | Q4 | no | — |
+| Q6 | Backend: scrape sources in parallel, database writes serialized | Q5 | no | — |
+| Q7 | Frontend: no "Untitled chat" flash while a chat loads | Q3 | yes | — |
+| Q8 | Frontend: measure bundles, lazy-load what slows first paint | Q7 | yes | — |
+| Q9 | Backend: split scraper.py and RegulatoryFeed.py into smaller modules, no behaviour change | Q6 | no | — |
+| Q10 | CI at the repo root: backend tests + frontend gate on every PR | Q9 | no | — |
+| Q11 | Re-run /ponytail-audit, rate the codebase, update docs/HANDOFF.md | Q10, Q8 | no | — |
 
-## Open questions
+## Previous phase (2 Oct): frontend audit remediation
 
-1. A7: per-user storage with migration, or clear on sign-out?
-2. Track B: may an agent change the backend, or does the backend owner take B1–B4?
-3. `233fb40`: may ranges count as midpoints in totals and averages? Separate robust average wanted?
-4. Keep this clone at `awdax-audit/` or move it into `awdax/`? Which repo deploys production?
-5. How is `awdax.synapical.com` hosted, and does it call `/api` through the Pages proxy?
+Tasks A1–A9 were done on branches `fix/fe-*` and `fix/stability-pass` and merged into `main` as AWDAX/awdax PR #4 (e824f6c), outside
+this board; A7 (per-user file storage) still waits on the owner. Details: `docs/audit/REMEDIATION_PLAN.md`, `docs/HANDOFF.md`.

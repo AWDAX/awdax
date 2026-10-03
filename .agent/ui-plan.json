@@ -1,0 +1,27 @@
+{
+  "generated": "2026-10-03T12:18:36.811Z",
+  "hasContract": true,
+  "baseUrl": "http://localhost:5174",
+  "start": "npm --prefix Frontend run dev:agent",
+  "required": {
+    "routes": [
+      "/app"
+    ],
+    "viewports": [
+      "mobile",
+      "desktop"
+    ],
+    "states": [
+      "default"
+    ]
+  },
+  "flows": [],
+  "samples": {},
+  "needsSample": [],
+  "noConsoleErrors": true,
+  "noFailedRequests": true,
+  "allowRemote": false,
+  "why": [
+    "no route could be inferred — using the first declared route /app"
+  ]
+}
