@@ -111,3 +111,9 @@ Verified 2026-10-03 09:45 against code `4065e34c7ae6`.
   - viewports: mobile, desktop
   - states: default
   - 48 assertion(s) · 0 console error(s) · 0 failed request(s)
+
+## Q13 — Backend: import PyMuPDF by its current name so a future release can't silently drop PDF text extraction
+
+Verified 2026-10-03 09:47 against code `e27eb7f8e577`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 09:47

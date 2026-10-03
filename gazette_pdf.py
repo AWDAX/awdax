@@ -18,7 +18,7 @@ except ImportError:
 
 
 try:
-    import fitz  # PyMuPDF
+    import pymupdf as fitz  # PyMuPDF; its old module name "fitz" is deprecated
     fitz.TOOLS.mupdf_display_errors(False)
     fitz.TOOLS.mupdf_display_warnings(False)
     PYMUPDF_AVAILABLE = True

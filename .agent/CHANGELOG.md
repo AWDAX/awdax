@@ -48,3 +48,7 @@ _2026-10-03 06:14_ · code:PASS · code `1b48e6b74ffb`
 ## Q12 — Apply the re-audit cuts: dead html_extract extractors + dev CLIs + unused service methods, write-only LiveBridge map, duplicate helpers, unused frontend exports
 
 _2026-10-03 09:45_ · code:PASS ui:PASS · code `4065e34c7ae6`
+
+## Q13 — Backend: import PyMuPDF by its current name so a future release can't silently drop PDF text extraction
+
+_2026-10-03 09:47_ · code:PASS · code `e27eb7f8e577`

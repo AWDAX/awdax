@@ -525,6 +525,10 @@ class RegulatoryPdfDownloadTests(GuardTestCase):
                     gazette_pdf._fetch_pdf_bytes(sess, url, timeout=5)
         sess.get.assert_not_called()
 
+    def test_pymupdf_loads(self):
+        # The import is optional (try/except), so a renamed module would silently fall back to pdfminer.
+        self.assertTrue(gazette_pdf.PYMUPDF_AVAILABLE)
+
 
 if __name__ == "__main__":
     unittest.main()

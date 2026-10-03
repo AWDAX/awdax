@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T09:45:56.419Z",
+  "updated": "2026-10-03T09:47:31.366Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -694,6 +694,35 @@
         "failures": [],
         "stop": null
       }
+    },
+    {
+      "id": "Q13",
+      "title": "Backend: import PyMuPDF by its current name so a future release can't silently drop PDF text extraction",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T09:47:30.390Z",
+          "codeHash": "e27eb7f8e57734fa88431e26d1e19b08e2085fe0867124b659ba08b4f3c72154"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T09:47:30.657Z",
+          "text": "gazette_pdf imports 'pymupdf as fitz' (PyMuPDF 1.28.2; 'fitz' is deprecated and requirements are unpinned, and the import is optional, so a removal would have silently dropped to pdfminer). New test asserts PYMUPDF_AVAILABLE. Smoke: text extracted from a generated PDF through download_and_extract_pdf; 169 tests OK; backend restarts without the deprecation warning."
+        }
+      ],
+      "started": "2026-10-03T09:46:43.097Z",
+      "finished": "2026-10-03T09:47:31.364Z",
+      "blockedReason": null,
+      "base": "fc129fa71b2a75d41f763dbd14de3b7348d88062",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     }
   ],
   "log": [
@@ -1091,7 +1120,32 @@
       "ts": "2026-10-03T09:45:56.419Z",
       "event": "done",
       "detail": "Q12 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T09:46:42.504Z",
+      "event": "add",
+      "detail": "Q13 Backend: import PyMuPDF by its current name so a future release can't silently drop PDF text extraction"
+    },
+    {
+      "ts": "2026-10-03T09:46:43.097Z",
+      "event": "start",
+      "detail": "Q13 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T09:47:30.431Z",
+      "event": "evidence",
+      "detail": "Q13/code PASS"
+    },
+    {
+      "ts": "2026-10-03T09:47:30.657Z",
+      "event": "note",
+      "detail": "Q13: gazette_pdf imports 'pymupdf as fitz' (PyMuPDF 1.28.2; 'fitz"
+    },
+    {
+      "ts": "2026-10-03T09:47:31.366Z",
+      "event": "done",
+      "detail": "Q13 (code:PASS)"
     }
   ],
-  "integrity": "8bb14022eabd85778691b8faa82e29155d393e48eb7a2415a1bad5c0dbd2b53f"
+  "integrity": "b14eaa4d785be4641a7414b7e869c18e12bded2e8de4425573cec0c561fa98b5"
 }
