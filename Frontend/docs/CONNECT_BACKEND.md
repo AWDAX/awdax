@@ -2,7 +2,7 @@
 
 ## Local scraper2.0 (Flask compat layer)
 
-This repo’s React app can talk to **scraper2.0** directly: Flask serves the Awdax-shaped routes (`/api/instances`, WebSocket live) alongside the legacy `/api/sessions` API.
+This repo’s React app can talk to **scraper2.0** directly: Flask serves the Awdax-shaped routes (`/api/instances`, WebSocket live); the legacy `/api/sessions` API was removed on 3 Oct 2026.
 
 1. From repo root: `PORT=8000 python3 app.py` (see [`LOCAL_DEV.md`](../../LOCAL_DEV.md)).
 2. From `Frontend/`: `npm run dev` (Vite proxies `/api` → `http://127.0.0.1:8000` by default).

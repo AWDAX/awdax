@@ -40,17 +40,24 @@ class ParallelDiscoveryTests(unittest.TestCase):
             )
 
     def test_inspections_overlap_and_keep_query_order(self):
+        # Overlap measured directly (how many inspections run at once), not by wall time, so a busy machine can't flake it.
+        lock = threading.Lock()
+        running = [0]
+        peak = [0]
+
         def slow(_intent, cand):
-            time.sleep(0.3)
+            with lock:
+                running[0] += 1
+                peak[0] = max(peak[0], running[0])
+            time.sleep(0.2)
+            with lock:
+                running[0] -= 1
             return _plan(cand.url)
 
-        started = time.monotonic()
         sources, plans = self.run_discovery([f"q{i}" for i in range(6)], inspect=slow, env={"DISCOVERY_INSPECT_WORKERS": "3", "DISCOVERY_MAX_SOURCES": "6"})
-        elapsed = time.monotonic() - started
         self.assertEqual([p.source_url for p in plans], [f"https://example.org/q{i}" for i in range(6)])
         self.assertEqual(len(sources), 6)
-        # One at a time would take 1.8 s; three at a time takes about 0.6 s.
-        self.assertLess(elapsed, 1.2)
+        self.assertEqual(peak[0], 3)
 
     def test_cap_is_respected_without_extra_inspections(self):
         calls = []
@@ -100,20 +107,27 @@ class ParallelDiscoveryTests(unittest.TestCase):
         self.assertTrue(any("q1" in m and "failed" in m for m in progress), progress)
 
     def test_a_fast_site_is_validated_before_the_slow_one_in_its_wave_finishes(self):
-        started = time.monotonic()
-        validated_at = {}
+        # Deterministic, not timed: the slow inspection only finishes once the fast site's "validated" update has
+        # reached the caller. If updates waited for the whole wave, the slow worker would time out instead.
+        fast_seen = threading.Event()
+        slow_timed_out = []
+        order = []
 
         def inspect(_intent, cand):
-            time.sleep(0.6 if cand.url.endswith("slow") else 0.05)
+            if cand.url.endswith("slow"):
+                slow_timed_out.append(not fast_seen.wait(timeout=5))
             return _plan(cand.url)
 
         def on_source(item):
             if item["status"] == "validated":
-                validated_at[item["url"].rsplit("/", 1)[-1]] = time.monotonic() - started
+                name = item["url"].rsplit("/", 1)[-1]
+                order.append(name)
+                if name == "fast":
+                    fast_seen.set()
 
         self.run_discovery(["slow", "fast"], inspect=inspect, env={"DISCOVERY_INSPECT_WORKERS": "2", "DISCOVERY_MAX_SOURCES": "2"}, on_source=on_source)
-        self.assertLess(validated_at["fast"], 0.4)
-        self.assertGreaterEqual(validated_at["slow"], 0.6)
+        self.assertEqual(slow_timed_out, [False])
+        self.assertEqual(order, ["fast", "slow"])
 
     def test_callbacks_run_on_the_calling_thread(self):
         main = threading.get_ident()

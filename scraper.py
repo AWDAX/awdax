@@ -4,7 +4,6 @@ Plan-driven universal scraper engine + job storage and orchestration.
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import logging
@@ -13,16 +12,15 @@ import queue
 import re
 import threading
 import time
-import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any, Callable
 from urllib.parse import urlparse
 
 import sqlite3
 
 from discovery import SourceCandidate
-from inspector import ScrapePlan, egazette_preset_plan, load_page, page_load_seconds
-from reasoning import ScrapeIntent, parse_prompt
+from inspector import ScrapePlan, load_page, page_load_seconds
+from reasoning import ScrapeIntent
 from table_merge import merge_records
 from url_guard import UnresolvableHost, UnsafeURL, check_url
 
@@ -1246,85 +1244,3 @@ class UniversalScrapeService:
 
 
 universal_service = UniversalScrapeService()
-
-
-def run_pipeline(
-    prompt: str,
-    *,
-    source_index: int = 0,
-    max_pages: int = 3,
-    skip_inspect: str | None = None,
-) -> ScrapeJob:
-    intent = parse_prompt(prompt)
-    job = ScrapeJob(job_id=intent.job_id, intent=intent, status="discovering")
-
-    from regulatory_strategy import intent_uses_regulatory_feed, regulatory_feed_max_pages
-
-    if intent_uses_regulatory_feed(intent):
-        from RegulatoryFeed import feed_service
-
-        pages = regulatory_feed_max_pages(max_pages)
-        feed_service.trigger_scrape(max_pages=pages)
-        job.status = "regulatory_feed"
-        universal_service.save_job(job)
-        return job
-
-    if skip_inspect:
-        with open(skip_inspect, encoding="utf-8") as f:
-            plan = ScrapePlan.from_dict(json.load(f))
-        job.plan = plan
-        job.status = "ready"
-        universal_service.trigger_scrape(plan, job, max_pages=max_pages)
-        return job
-
-    from inspector import discover_inspected_sources
-    from query_generation import generate_search_queries
-
-    queries = generate_search_queries(intent)
-    sources, plans = discover_inspected_sources(intent, search_queries=queries)
-    if not plans:
-        raise RuntimeError("No inspected sources")
-    job.plans = plans
-    job.plan = plans[0] if plans else None
-    job.status = "ready"
-    universal_service.save_job(job)
-    universal_service.trigger_scrape_all(plans, job, max_pages=max_pages)
-    return job
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Run universal scraper from plan JSON")
-    parser.add_argument("--plan", help="ScrapePlan JSON file")
-    parser.add_argument("--prompt", help="Full pipeline from prompt")
-    parser.add_argument("--preset-egazette", action="store_true")
-    parser.add_argument("--max-pages", type=int, default=3)
-    parser.add_argument("--skip-inspect", help="Use existing plan JSON with --prompt")
-    args = parser.parse_args()
-
-    if args.preset_egazette or (args.plan and "egazette" in (args.plan or "")):
-        plan = egazette_preset_plan()
-    elif args.plan:
-        with open(args.plan, encoding="utf-8") as f:
-            plan = ScrapePlan.from_dict(json.load(f))
-    else:
-        parser.error("Provide --plan or --preset-egazette or --prompt")
-
-    if args.prompt:
-        job = run_pipeline(
-            args.prompt,
-            max_pages=args.max_pages,
-            skip_inspect=args.skip_inspect,
-        )
-        print(json.dumps(job.to_dict(), indent=2))
-        return 0
-
-    intent = ScrapeIntent(job_id=uuid.uuid4().hex[:12], topic=plan.source_name, raw_prompt="cli")
-    job = ScrapeJob(job_id=intent.job_id, intent=intent, plan=plan, status="ready")
-    universal_service.trigger_scrape(plan, job, max_pages=args.max_pages)
-    print(json.dumps({"started": True, "job_id": job.job_id}, indent=2))
-    time.sleep(2)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

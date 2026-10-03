@@ -53,7 +53,7 @@ Earlier work already on `main`: the stability pass (NVIDIA client, per-user chat
 
 1. **Set `PROXY_SHARED_SECRET`** to the same value on the backend and on Cloudflare Pages. Without it the backend stays in permissive mode and the forgery hole stays open.
 2. **Deploy** this branch (merge to `main`, then deploy the frontend and restart the backend). Production currently serves older code.
-3. **Local development:** leave `PROXY_SHARED_SECRET` unset in your local backend `.env` (otherwise every local call returns 401). Scraping `localhost` needs `AWDAX_ALLOW_PRIVATE_URLS=1`; the old page at `http://127.0.0.1:8000/` needs `AWDAX_LEGACY_API=1`. Never set the legacy flag in production.
+3. **Local development:** leave `PROXY_SHARED_SECRET` unset in your local backend `.env` (otherwise every local call returns 401). Scraping `localhost` needs `AWDAX_ALLOW_PRIVATE_URLS=1`. (The old page and `AWDAX_LEGACY_API` were removed on 3 Oct 2026.)
 4. **Run one real end-to-end run** (backend restarted on this code) and confirm it reaches "Run complete".
 5. **Decide BE-05:** live mode is on by default, so every chat re-scrapes and calls the AI every 90 seconds until paused. The run cap limits the damage; making live opt-in changes the product.
 

@@ -247,12 +247,3 @@ def delete_session(session_id: str, user_id: str | None = None) -> bool:
         cur.close()
         conn.close()
     return deleted
-
-
-def ensure_default_session(user_id: str = "anonymous") -> dict[str, Any]:
-   sessions = list_sessions(user_id)
-   if sessions:
-       full = get_session(sessions[0]["id"], user_id)
-       if full:
-           return full
-   return create_session(user_id=user_id, title="Session 1")

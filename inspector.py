@@ -658,25 +658,6 @@ def discover_inspected_sources(
     return sources, plans
 
 
-def inspect_all_sources(intent: ScrapeIntent, sources: list[SourceCandidate]) -> list[ScrapePlan]:
-    plans: list[ScrapePlan] = []
-    for src in sources:
-        try:
-            plans.append(inspect_source(intent, src))
-        except Exception as e:
-            plans.append(
-                ScrapePlan(
-                    source_name=src.title or src.domain,
-                    entry_url=src.final_url or src.url,
-                    source_url=src.url,
-                    blocked=False,
-                    confidence=0.0,
-                    warnings=[f"Inspect failed: {e}"],
-                )
-            )
-    return plans
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Inspect URL → ScrapePlan")
     parser.add_argument("--url", required=True)

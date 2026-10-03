@@ -409,36 +409,7 @@ Provide ONLY a valid JSON response:
             "industry_tags": ind_tags,
         }
 
-    # ── brief summary ───────────────────────────────────────────────
-    def generate_brief_summary(self, pdf_text: str, subject: str) -> str | None:
-        if not pdf_text or not llm_available():
-            return None
-        try:
-            trimmed = pdf_text[:10000]
-            prompt = f"""You are a legal and business analyst. Summarize this gazette notification simply.
-
-Subject: {subject}
-Document Text:
-{trimmed}
-
-Your summary should:
-- Explain the main purpose in simple terms
-- Highlight what changes, rules, or permissions are introduced
-- Mention who is affected
-- List any actions required, deadlines, or benefits
-- Avoid legal jargon
-- Keep it short, crisp, business-focused
-
-Use markdown: **bold** for key terms, bullet points for lists, ## for headings.
-Return only the markdown-formatted summary text."""
-            out = llm_text(prompt).strip()
-            out = re.sub(r"```.*?```", "", out, flags=re.DOTALL).strip()
-            return out or None
-        except Exception as e:
-            logger.error(f"Brief summary error: {e}")
-            return None
-
-    # ── redline analysis ────────────────────────────────────────────
+    # ── redline analysis ────────────────────────────────────────────────
     def generate_redline_analysis(
         self, subject: str, summary_text: str = "",
         key_highlights: list = None, legal_clauses: list = None,
@@ -492,59 +463,6 @@ IMPORTANT: Always produce meaningful analysis. Never say content is unavailable.
             logger.error(f"Redline error: {e}")
             return None
 
-    # ── clause-by-clause comparison ─────────────────────────────────
-    def generate_clause_comparison(self, pdf_text: str, subject: str) -> list | None:
-        if not pdf_text or len(pdf_text.strip()) < 50:
-            return None
-        if not llm_available():
-            return None
-        try:
-            trimmed = pdf_text[:12000]
-            prompt = f"""You are a legal analyst specializing in Indian government gazette notifications.
-
-Subject: {subject}
-
-Full gazette text:
-{trimmed}
-
-Extract EVERY clause-level change. For each change identify:
-1. Clause/section/rule reference
-2. OLD provision (before notification)
-3. NEW provision (after notification)
-4. Type of change
-
-Return ONLY a valid JSON array:
-[
-  {{
-    "clause_ref": "Section/Rule reference",
-    "old_text": "Previous provision in plain English",
-    "new_text": "New provision in plain English",
-    "change_type": "added | amended | substituted | omitted | replaced"
-  }}
-]
-
-Rules:
-- Extract ALL identifiable changes
-- Write in plain English for a business audience
-- Return empty array [] only if genuinely no clause changes
-- No markdown code blocks, raw JSON only"""
-            result = llm_text(prompt).strip()
-            if result.startswith("```"):
-                result = re.sub(r"^```(?:json)?\s*", "", result)
-                result = re.sub(r"\s*```$", "", result)
-            data = json.loads(result)
-            if isinstance(data, list):
-                valid = [c for c in data if isinstance(c, dict) and "clause_ref" in c]
-                return valid or None
-            return None
-        except Exception as e:
-            logger.error(f"Clause comparison error: {e}")
-            return None
-
-
-# ---------------------------------------------------------------------------
-# eGazette Web Scraper (Selenium)
-# ---------------------------------------------------------------------------
 
 class GazetteScraper:
     def __init__(self, fast_mode: bool | None = None):

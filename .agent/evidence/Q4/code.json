@@ -1,0 +1,65 @@
+{
+  "task": "Q4",
+  "class": "code",
+  "verdict": "PASS",
+  "recorded": "2026-10-03T05:38:52.346Z",
+  "codeHash": "931f7b734a43c5a4a1fe0ed77c7ec091fdbe3e0d85f0361c5a1d84646b7d7093",
+  "head": "5f8c87a",
+  "tool": "verify.mjs",
+  "resources": {
+    "measuredAt": "2026-10-03T05:38:52.377Z",
+    "cpus": 20,
+    "freeMemMB": 2236,
+    "freeDiskMB": 40172,
+    "root": "X:/",
+    "budget": {
+      "maxParallel": null,
+      "testWorkers": null,
+      "from": {
+        "maxParallel": "default",
+        "testWorkers": "none applied"
+      }
+    }
+  },
+  "detail": {
+    "verdict": "PASS",
+    "kind": "python",
+    "root": "X:\\Hackathons\\Codecubicle\\awdax",
+    "producer": "verify.mjs",
+    "codeHash": "931f7b734a43c5a4a1fe0ed77c7ec091fdbe3e0d85f0361c5a1d84646b7d7093",
+    "finishedAt": "2026-10-03T05:38:52.217Z",
+    "testKnob": null,
+    "testKnobWhy": "no usable worker count was requested (null)",
+    "checks": [
+      {
+        "name": "ruff",
+        "status": "SKIP",
+        "detail": "ruff not installed",
+        "output": ""
+      },
+      {
+        "name": "compile",
+        "status": "PASS",
+        "detail": "",
+        "output": "",
+        "run": {
+          "command": "python",
+          "args": [
+            "-m",
+            "compileall",
+            "-q",
+            "."
+          ],
+          "termination": "exit",
+          "exitCode": 0,
+          "durationMs": 1938,
+          "timedOut": false,
+          "treeKilled": false,
+          "outputHeldOpen": false,
+          "shell": false,
+          "error": null
+        }
+      }
+    ]
+  }
+}

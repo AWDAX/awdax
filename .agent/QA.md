@@ -45,3 +45,14 @@ Verified 2026-10-03 05:33 against code `faed386b03da`.
   - viewports: mobile, desktop
   - states: default
   - 35 assertion(s) · 0 console error(s) · 0 failed request(s)
+
+## Q4 — Backend: retire the legacy pre-React API and the old root page
+
+Verified 2026-10-03 05:39 against code `931f7b734a43`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 05:38
+- **ui** — PASS via `playwright-core+chromium-1243 (headless)` · recorded 2026-10-03 05:39
+  - routes: /app, /, /app/demo/*
+  - viewports: mobile, desktop
+  - states: default
+  - 35 assertion(s) · 0 console error(s) · 0 failed request(s)

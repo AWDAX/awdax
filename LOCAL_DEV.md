@@ -8,7 +8,7 @@ pip install -r requirements.txt
 PORT=8000 python3 app.py
 ```
 
-- Legacy UI: http://127.0.0.1:8000/ (`index.html`, `/api/sessions/*`); these routes answer 404 unless `AWDAX_LEGACY_API=1` is set (they have no per-user checks, so never set it in production)
+- The old pre-React page and its `/api/sessions*` routes were removed on 3 Oct 2026; any other path answers the JSON 404
 - Awdax compat API (React): `/health`, `/api/instances/*`, WebSocket `/api/instances/:id/live/ws`
 
 Default port **8000** matches the Frontend Vite proxy (`AWDAX_API=http://127.0.0.1:8000`).

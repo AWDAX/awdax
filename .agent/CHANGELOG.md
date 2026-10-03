@@ -20,3 +20,7 @@ _2026-10-03 05:30_ · code:PASS ui:PASS · code `3697a3a54295`
 ## Q3 — Frontend: remove the switched-off Ask database page (chat's Ask box stays)
 
 _2026-10-03 05:33_ · code:PASS ui:PASS · code `faed386b03da`
+
+## Q4 — Backend: retire the legacy pre-React API and the old root page
+
+_2026-10-03 05:39_ · code:PASS ui:PASS · code `931f7b734a43`
