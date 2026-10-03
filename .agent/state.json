@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T06:02:30.798Z",
+  "updated": "2026-10-03T06:05:24.533Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -440,22 +440,62 @@
     {
       "id": "Q7",
       "title": "Frontend: no Untitled chat flash while a chat loads",
-      "state": "TODO",
+      "state": "DONE",
       "deps": [
         "Q3"
       ],
-      "attempts": 0,
+      "attempts": 1,
       "ui": true,
-      "evidence": {},
-      "notes": [],
-      "started": null,
-      "finished": null,
-      "blockedReason": null
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:04:56.828Z",
+          "codeHash": "c3e3ce341a4ffa585140f155ce06087483b3ba667fe6d5f5f46846c6b4945571"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T06:05:17.997Z",
+          "codeHash": "c3e3ce341a4ffa585140f155ce06087483b3ba667fe6d5f5f46846c6b4945571",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T06:05:23.891Z",
+          "text": "Chat title falls back to the sidebar list's copy while the chat loads; unknown (cold deep link) shows an empty line + sr-only 'Loading chat'. Producer check holds GET /api/instances/<id> 3 s: old code showed ['Untitled chat','timing check'], new ['Loading chat','timing check']."
+        }
+      ],
+      "started": "2026-10-03T06:02:35.273Z",
+      "finished": "2026-10-03T06:05:24.531Z",
+      "blockedReason": null,
+      "base": "520f7487c52684e2919cf754f6cc113c8676ea25",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     },
     {
       "id": "Q8",
       "title": "Frontend: measure bundles, lazy-load what slows first paint",
-      "state": "WAITING",
+      "state": "TODO",
       "deps": [
         "Q7"
       ],
@@ -776,7 +816,32 @@
       "ts": "2026-10-03T06:02:30.798Z",
       "event": "done",
       "detail": "Q6 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T06:02:35.273Z",
+      "event": "start",
+      "detail": "Q7 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T06:04:56.866Z",
+      "event": "evidence",
+      "detail": "Q7/code PASS"
+    },
+    {
+      "ts": "2026-10-03T06:05:18.034Z",
+      "event": "evidence",
+      "detail": "Q7/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T06:05:23.891Z",
+      "event": "note",
+      "detail": "Q7: Chat title falls back to the sidebar list's copy while the c"
+    },
+    {
+      "ts": "2026-10-03T06:05:24.533Z",
+      "event": "done",
+      "detail": "Q7 (code:PASS ui:PASS)"
     }
   ],
-  "integrity": "359dfca0b451b205ec1c59c6438434d6e472f6b60045a9e8a3911ec984d20ff7"
+  "integrity": "49e5b6f72486a0a9a09f3069c6bfb50a21ea627befcbc627efa9651a504c5cf2"
 }

@@ -119,8 +119,9 @@ export default function ChatPage() {
     )
   }
 
-  const raw = chat?.title
-  const title = raw && !isUntitled(raw) ? raw : 'Untitled chat'
+  // Until the chat loads, the sidebar's copy has the title; unknown yet (cold deep link) shows no title, not "Untitled chat".
+  const raw = chat?.title ?? list.find((instance) => instance.id === id)?.title
+  const title = raw === undefined ? '' : raw && !isUntitled(raw) ? raw : 'Untitled chat'
   const menu = (
     <ChatMenu
       watched={watched}

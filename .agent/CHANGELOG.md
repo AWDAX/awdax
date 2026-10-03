@@ -32,3 +32,7 @@ _2026-10-03 05:40_ · code:PASS · code `b7e5b01c9bb2`
 ## Q6 — Backend: scrape sources in parallel, database writes serialized
 
 _2026-10-03 06:02_ · code:PASS · code `51b508456861`
+
+## Q7 — Frontend: no Untitled chat flash while a chat loads
+
+_2026-10-03 06:05_ · code:PASS ui:PASS · code `c3e3ce341a4f`

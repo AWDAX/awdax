@@ -68,3 +68,14 @@ Verified 2026-10-03 05:40 against code `b7e5b01c9bb2`.
 Verified 2026-10-03 06:02 against code `51b508456861`.
 
 - **code** — PASS via `verify.mjs` · recorded 2026-10-03 06:01
+
+## Q7 — Frontend: no Untitled chat flash while a chat loads
+
+Verified 2026-10-03 06:05 against code `c3e3ce341a4f`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 06:04
+- **ui** — PASS via `playwright-core+chromium-1243 (headless)` · recorded 2026-10-03 06:05
+  - routes: /app, /, /app/demo/*, /app/c/*
+  - viewports: mobile, desktop
+  - states: default
+  - 48 assertion(s) · 0 console error(s) · 0 failed request(s)
