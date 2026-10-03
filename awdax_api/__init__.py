@@ -1,4 +1,5 @@
 from awdax_api.routes import bp, register_websocket
+from awdax_api import ask_routes  # noqa: F401  (adds /api/ask to bp before it is registered)
 from awdax_api.live_bridge import live_bridge
 
 

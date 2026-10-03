@@ -52,3 +52,7 @@ _2026-10-03 09:45_ · code:PASS ui:PASS · code `4065e34c7ae6`
 ## Q13 — Backend: import PyMuPDF by its current name so a future release can't silently drop PDF text extraction
 
 _2026-10-03 09:47_ · code:PASS · code `e27eb7f8e577`
+
+## Q14 — Ask about this data: AI plans any question (guardrailed query or sandboxed calculation), answers shown with schema and meaning
+
+_2026-10-03 12:57_ · code:PASS ui:PASS · code `8c17b5a2d4f1`

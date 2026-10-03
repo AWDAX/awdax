@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T09:48:34.772Z",
+  "updated": "2026-10-03T12:57:42.016Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -723,6 +723,63 @@
         "failures": [],
         "stop": null
       }
+    },
+    {
+      "id": "Q14",
+      "title": "Ask about this data: AI plans any question (guardrailed query or sandboxed calculation), answers shown with schema and meaning",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T12:57:10.377Z",
+          "codeHash": "8c17b5a2d4f16cb59091412412d6fcc896042ce583632758d43587e337cf769f"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T12:57:31.715Z",
+          "codeHash": "8c17b5a2d4f16cb59091412412d6fcc896042ce583632758d43587e337cf769f",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T12:57:41.091Z",
+          "text": "Ask about this data (owner chose: AI plans, engine runs, no code shown; heavy maths as a hidden sandboxed Python function; dynamic guardrails). Typed questions -> POST /api/ask -> ask_data: model returns a query (checked against this table's columns/kinds by check_query, then again in the browser by toEngineQuery) or a compute function (ask_sandbox: AST allowlist incl. imports of math/statistics only, child python -I -S with empty env, 8 s, Windows Job Object 512 MB + no child processes, RLIMIT on POSIX, 1 MB result cap, 2 at once) or a refusal. Route: 8 MB body cap, 20 asks/5 min per user, guardrail refusals are answers (200), AI down is 503 (60 s budget via llm_json(budget_s)). Answers show meaning + schema-labelled result table. Reviewer pass: no escape found; its DoS findings (Windows memory, result size, nesting crash, body size, rate) fixed with tests. Live with the real AI: query, filtered query, computed and refusal answers all correct, 0 console errors."
+        },
+        {
+          "ts": "2026-10-03T12:57:41.318Z",
+          "text": "NVIDIA: the .env's LLM_MODEL (nemotron-3.5-lightning) timed out for the whole 60 s on every ask this evening; nemotron-3-super-120b now returns HTTP 410 (retired) but is still in llm_client's default chain; nemotron-3-ultra-550b answered in 25-33 s.",
+          "kind": "finding"
+        }
+      ],
+      "started": "2026-10-03T12:18:36.848Z",
+      "finished": "2026-10-03T12:57:42.013Z",
+      "blockedReason": null,
+      "base": "836479b7c97ee59f8a45778ebaa474299fb8bb22",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     }
   ],
   "log": [
@@ -1145,7 +1202,42 @@
       "ts": "2026-10-03T09:47:31.366Z",
       "event": "done",
       "detail": "Q13 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T12:18:35.789Z",
+      "event": "add",
+      "detail": "Q14 Ask about this data: AI plans any question (guardrailed query or sandboxed calculation), answers shown with schema and meaning"
+    },
+    {
+      "ts": "2026-10-03T12:18:36.848Z",
+      "event": "start",
+      "detail": "Q14 (attempt 1, checkpoint 2026-10-03T12-18-36-588)"
+    },
+    {
+      "ts": "2026-10-03T12:57:10.417Z",
+      "event": "evidence",
+      "detail": "Q14/code PASS"
+    },
+    {
+      "ts": "2026-10-03T12:57:31.754Z",
+      "event": "evidence",
+      "detail": "Q14/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T12:57:41.091Z",
+      "event": "note",
+      "detail": "Q14: Ask about this data (owner chose: AI plans, engine runs, no "
+    },
+    {
+      "ts": "2026-10-03T12:57:41.318Z",
+      "event": "note",
+      "detail": "Q14 [finding]: NVIDIA: the .env's LLM_MODEL (nemotron-3.5-lightning) timed "
+    },
+    {
+      "ts": "2026-10-03T12:57:42.016Z",
+      "event": "done",
+      "detail": "Q14 (code:PASS ui:PASS)"
     }
   ],
-  "integrity": "6f18795c4d224fb0b4b658c8b798cc96e985894412d93291b78d9a72164935fe"
+  "integrity": "81b511f2ff2b56c212005d86b74ccde65663a1348223a67f01a5327ef469429f"
 }

@@ -117,3 +117,14 @@ Verified 2026-10-03 09:45 against code `4065e34c7ae6`.
 Verified 2026-10-03 09:47 against code `e27eb7f8e577`.
 
 - **code** — PASS via `verify.mjs` · recorded 2026-10-03 09:47
+
+## Q14 — Ask about this data: AI plans any question (guardrailed query or sandboxed calculation), answers shown with schema and meaning
+
+Verified 2026-10-03 12:57 against code `8c17b5a2d4f1`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 12:57
+- **ui** — PASS via `playwright-core+chromium-1243 (headless)` · recorded 2026-10-03 12:57
+  - routes: /app, /, /app/demo/*, /app/c/*
+  - viewports: mobile, desktop
+  - states: default
+  - 48 assertion(s) · 0 console error(s) · 0 failed request(s)

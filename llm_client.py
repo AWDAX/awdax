@@ -110,8 +110,9 @@ def _parse_json(text: str) -> Any:
     return json.loads(text)
 
 
-def _nvidia_call(prompt: str, temperature: float, parse: Callable[[str], Any]) -> Any:
-    """Try each NVIDIA model in order. Raises RuntimeError (no key text) when all fail."""
+def _nvidia_call(prompt: str, temperature: float, parse: Callable[[str], Any], deadline: float | None = None) -> Any:
+    """Try each NVIDIA model in order, stopping at `deadline` (time.monotonic()) when given. Raises RuntimeError
+    (no key text) when all fail."""
     global _nvidia_key_rejected, _last_good
     base =(os.getenv("NVIDIA_API_BASE") or _DEFAULT_BASE).strip().rstrip("/")
     try:
@@ -121,6 +122,12 @@ def _nvidia_call(prompt: str, temperature: float, parse: Callable[[str], Any]) -
     headers = {"Authorization": f"Bearer {_key('NVIDIA_API_KEY')}", "Accept": "application/json"}
     last = "no NVIDIA model answered"
     for model in _ordered(_nvidia_models(), time.monotonic()):
+        if deadline is not None:
+            left = deadline - time.monotonic()
+            if left < 1:
+                last = "out of time"
+                break
+            timeout = min(timeout, left)
         body = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
@@ -166,7 +173,7 @@ def _gemini_text(prompt: str, temperature: float) -> str:
     return (resp.text or "").strip()
 
 
-def _run(prompt: str, temperature: float, parse: Callable[[str], Any]) -> Any:
+def _run(prompt: str, temperature: float, parse: Callable[[str], Any], deadline: float | None = None) -> Any:
     has_nvidia = bool(_key("NVIDIA_API_KEY")) and not _nvidia_key_rejected
     has_gemini = bool(_key("GEMINI_API_KEY"))
     if not has_nvidia and not has_gemini:
@@ -175,7 +182,7 @@ def _run(prompt: str, temperature: float, parse: Callable[[str], Any]) -> Any:
         raise RuntimeError(_NO_KEY)
     if has_nvidia:
         try:
-            return _nvidia_call(prompt, temperature, parse)
+            return _nvidia_call(prompt, temperature, parse, deadline)
         except RuntimeError:
             if not has_gemini:
                 raise
@@ -183,8 +190,9 @@ def _run(prompt: str, temperature: float, parse: Callable[[str], Any]) -> Any:
     return parse(_gemini_text(prompt, temperature))
 
 
-def llm_json(prompt: str, *, temperature: float = 0.2) -> Any:
-    return _run(prompt, temperature, _parse_json)
+def llm_json(prompt: str, *, temperature: float = 0.2, budget_s: float | None = None) -> Any:
+    """`budget_s` caps the whole call across NVIDIA's models (someone is waiting on the answer)."""
+    return _run(prompt, temperature, _parse_json, None if budget_s is None else time.monotonic() + budget_s)
 
 
 def llm_text(prompt: str, *, temperature: float = 0.2) -> str:
