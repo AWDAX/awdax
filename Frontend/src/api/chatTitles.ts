@@ -35,12 +35,18 @@ export function setChatTitle(id: string, title: string) {
 // Duck-typed (ApiError carries `status`): client.ts reads import.meta.env, which Node tests can't import.
 const isNotFound = (err: unknown) => typeof err === 'object' && err !== null && (err as { status?: unknown }).status === 404
 
-/** One-time migration: push any browser-only titles to the backend, then drop local overrides. */
+/**
+ * One-time migration: push any browser-only titles to the backend, then drop local overrides. With `owned`, only
+ * those chat ids are sent: this store is shared by every account on the browser, and a title for a chat the signed-in
+ * account does not own is not its to rename (it stays for the account that does).
+ */
 export async function migrateLocalTitlesToBackend(
   save: (id: string, title: string) => Promise<void>,
+  owned?: ReadonlySet<string>,
 ): Promise<void> {
   const local = { ...read() }
   for (const [id, title] of Object.entries(local)) {
+    if (owned && !owned.has(id)) continue
     const t = title.trim()
     if (!t) {
       forgetChatTitle(id)

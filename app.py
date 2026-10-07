@@ -40,11 +40,20 @@ def _not_found(_error):
     return detail_response(404, "Not found")
 
 
-if __name__ == "__main__":
+def startup() -> None:
+    """What a server does once before taking requests: `python app.py` calls it, and so does the gunicorn worker
+    (deploy/gunicorn.conf.py), which imports this module instead of running it."""
     from awdax_api.orchestrator import recover_interrupted_runs
 
     # No run thread exists yet, so a session still marked running was cut off by the last restart.
     recover_interrupted_runs()
+    from places_search import purge_expired
+
+    purge_expired()  # only with PLACES_RETENTION_DAYS set
+
+
+if __name__ == "__main__":
+    startup()
     port = int(os.getenv("PORT", "8000"))
     # The Werkzeug debugger must never face the tunnel; FLASK_DEBUG=1 turns it on for local debugging only.
     app.run(host="127.0.0.1", port=port, debug=os.getenv("FLASK_DEBUG") == "1", use_reloader=False, threaded=True)

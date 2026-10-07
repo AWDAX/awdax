@@ -48,11 +48,10 @@ seconds to undo.
 - Times come without a timezone (SQLite drops it). Always use `apiDate()` from `src/api/dates.ts`.
 - `GET /api/instances` has no status or rows. The report polls `/live` per project, six at a time, every 15 s.
 - `PATCH /live` doesn't push an SSE event. The UI reads `/live` back after pausing or resuming.
-- No CORS: in dev, Vite proxies `/api` and `/health` (`vite.config.ts`). In production the Pages Function
-  `functions/api/[[path]].ts` (`src/server/proxy.ts`) forwards `/api/*` to the backend. Setup: `docs/CONNECT_BACKEND.md`.
-- No auth on the backend: every signed-in user sees every instance. The production proxy lets only signed-in users
-  through (optionally only listed emails), checking the Supabase token itself (`src/server/jwt.ts`).
-- When the stream is buffered (a Cloudflare quick tunnel does this), `useLiveStream` notices within 8 s and polls `/live`,
+- No CORS: in dev, Vite proxies `/api` and `/health` (`vite.config.ts`). In production the site and the backend share one
+  domain and a reverse proxy routes `/api/*` to the backend. Setup: `docs/CONNECT_BACKEND.md`.
+- The backend verifies who is calling (Supabase token or API key) and scopes every chat to its owner; it answers 401 otherwise.
+- When the stream is buffered (a reverse proxy with buffering on does this), `useLiveStream` notices within 8 s and polls `/live`,
   reloading the table and chat whenever the rows, phase or cycle change.
 - Real scraping needs `GEMINI_API_KEY` in `Backend/.env`.
 

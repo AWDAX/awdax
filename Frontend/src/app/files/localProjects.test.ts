@@ -16,32 +16,24 @@ test('renamed writes nothing for a missing record or blank title', () => {
   assert.equal(renamed(base, '   '), null)
 })
 
-// Stands in for localStorage: only the two methods filesDbName uses.
-const memoryStore = () => {
-  const m = new Map<string, string>()
-  return {
-    getItem: (k: string) => m.get(k) ?? null,
-    setItem: (k: string, v: string) => {
-      m.set(k, v)
-    },
-  }
-}
+// Stands in for localStorage: only the method filesDbName uses.
+const memoryStore = (owner?: string) => ({ getItem: (k: string) => (k === 'awdax.files.owner' ? (owner ?? null) : null) })
 
-test('the first account on a browser keeps the shared files database', () => {
-  const s = memoryStore()
-  assert.equal(filesDbName('a', s), 'awdax')
-  assert.equal(s.getItem('awdax.files.owner'), 'a')
+test('the account recorded as owner keeps the shared files database', () => {
+  assert.equal(filesDbName('a', memoryStore('a')), 'awdax')
+})
+
+test('an account is never assumed to own the shared database', () => {
+  // No owner on record: the shared database may hold several accounts' files, so nobody inherits it.
+  assert.equal(filesDbName('a', memoryStore()), 'awdax.a')
 })
 
 test('another account gets a database of its own', () => {
-  const s = memoryStore()
-  filesDbName('a', s)
-  assert.equal(filesDbName('b', s), 'awdax.b')
+  assert.equal(filesDbName('b', memoryStore('a')), 'awdax.b')
 })
 
-test('the first account keeps it on later sign-ins', () => {
-  const s = memoryStore()
-  filesDbName('a', s)
+test('the owner keeps it on later sign-ins, whoever signed in between', () => {
+  const s = memoryStore('a')
   filesDbName('b', s)
   assert.equal(filesDbName('a', s), 'awdax')
 })
@@ -51,21 +43,8 @@ test('blocked storage never hands out the shared database', () => {
     getItem: () => {
       throw new Error('blocked')
     },
-    setItem: () => {
-      throw new Error('blocked')
-    },
   }
   assert.equal(filesDbName('a', blocked), 'awdax.a')
-})
-
-test('storage that can be read but not written never hands out the shared database', () => {
-  const readOnly = {
-    getItem: () => null,
-    setItem: () => {
-      throw new Error('quota')
-    },
-  }
-  assert.equal(filesDbName('a', readOnly), 'awdax.a')
 })
 
 // Node has no IndexedDB, so a rejection with this message can only come from the guard in open().

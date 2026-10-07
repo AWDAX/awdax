@@ -8,61 +8,17 @@ import json
 import logging
 import os
 import re
-from typing import Any
 
+from llm_client import _parse_json
 from reasoning import ScrapeIntent, gemini_json
 
 logger = logging.getLogger(__name__)
-
-try:
-    import google.generativeai as genai
-
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-
-
-def _model_name() -> str:
-    return os.getenv("GEMINI_SEARCH_MODEL") or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 
 def _api_search(query: str, *, max_results: int = 6) -> list[dict[str, str]]:
     from discovery import _web_search
 
     return _web_search(query, max_results=max_results)
-
-
-def _urls_from_grounding(resp: Any) -> list[dict[str, str]]:
-    hits: list[dict[str, str]] = []
-    seen: set[str] = set()
-    try:
-        for cand in getattr(resp, "candidates", []) or []:
-            gm = getattr(cand, "grounding_metadata", None)
-            if not gm:
-                continue
-            chunks = getattr(gm, "grounding_chunks", None) or []
-            for chunk in chunks:
-                web = getattr(chunk, "web", None)
-                if not web:
-                    continue
-                uri = (getattr(web, "uri", None) or "").strip()
-                title = (getattr(web, "title", None) or "").strip()
-                if uri.startswith("http") and uri not in seen:
-                    seen.add(uri)
-                    hits.append({"url": uri, "title": title, "snippet": ""})
-            supports = getattr(gm, "grounding_supports", None) or []
-            for sup in supports:
-                for idx in getattr(sup, "grounding_chunk_indices", []) or []:
-                    if idx < len(chunks):
-                        web = getattr(chunks[idx], "web", None)
-                        if web:
-                            uri = (getattr(web, "uri", None) or "").strip()
-                            if uri.startswith("http") and uri not in seen:
-                                seen.add(uri)
-                                hits.append({"url": uri, "title": "", "snippet": ""})
-    except Exception as e:
-        logger.debug("grounding parse: %s", e)
-    return hits
 
 
 def _urls_from_text(text: str, *, query: str) -> list[dict[str, str]]:
@@ -77,42 +33,43 @@ def _urls_from_text(text: str, *, query: str) -> list[dict[str, str]]:
 
 
 def _gemini_grounded_search(query: str, intent: ScrapeIntent) -> list[dict[str, str]]:
-    if not GEMINI_AVAILABLE:
-        return []
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return []
+    """Gemini with Google Search (REST, gemini_search): the pages a real search finds for `query`. The pages Google's
+    results cited come first (they exist); then the pages the model named, which it sometimes guesses (a guessed path is
+    caught by the plain request that follows and recorded as a failed link)."""
+    from gemini_search import cited_pages, grounded_answer, is_redirect_link, search_available
 
-    genai.configure(api_key=api_key)
-    model_name = _model_name()
-    prompt = f"""You are helping pick web pages to scrape.
+    if not search_available():
+        return []
+    prompt = f"""Search Google for the query below and find real web pages that LIST the records the user wants
+(tables, lists, search/index pages, directories, datasets). Prefer the primary publisher of the records, then public
+databases and reputable aggregators. Never invent a URL: only pages you saw in the results.
 
 Google search query: {query}
-User scraping goal: {intent.raw_prompt or intent.topic}
+User's goal: {intent.raw_prompt or intent.topic}
 
-Find real pages (especially comparison/list/category pages with prices or tables) that answer the query.
-Prefer aggregators (CarDekho, CarWale, 91Wheels, ZigWheels) or Wikipedia list pages when relevant."""
-
-    tool_variants: list[Any] = [
-        [{"google_search": {}}],
-        "google_search_retrieval",
-        [{"google_search_retrieval": {"dynamic_retrieval_config": {"mode": "MODE_DYNAMIC"}}}],
+Return JSON only: {{"pages": [{{"url": "https://...", "title": "...", "why": "..."}}]}} with up to 8 pages, best first."""
+    try:
+        answer = grounded_answer(prompt, timeout=90)
+    except RuntimeError as e:
+        logger.warning("Gemini grounded search failed for %r: %s", query, e)
+        return []
+    named: list[dict[str, str]] = []
+    try:
+        data = _parse_json(answer.text)
+        pages = data.get("pages") if isinstance(data, dict) else data
+        for p in pages if isinstance(pages, list) else []:
+            if isinstance(p, dict) and str(p.get("url") or "").startswith("https://"):
+                named.append({"url": str(p["url"]).strip(), "title": str(p.get("title") or ""), "snippet": str(p.get("why") or query)})
+    except ValueError:
+        named = _urls_from_text(answer.text, query=query)
+    cited = [{**c, "snippet": query} for c in cited_pages(answer)]
+    seen: set[str] = set()
+    unique = [
+        h for h in cited + named
+        if not is_redirect_link(h["url"]) and not (h["url"].rstrip("/") in seen or seen.add(h["url"].rstrip("/")))
     ]
-
-    for tools in tool_variants:
-        try:
-            model = genai.GenerativeModel(model_name, tools=tools)
-            resp = model.generate_content(prompt)
-            hits = _urls_from_grounding(resp)
-            if not hits and resp.text:
-                hits = _urls_from_text(resp.text, query=query)
-            if hits:
-                logger.info("Gemini grounded search returned %d URLs for %r", len(hits), query)
-                return hits[:8]
-        except Exception as e:
-            logger.debug("Gemini tools %s failed: %s", tools, e)
-            continue
-    return []
+    logger.info("Gemini grounded search returned %d URLs for %r", len(unique), query)
+    return unique[:8]
 
 
 def _gemini_propose_url(query: str, intent: ScrapeIntent, *, exclude: list[str] | None = None) -> list[dict[str, str]]:

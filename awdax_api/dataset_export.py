@@ -38,6 +38,11 @@ def build_dataset_table(sess: dict[str, Any], *, limit: int = 5000, include_part
     job_id = sess.get("job_id")
     if intent_data and intent_uses_regulatory_feed(ScrapeIntent.from_dict(intent_data)):
         return _regulatory_dataset(sess, limit=limit)
+    if job_id and intent_data and intent_data.get("pipeline") == "places":
+        # Already ranked and complete as the run saved it: never re-merged (that would fold branches of one business
+        # into one row and ask the model to rewrite them).
+        merged = universal_service.get_merged_table(job_id)
+        return _merged_to_dataset(merged, job_id=job_id) if merged else None
     if job_id:
         merged = universal_service.get_merged_table(job_id)
         if not merged:
@@ -74,10 +79,13 @@ def _merged_to_dataset(merged: dict[str, Any], *, job_id: str) -> dict[str, Any]
         ext = _cell_str(row.get("external_id") if isinstance(row, dict) else (cells[0] if cells else i))
         records.append(_record_stub(f"{job_id}:{ext or i}", src))
     topic = labels[0] if labels else "dataset"
+    labels = [str(x) for x in labels]
     return {
         "name": str(topic),
         "source_url": "",
         "columns": columns,
+        # Readable headers, aligned with `columns` (the appended source_url keeps its own name).
+        "column_labels": labels[: len(columns)] + [c.replace("_", " ").capitalize() for c in columns[len(labels) :]],
         "rows": rows_out,
         "row_count": len(rows_out),
         "records": records,

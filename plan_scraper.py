@@ -14,9 +14,7 @@ from url_guard import UnresolvableHost, UnsafeURL, check_url
 logger = logging.getLogger(__name__)
 
 try:
-    from selenium import webdriver
     from selenium.common.exceptions import NoSuchElementException, TimeoutException
-    from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
@@ -51,7 +49,12 @@ def fill_url_template(template: str, row: dict[str, Any], id_field: str) -> str:
     date_m = re.search(r"-(\d{8})-\d+$", ext_id)
     if date_m:
         year = date_m.group(1)[4:8]
-    return template.format(year=year, num=num, id=ext_id)
+    try:
+        return template.format(year=year, num=num, id=ext_id)
+    except (KeyError, IndexError, ValueError, AttributeError):
+        # The template was written by the model: braces it invented ({slug}, {0}, a stray "}") must cost this one link, not the page.
+        logger.warning("Detail URL template could not be filled: %r", template[:120])
+        return ""
 
 
 class PlanDrivenScraper:
@@ -66,13 +69,9 @@ class PlanDrivenScraper:
     def setup_driver(self, headless: bool = True):
         if not SELENIUM_AVAILABLE:
             raise RuntimeError("Selenium not installed")
-        opts = Options()
-        opts.add_argument("--no-sandbox")
-        opts.add_argument("--disable-dev-shm-usage")
-        if headless:
-            opts.add_argument("--headless=new")
-            opts.add_argument("--window-size=1920,1080")
-        self.driver = webdriver.Chrome(options=opts)
+        import browser
+
+        self.driver = browser.launch(headless=headless)
         self.driver.set_page_load_timeout(page_load_seconds())
         return self.driver
 
@@ -89,8 +88,8 @@ class PlanDrivenScraper:
             if not isinstance(step, dict):
                 continue
             action = step.get("action", "click")
-            if action != "click":
-                continue
+            if action != "click" or not str(step.get("selector") or "").strip():
+                continue  # the plan is model-written: a step with no selector has nothing to click
             optional = bool(step.get("optional"))
             wait_s = float(step.get("wait") or 2)
             try:

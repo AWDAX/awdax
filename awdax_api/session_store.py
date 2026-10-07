@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Any
 
-from ui_sessions import _now, get_session, save_session
+from ui_sessions import _now, get_session, get_session_internal, save_session, update_session_fields
 
 
 def ensure_awdax_defaults(sess: dict[str, Any]) -> dict[str, Any]:
@@ -23,7 +22,9 @@ def ensure_awdax_defaults(sess: dict[str, Any]) -> dict[str, Any]:
 
 
 def load_instance_session(instance_id: str, user_id: str | None = None) -> dict[str, Any] | None:
-    sess = get_session(instance_id, user_id)
+    """A request passes the caller's user id (an empty one is an error, never "everyone"). Background threads that
+    act for a chat a request already authorised omit it."""
+    sess = get_session_internal(instance_id) if user_id is None else get_session(instance_id, user_id)
     if not sess:
         return None
     return ensure_awdax_defaults(sess)
@@ -42,6 +43,18 @@ def persist_run_state(sess: dict[str, Any]) -> dict[str, Any]:
     from the stored row under the write lock, so a PATCH landing mid-run is never reverted. Never inserts."""
     ensure_awdax_defaults(sess)
     return save_session(sess, allow_insert=False, preserve=USER_OWNED_FIELDS)
+
+
+def update_instance(instance_id: str, mutate: Any) -> dict[str, Any] | None:
+    """Apply `mutate(session)` to the stored chat and save only what it changed (ui_sessions.update_session_fields).
+    For background writers that own a few fields; None when the chat is gone."""
+    sess = update_session_fields(instance_id, mutate=mutate)
+    return ensure_awdax_defaults(sess) if sess else None
+
+
+def run_finished(sess: dict[str, Any]) -> bool:
+    """The first pass is over (succeeded or failed) and no run is in progress."""
+    return not sess.get("run_active") and (sess.get("awdax_run") or {}).get("status") in ("succeeded", "failed", "cancelled")
 
 
 def append_message(sess: dict[str, Any], *, role: str, content: str) -> dict[str, Any]:

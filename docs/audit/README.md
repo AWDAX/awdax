@@ -1,3 +1,6 @@
+> **Historical.** These documents record the audit of 2 October 2026 and the plans made from it. Several findings are fixed and some details (Cloudflare Pages,
+> the shared proxy secret) no longer apply. Current behaviour is in docs/ARCHITECTURE.md, docs/CONFIGURATION.md and docs/DEPLOY.md.
+
 # AWDAX audit and remediation pack
 
 **Date:** 2 October 2026 · **Baseline:** `main` @ `6fc90ba` · **Compared with:** `origin/frontend` @ `92130ba`

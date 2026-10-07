@@ -5,41 +5,92 @@
 </div>
 <br>
 
-
 <div align="center">
-  <img src="assets/landing-page.png" alt="AWDAX Landing Page" width="800">
+  <img src="assets/landing-page.png" alt="AWDAX landing page" width="800">
 </div>
 
-## 																																																											Description
+## What it is
 
-AWDAX is an AI-powered research and data exploration tool. It transforms plain-language queries into structured datasets by actively researching the web, allowing you to watch the discovery process live. Once data is gathered, AWDAX provides an interactive dashboard to inspect sources, automatically generate relevant charts, ask follow-up questions, and export the results. You can also bring your own data files for instant visualization and analysis.
+AWDAX turns a plain-language request into a structured dataset. It researches the web the way a person would, shows its discovery live,
+and gives you an interactive dashboard to inspect the sources, chart the rows, ask follow-up questions and export the result. It also reads
+your own files, and it can be driven from code (an API with per-account keys) and from Claude (an MCP server).
 
 <div align="center">
-  <img src="assets/dashboard.png" alt="AWDAX Dashboard" width="800">
+  <img src="assets/dashboard.png" alt="AWDAX dashboard" width="800">
 </div>
-
-<hr>
 
 ## What you can do
 
-- **Research the web with a request.** Describe the information you need, such as electric vehicles in India with prices and range. AWDAX searches for relevant sites, inspects pages, extracts rows, and combines the results into a table. It also has a dedicated path for Indian eGazette requests.
-- **Watch discovery live.** See sources appear as they are found and inspected, follow page-reading and row-collection progress, and open the Sources view to review where the collected data came from.
-- **Inspect the data.** The Data view shows the collected rows and their source URLs. Where scoring is available, it also shows quality information and lets you include partial rows.
-- **Let the data suggest charts.** Dates can become timelines, categories can become comparisons or shares, and numeric fields get their own scales. The Graphs view chooses a useful chart by default; you can switch between line, bar, column, area, pie, donut, scatter, number card, and table views, or edit the fields and aggregation yourself.
-- **Ask follow-up questions.** Ask for totals, averages, rankings, and comparisons using the rows already collected. These questions are answered from the current table and do not start another scrape.
-- **Keep a request active.** Live chats can continue checking for new rows. You can pause or resume tracking and turn on new-row alerts.
-- **Take the result elsewhere.** Export all rows, filtered rows, a chart's numbers, or an answer as CSV, Excel, JSON, SQL, TSV, XML, Markdown, or JSON Lines.
+- **Research the web with a request.** "Electric vehicles in India with prices and range", "parliamentary debates in India between 2010 and 2025".
+  A research step searches Google and ranks the best websites; they are tried first, then more searches fill the gaps.
+- **Find local businesses and leads.** Requests about shops, clinics, restaurants, agencies or "leads near me" use Google Maps (Places API),
+  tile a city or region, and score each business as a lead. The business's own website can be read for contact details.
+- **Read what pages hide.** A table built by JavaScript is read from the data feed behind it, page after page; a page with a pager but no feed is
+  read through the browser's accessibility tree and its "Next" button is pressed; data files a site offers (CSV, XLSX, JSON) are downloaded,
+  read, stored and deleted. Every link first gets a plain web request, and the ones that fail are kept as a list of failed links.
+- **Respect the request's limits.** A period in the request ("between 2010 and 2025", "since 2015") is enforced on every row.
+- **Watch it live.** Sources appear as they are found; pausing or deleting a chat stops its work and frees its slot, and runs past the limit
+  wait in line instead of being refused.
+- **Explore the data.** Report, Data, Graphs and Sources views; charts chosen from the data; export as CSV, Excel, JSON, SQL, TSV, XML, Markdown or
+  JSON Lines.
+- **Ask questions about the rows.** Totals, averages, rankings, percentages and comparisons are computed exactly (decimal arithmetic) from the
+  current table without scraping again.
+- **Bring your own data.** Upload a CSV, TSV, JSON or `.xlsx` file; it stays in your browser.
+- **Use it from code and from Claude.** Per-account API keys (`awx_...`), an OpenAPI description at `/api/openapi.json`, and an MCP endpoint at
+  `/api/mcp` (docs/MCP.md). Every account only ever sees its own chats.
 
-## A typical workflow
+## How it works, in one paragraph
 
-1. Start a chat with a request such as **“Electric vehicles in India with prices and range.”**
-2. Watch AWDAX discover and inspect sources, then collect rows.
-3. Review the **Report**, **Data**, **Graphs**, and **Sources** views.
-4. Change a chart if another view tells the story better, or ask **“What is the average price by brand?”**
-5. Export the data or leave the chat tracking for new rows.
+A request is turned into an intent (topic, place, period, fields) and routed: Google Maps for places, the eGazette pipeline for gazette notices,
+the general pipeline for everything else. The general pipeline researches websites, inspects each one in a single browser visit, scrapes it by the
+best route it offers (data feed, data file, accessibility tree, or the page's HTML), stores the rows, merges duplicates across sources, and
+streams progress to the browser. docs/ARCHITECTURE.md has the details.
 
-Results depend on the pages available for a particular request. AWDAX keeps missing or unreadable values visible as gaps instead of inventing numbers.
+## Quick start (local)
 
-## Bring your own data
+```bash
+# backend (Python 3.12 or newer, Chrome installed)
+python -m venv .venv && .venv/Scripts/pip install -r requirements.txt     # Linux/macOS: .venv/bin/pip
+cp .env.example .env                                                       # then set GEMINI_API_KEY, SUPABASE_URL, API_KEY_PEPPER
+.venv/Scripts/python app.py                                                # http://127.0.0.1:8000
 
-Upload a CSV, TSV, JSON, or `.xlsx` file to use the same dashboard, graphs, questions, and exports without scraping. Uploaded files stay in this browser on this device. The sample run in the app is a quick way to explore the experience before starting a web request.
+# frontend (Node 24), in another terminal
+cd Frontend && npm ci && npm run dev                                       # http://localhost:5173/app
+```
+
+Sign-in uses Supabase (Google). To try the app without signing in, put `AWDAX_AUTH_MODE=dev` in `.env` and run `npm run dev:agent` instead.
+LOCAL_DEV.md has the details and the troubleshooting list.
+
+## Tests
+
+```bash
+# backend: ~540 tests, no network or browser needed
+python -m unittest discover -s tests/test_awdax_api -t tests/test_awdax_api
+python -m unittest discover -s tests -t tests -p "test_*.py"
+
+# frontend, from Frontend/
+npm run lint && npm test && npm run build
+```
+
+Continuous integration (`.github/workflows/ci.yml`) runs all of this, plus a lint for unused code, a boot check of the production server and a
+build of both Docker images, on every pull request.
+
+## Deploying
+
+The site and the backend run from one domain: Docker Compose starts the backend (gunicorn with Chromium), the MCP endpoint and Caddy, which
+serves the site and handles HTTPS. **docs/DEPLOY.md** is the step-by-step guide (server, DNS, Supabase and Google settings, first start, updates,
+backups, troubleshooting); `.github/workflows/deploy.yml` can run the update from GitHub.
+
+## Documentation
+
+| | |
+|---|---|
+| docs/DEPLOY.md | Putting it on a server |
+| docs/CONFIGURATION.md | Every setting and what it does |
+| docs/ARCHITECTURE.md | The pipeline, the modules, the data model |
+| docs/MCP.md | Connecting Claude |
+| LOCAL_DEV.md | Running it on your machine |
+| docs/AX_TREE_EXPERIMENT.md | Measurements behind reading pages through the accessibility tree |
+| Frontend/docs/ | Frontend notes (app behaviour, connecting the backend) |
+| docs/audit/, docs/archive/ | Earlier audits and status notes; kept as history, not instructions |
+| AGENTS.md | Rules for people and tools working on the repository |

@@ -17,3 +17,14 @@ test('404 drops the pending title, other failures keep it', async () => {
   })
   assert.deepEqual(retried, ['down'])
 })
+
+test('a title for a chat the account does not own is neither sent nor dropped', async () => {
+  setChatTitle('mine', 'Mine')
+  setChatTitle('theirs', 'Theirs')
+  const sent: string[] = []
+  await migrateLocalTitlesToBackend(async (id) => void sent.push(id), new Set(['mine']))
+  assert.deepEqual(sent, ['mine'])
+  const later: string[] = []
+  await migrateLocalTitlesToBackend(async (id) => void later.push(id), new Set(['theirs']))
+  assert.deepEqual(later, ['theirs'], 'still waiting for the account that owns it')
+})

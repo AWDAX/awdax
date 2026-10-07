@@ -39,7 +39,7 @@ class ParallelScrapeTests(unittest.TestCase):
         self.stored = []
 
     def _listing(self, delay=0.15, fail=()):
-        def listing_rows(plan, job):
+        def listing_rows(plan, job, max_pages=1):
             with self.lock:
                 self.running += 1
                 self.peak = max(self.peak, self.running)

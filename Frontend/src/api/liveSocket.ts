@@ -11,6 +11,8 @@ export function openLiveSocket(
     onMessage: (message: unknown) => void
     onConnection: (state: 'open' | 'reconnecting') => void
     onFallback: () => void
+    /** Runs before each connection attempt (refreshing the cookie the handshake authenticates with). */
+    beforeConnect?: () => void
   },
 ): () => void {
   let socket: WebSocket | null = null
@@ -25,6 +27,7 @@ export function openLiveSocket(
     if (closed || gaveUp) return
     let openedAt = 0
     let ws: WebSocket
+    handlers.beforeConnect?.()
     try {
       ws = new WebSocket(url)
       socket = ws

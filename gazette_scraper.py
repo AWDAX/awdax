@@ -11,12 +11,10 @@ import requests
 
 
 try:
-    from selenium import webdriver
     from selenium.common.exceptions import (
         NoSuchElementException,
         TimeoutException,
     )
-    from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
@@ -49,16 +47,9 @@ class GazetteScraper:
     def setup_driver(self, headless=True):
         if not SELENIUM_AVAILABLE:
             raise RuntimeError("Selenium not installed")
-        opts = Options()
-        opts.add_argument("--no-sandbox")
-        opts.add_argument("--disable-dev-shm-usage")
-        opts.add_argument("--disable-blink-features=AutomationControlled")
-        opts.add_experimental_option("excludeSwitches", ["enable-automation"])
-        opts.add_experimental_option("useAutomationExtension", False)
-        if headless:
-            opts.add_argument("--headless=new")
-            opts.add_argument("--window-size=1920,1080")
-        self.driver = webdriver.Chrome(options=opts)
+        import browser
+
+        self.driver = browser.launch(headless=headless, hide_automation=True)
         self.driver.execute_script(
             "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
         )

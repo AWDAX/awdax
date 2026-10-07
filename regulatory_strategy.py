@@ -52,8 +52,18 @@ def user_explicitly_wants_egazette(intent: ScrapeIntent) -> bool:
     return bool(_EGAZETTE_RE.search(user))
 
 
+# "parliament", "debates", "proceedings" or "sessions" of India named in plain words, without the words Lok Sabha / Rajya Sabha:
+# "give me parliamentary debates in india", "debates in the Indian parliament". Whether the Indian one is meant is judged from
+# the whole request (a mention of India or Indian), so a request about another country's parliament is not taken for it.
+_PARLIAMENT_WORDS_RE = re.compile(r"\bparliament(?:ary)?\b.{0,40}\b(?:debates?|proceedings|sessions?|questions?)\b|\b(?:debates?|proceedings|sessions?)\b.{0,40}\bparliament(?:ary)?\b", re.I)
+_INDIA_RE = re.compile(r"\bindia(?:n)?\b", re.I)
+
+
 def intent_is_parliament_sessions(intent: ScrapeIntent) -> bool:
-    return bool(_PARLIAMENT_RE.search(_intent_blob(intent)))
+    blob = _intent_blob(intent)
+    if _PARLIAMENT_RE.search(blob):
+        return True
+    return bool(_PARLIAMENT_WORDS_RE.search(blob) and _INDIA_RE.search(blob))
 
 
 def reconcile_misrouted_intent(intent: ScrapeIntent) -> ScrapeIntent:
@@ -104,12 +114,6 @@ def intent_uses_regulatory_feed(intent: ScrapeIntent | None) -> bool:
     if intent_is_parliament_sessions(intent) and not user_explicitly_wants_egazette(intent):
         return False
     return user_explicitly_wants_egazette(intent)
-
-
-def load_intent(data: dict[str, Any]) -> ScrapeIntent:
-    """Load stored intent and apply routing fixes (safe to call on every request)."""
-    intent = ScrapeIntent.from_dict(data)
-    return enrich_intent_for_execution(intent)
 
 
 def enrich_intent_for_execution(intent: ScrapeIntent) -> ScrapeIntent:

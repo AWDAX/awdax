@@ -105,7 +105,7 @@ def _request_headers() -> dict[str, str]:
     }
 
 
-def fetch_html(url: str, *, max_chars: int = 200_000) -> dict[str, Any]:
+def fetch_html(url: str, *, max_chars: int = 600_000) -> dict[str, Any]:
     """HTTPS GET with browser-like headers; keep body even on 403 for scrape attempts."""
     url = normalize_https(url)
     out: dict[str, Any] = {
@@ -147,6 +147,9 @@ def fetch_html(url: str, *, max_chars: int = 200_000) -> dict[str, Any]:
             out["table_count"] = len(re.findall(r"<table\b", html, re.I))
             headers = re.findall(r"<th[^>]*>([^<]+)</th>", html, re.I)
             out["table_headers_preview"] = [re.sub(r"\s+", " ", h).strip() for h in headers if h.strip()][:25]
+            from dataset_files import find_dataset_links
+
+            out["dataset_links"] = find_dataset_links(html, out["final_url"])
             if not out["https_ok"]:
                 out["error"] = f"HTTP {r.status_code}, body={len(html)} bytes"
             return out
@@ -165,7 +168,14 @@ def fetch_html(url: str, *, max_chars: int = 200_000) -> dict[str, Any]:
 def probe_https(url: str) -> dict[str, Any]:
     """Lightweight probe (no full html in return for discovery lists)."""
     full = fetch_html(url, max_chars=120_000)
+    try:
+        from listing_extract import visible_text_length
+
+        visible = visible_text_length(full.get("html") or "")
+    except Exception:  # noqa: BLE001 - only used to tell whether JavaScript adds content
+        visible = -1
     return {
+        "visible_chars": visible,
         "https_ok": full.get("https_ok"),
         "final_url": full.get("final_url"),
         "title": full.get("title"),
@@ -174,6 +184,7 @@ def probe_https(url: str) -> dict[str, Any]:
         "http_status": full.get("http_status"),
         "error": full.get("error"),
         "blocked": bool(full.get("blocked")),
+        "dataset_links": full.get("dataset_links") or [],
     }
 
 
@@ -211,14 +222,28 @@ def _search_queries(intent: ScrapeIntent) -> list[str]:
             )
         )[:4]
     topic = intent.topic
+    from listing_sources import intent_wants_ev_catalog
+
+    if intent_wants_ev_catalog(intent):
+        return list(
+            dict.fromkeys(
+                [
+                    f"{topic} {geo} price list comparison cardekho carwale",
+                    f"{topic} {geo} wikipedia list",
+                    f"{topic} {geo} news article prices",
+                    f"{topic} {geo} specifications table",
+                    f"{topic} site:cardekho.com OR site:carwale.com OR site:91wheels.com",
+                    topic,
+                ]
+            )
+        )[:6]
     return list(
         dict.fromkeys(
             [
-                f"{topic} {geo} price list comparison cardekho carwale",
+                f"{topic} {geo} list comparison",
                 f"{topic} {geo} wikipedia list",
-                f"{topic} {geo} news article prices",
-                f"{topic} {geo} specifications table",
-                f"{topic} site:cardekho.com OR site:carwale.com OR site:91wheels.com",
+                f"{topic} {geo} directory",
+                f"{topic} {geo} data table",
                 topic,
             ]
         )
@@ -616,9 +641,15 @@ def candidate_from_serp_hit(
     *,
     search_query: str,
     source_type_hint: str = "",
+    job_id: str = "",
+    stage: str = "search",
 ) -> SourceCandidate:
     url = normalize_https(hit.get("url") or "")
-    probe = probe_https(url)
+    probe = probe_https(url)  # the plain request every link gets first
+    if job_id:
+        import url_access
+
+        url_access.record_probe(job_id, url, probe, stage=stage)
     final = normalize_https(str(probe.get("final_url") or url))
     cat = (source_type_hint or "other").lower()
     return SourceCandidate(

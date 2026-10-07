@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { awdax } from './awdax.ts'
 import { mapLiveSnapshot, mapLiveStatus, type AwdaxpLiveState, type AwdaxpRun } from './awdaxpAdapter.ts'
-import { ApiError } from './client.ts'
+import { ApiError, refreshStreamToken } from './client.ts'
 import { openLiveSocket } from './liveSocket.ts'
 import { applyPatch, asRows, EMPTY_LIVE, isRecord, mergeSources, type LiveState } from './liveState.ts'
 import { canMerge, mergeStreamedRows } from './mergeRows.ts'
@@ -207,6 +207,8 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
 
     const sse = createSseSupervisor({
       open: () => {
+        // A stream that was refused for an expired cookie reconnects with a fresh one.
+        refreshStreamToken()
         const source = new EventSource(awdax.streamUrl(id))
         attachStreamListeners(source, {
           onLive: applyLive,
@@ -278,6 +280,7 @@ export function useLiveStream(id: string | null, handlers: Handlers = {}): LiveS
 
     void loadFull()
     stopSocket = openLiveSocket(awdax.liveSocketUrl(id), {
+      beforeConnect: refreshStreamToken,
       onMessage,
       onConnection: (state) => {
         if (state === 'open') stopSse()

@@ -11,7 +11,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import ui_sessions  # noqa: E402
-from awdax_api import orchestrator, pipeline_runner  # noqa: E402
+from awdax_api import orchestrator, pipeline_runner, run_registry  # noqa: E402
 from awdax_api.session_store import load_instance_session, persist_session, set_awdax_run  # noqa: E402
 
 
@@ -21,7 +21,7 @@ class _Base(unittest.TestCase):
         self._patch = mock.patch.object(ui_sessions, "DB_PATH", Path(self._dir.name) / "t.sqlite")
         self._patch.start()
         ui_sessions._initialized = None
-        self._env = mock.patch.dict(os.environ, {}, clear=True)
+        self._env = mock.patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev"}, clear=True)
         self._env.start()
         import app as app_module
 
@@ -69,24 +69,24 @@ class DeletedChatStaysDeletedTests(_Base):
         self.assertEqual(self.client.get(f"/api/instances/{iid}").status_code, 200)
         fresh = {"id": "newid1", "title": "n", "user_id": "anonymous"}
         ui_sessions.save_session(fresh)
-        self.assertIsNotNone(ui_sessions.get_session("newid1"))
+        self.assertIsNotNone(ui_sessions.get_session_internal("newid1"))
 
     def test_run_thread_stops_live_job_when_chat_deleted_mid_run(self):
         iid = self._create()
 
         def fake_pipeline(s, goal, **kw):
             s["job_id"] = "jobX"
-            ui_sessions.delete_session(iid)
+            ui_sessions.delete_session_internal(iid)
             return s
 
         with mock.patch.object(orchestrator, "run_pipeline_for_session", side_effect=fake_pipeline), \
                 mock.patch.object(orchestrator.live_bridge, "notify_instance") as notify, \
                 mock.patch.object(orchestrator.universal_service, "stop_live") as stop:
-            orchestrator.mark_running(iid)
+            run_registry.mark_running(iid)
             orchestrator._run_thread(iid, "goal", None)
         stop.assert_called_once_with("jobX")
         notify.assert_not_called()
-        self.assertIsNone(ui_sessions.get_session(iid))
+        self.assertIsNone(ui_sessions.get_session_internal(iid))
         self.assertFalse(orchestrator.is_running(iid))
 
 
@@ -130,7 +130,7 @@ class PauseDuringFirstRunTests(_Base):
 
     def test_deleted_chat_raises_and_does_not_scrape(self):
         iid, sess = self._run(True)
-        ui_sessions.delete_session(iid)
+        ui_sessions.delete_session_internal(iid)
         with self.assertRaises(pipeline_runner.InstanceDeleted):
             self._drive(sess)
         self.trigger.assert_not_called()
@@ -139,7 +139,7 @@ class PauseDuringFirstRunTests(_Base):
         iid = self._create()
         with mock.patch.object(orchestrator, "run_pipeline_for_session", side_effect=pipeline_runner.InstanceDeleted(iid)), \
                 mock.patch.object(orchestrator.live_bridge, "notify_instance") as notify:
-            orchestrator.mark_running(iid)
+            run_registry.mark_running(iid)
             orchestrator._run_thread(iid, "goal", None)
         notify.assert_not_called()
         after = load_instance_session(iid)
@@ -181,7 +181,7 @@ class ResumeTests(_Base):
         set_awdax_run(sess, status="failed", phase="failed")
         persist_session(sess)
         start_run, start_live = self._call(iid, self._patch_all())
-        start_run.assert_called_once_with(iid, "find things")
+        start_run.assert_called_once_with(iid, "find things", max_pages=None, location_hint=None)
         start_live.assert_not_called()
 
     def test_completed_run_not_live_starts_live(self):
@@ -203,7 +203,7 @@ class ResumeTests(_Base):
     def test_goal_without_messages_appends_user_message_and_runs(self):
         iid = self._create(goal="scrape x")
         start_run, _ = self._call(iid, self._patch_all())
-        start_run.assert_called_once_with(iid, "scrape x")
+        start_run.assert_called_once_with(iid, "scrape x", max_pages=None, location_hint=None)
         msgs = load_instance_session(iid)["messages"]
         self.assertEqual([(m["role"], m["content"]) for m in msgs], [("user", "scrape x")])
 

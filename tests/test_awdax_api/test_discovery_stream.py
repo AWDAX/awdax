@@ -1,3 +1,4 @@
+import os
 import unittest
 import queue
 from unittest.mock import patch
@@ -11,7 +12,7 @@ from discovery import SourceCandidate
 from inspector import ScrapePlan, discover_inspected_from_queries
 from query_generation import GeneratedQuery
 from reasoning import ScrapeIntent
-from ui_sessions import create_session, delete_session
+from ui_sessions import create_session, delete_session_internal as delete_session
 
 
 class DiscoveryStreamTests(unittest.TestCase):
@@ -95,6 +96,7 @@ class DiscoveryStreamTests(unittest.TestCase):
             with (
                 patch("awdax_api.routes.live_bridge.subscribe", return_value=pending),
                 patch("awdax_api.routes.live_bridge.unsubscribe"),
+                patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev"}),
             ):
                 response = app.test_client().get(f"/api/instances/{sess['id']}/live/stream", buffered=False)
                 chunks = iter(response.response)
@@ -107,7 +109,7 @@ class DiscoveryStreamTests(unittest.TestCase):
     def test_starting_chat_enables_live_discovery(self):
         sess = create_session(title="Live chat test")
         try:
-            with patch("awdax_api.routes.start_run") as start:
+            with patch("awdax_api.routes.submit_run") as start, patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev"}):
                 response = app.test_client().post(
                     f"/api/instances/{sess['id']}/messages",
                     json={"content": "Find electric cars"},

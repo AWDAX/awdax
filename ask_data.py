@@ -16,6 +16,7 @@ import json
 import logging
 from typing import Any
 
+from ask_fastpath import plan as fast_plan
 from ask_sandbox import UnsafeCode, run
 from llm_client import llm_json
 
@@ -61,11 +62,14 @@ Pick exactly one reply:
    ("in" values are the cell values as written; gte/lte/between take plain numbers in the column's own unit);
    sort: value-desc|value-asc|label|time; limit: N for top/bottom N.
 2. {{"kind": "compute", "function": "def answer(rows): ...", "columns": [{{"name": str, "type": "text|number|money|percent|period"}}], "meaning": str}}
-   only when it needs more maths than one aggregate (growth %, differences or ratios between columns, spread,
-   correlation, percentiles, comparing two aggregates). rows is a list of dicts keyed by column "key"; numeric
-   columns are floats or null. Plain Python only, plus the modules `math` and `statistics` (already available,
-   never import). No other names, no dunders, no file or network access. Return a list of dicts (one per output row,
-   keys = your column names) or a single number. Name output columns for people, e.g. "Car model",
+   only when it needs more maths than one aggregate: growth or change %, differences or ratios between columns,
+   share of a total, spread (stdev, variance), percentiles and quartiles, correlation, trend slope, weighted
+   averages, rows above or below the average, comparing two aggregates. rows is a list of dicts keyed by column
+   "key"; numeric columns are floats or null: skip null (`if r["x"] is not None`) and never divide without checking
+   for zero. Plain Python only, plus the modules `math` and `statistics` (already available, never import);
+   `statistics` has fmean, median, mode, stdev, pstdev, variance, pvariance, quantiles, correlation, covariance,
+   linear_regression, geometric_mean, harmonic_mean. No other names, no dunders, no file or network access. Return a
+   list of dicts (one per output row, keys = your column names) or a single number. Name output columns for people, e.g. "Car model",
    "Range per lakh (km)", never snake_case. "columns" describes what you return; "meaning" is one plain sentence
    saying what the result shows.
 3. {{"kind": "refuse", "reason": str}} when the table can't answer it (needs data it doesn't have, new scraping,
@@ -144,12 +148,24 @@ def _table(value: Any, declared: Any) -> tuple[list[dict[str, str]], list[list[A
     raise AskError("The calculation returned something that isn't a table.")
 
 
+def fast_answer(question: str, columns: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """A plain question answered without the model: the same checked plan it would give, or None to ask the model."""
+    try:
+        found = fast_plan(question, columns)
+        return {"kind": "query", "query": check_query(found["query"], columns)} if found else None
+    except AskError:
+        return None
+
+
 def answer_question(question: str, columns: list[dict[str, Any]], rows: list[dict[str, Any]]) -> dict[str, Any]:
     question = (question or "").strip()
     if not question or len(question) > MAX_QUESTION:
         raise AskError(f"Ask a question of up to {MAX_QUESTION} characters.")
     if not columns or len(columns) > MAX_COLUMNS or len(rows) > MAX_ROWS:
         raise AskError("This table is too large to ask about here.")
+    plain = fast_answer(question, columns)
+    if plain:
+        return plain
     try:
         plan = llm_json(_prompt(question, columns, rows), temperature=0, budget_s=ASK_BUDGET_S)
     except RuntimeError as e:

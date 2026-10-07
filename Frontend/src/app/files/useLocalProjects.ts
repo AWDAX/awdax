@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { adoptUnscopedKeys, CHAT_KEY_PREFIXES } from '../auth/userScope.ts'
 import { listLocal, onLocalChange } from './localProjects.ts'
 import type { LocalMeta } from './localProjects.ts'
 
@@ -9,7 +10,12 @@ export function useLocalProjects(): LocalMeta[] {
     let alive = true
     const load = () =>
       listLocal()
-        .then((l) => alive && setList(l))
+        .then((l) => {
+          if (!alive) return
+          // Saved answers/dashboards of these uploaded files predate per-account keys: they are this account's.
+          adoptUnscopedKeys(CHAT_KEY_PREFIXES, l.map((p) => `file-${p.id}`))
+          setList(l)
+        })
         .catch(() => undefined)
     void load()
     const off = onLocalChange(() => void load())

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { TableProfile } from '../../analytics/profile.ts'
 import { columnSignature } from '../../analytics/signature.ts'
+import { scopedKey } from '../auth/userScope.ts'
 import { newAnswer, parseAnswers } from './answerStore.ts'
 import type { NewAnswer, SavedAnswer } from './answerStore.ts'
 
 export type { SavedAnswer } from './answerStore.ts'
 
-const key = (id: string) => `awdax.answers.${id}`
+// Named for the signed-in account, so another account on this browser never reads these answers.
+const key = (id: string) => scopedKey(`awdax.answers.${id}`)
 
 /** Stores a first question before its page opens (a new upload that came with a question). */
 export function seedAnswer(instanceKey: string, a: NewAnswer, profile: TableProfile) {

@@ -4,6 +4,7 @@ import AuthCallback from './AuthCallback.tsx'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { RequireAuth } from './auth/RequireAuth.tsx'
 import ChatPage from './chat/ChatPage.tsx'
+import DevelopersPage from './developers/DevelopersPage.tsx'
 import DemoReplay from './demo/DemoReplay.tsx'
 import FilePage from './chat/FilePage.tsx'
 import NewChat from './chat/NewChat.tsx'
@@ -37,6 +38,7 @@ export default function AppRoot() {
           <Route path="f/:id" element={<FilePage />} />
           <Route path="demo/:slug" element={<DemoReplay />} />
           <Route path="projects" element={<ProjectsReport />} />
+          <Route path="developers" element={<DevelopersPage />} />
           {DevPreview && (
             <Route
               path="dev"

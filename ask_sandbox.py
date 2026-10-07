@@ -45,6 +45,8 @@ _SAFE_METHODS = {
     "get", "items", "keys", "values", "append", "extend", "insert", "pop", "sort", "copy", "count", "index",
     "lower", "upper", "strip", "lstrip", "rstrip", "split", "replace", "startswith", "endswith", "isdigit",
     "join", "title", "update", "setdefault", "add", "discard", "union", "intersection", "difference",
+    # the two fields of what statistics.linear_regression returns (the question prompt offers that function)
+    "slope", "intercept",
 }
 _NODES = (
     ast.Module, ast.FunctionDef, ast.arguments, ast.arg, ast.Return, ast.Assign, ast.AugAssign, ast.For,

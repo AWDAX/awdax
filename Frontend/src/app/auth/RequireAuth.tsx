@@ -3,9 +3,13 @@ import { Navigate, useLocation } from 'react-router'
 import { AuthFrame } from '../AuthFrame.tsx'
 import { setFilesOwner } from '../files/localProjects.ts'
 import { useAuth } from './authContext.ts'
+import { setScopeUser } from './userScope.ts'
 
 // The agent preview has no account, so uploaded files get one here. Vite drops this from production builds.
-if (import.meta.env.DEV && import.meta.env.MODE === 'agent') setFilesOwner('agent')
+if (import.meta.env.DEV && import.meta.env.MODE === 'agent') {
+  setFilesOwner('agent')
+  setScopeUser('agent')
+}
 
 /** Shows its children to signed-in visitors; everyone else goes to /login and comes back here after. */
 export function RequireAuth({ children }: { children: ReactNode }) {

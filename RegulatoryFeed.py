@@ -124,6 +124,9 @@ class RegulatoryFeedService:
         }
         self._event_subscribers: list[queue.Queue] = []
         self._event_lock = threading.Lock()
+        # The chat whose request started the running scrape. Its events carry this id so the live bridge delivers them
+        # to that chat alone, never to "whichever chat is running".
+        self._owner_instance: str | None = None
         self._summary_queue: queue.Queue[int | None] = queue.Queue()
 
     def subscribe_events(self) -> queue.Queue:
@@ -141,6 +144,9 @@ class RegulatoryFeedService:
         payload: dict[str, Any] = {"type": event_type, "ts": time.time()}
         if data:
             payload.update(data)
+        owner = self._owner_instance
+        if owner:
+            payload.setdefault("instance_id", owner)
         with self._event_lock:
             for sub in list(self._event_subscribers):
                 try:
@@ -162,7 +168,7 @@ class RegulatoryFeedService:
         self.scrape_status["is_running"] = self.is_running
         return dict(self.scrape_status)
 
-    def trigger_scrape(self, max_pages: int = 3) -> dict[str, Any]:
+    def trigger_scrape(self, max_pages: int = 3, owner_instance_id: str | None = None) -> dict[str, Any]:
         with self._scrape_lock:
             if self.is_running:
                 return {
@@ -180,10 +186,12 @@ class RegulatoryFeedService:
                 name="scrape-cycle",
             )
             self.is_running = True
+            self._owner_instance = owner_instance_id
             try:
                 t.start()
             except Exception:
                 self.is_running = False
+                self._owner_instance = None
                 raise
             return {"started": True, **self.get_scrape_status()}
 
@@ -258,6 +266,7 @@ class RegulatoryFeedService:
             self.scrape_status["finished_at"] = time.time()
             self.scrape_status["gazette_count"] = self._gazette_count()
             self.emit_event("status", self.get_scrape_status())
+            self._owner_instance = None
 
     @staticmethod
     def _wrap_industry_tags(tags: list) -> list:

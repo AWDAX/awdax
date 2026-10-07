@@ -258,3 +258,21 @@ test('a handshake that fails by itself clears the watchdog', () => {
     browser.restore()
   }
 })
+
+test('beforeConnect runs ahead of the first attempt and of every reconnect', () => {
+  withFakes((env) => {
+    let ran = 0
+    const stop = openLiveSocket('ws://example.test/live', {
+      onMessage: () => {},
+      onConnection: () => {},
+      onFallback: () => {},
+      beforeConnect: () => void (ran += 1),
+    })
+    assert.equal(ran, 1)
+    env.sockets[0].emit('open')
+    env.sockets[0].close() // one drop: it reconnects after its backoff timer
+    ;[...env.timers.values()].at(-1)?.fn()
+    assert.equal(ran, 2)
+    stop()
+  })
+})

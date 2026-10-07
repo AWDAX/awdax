@@ -4,6 +4,7 @@ import type { AuthError, Session } from '@supabase/supabase-js'
 import { setStreamToken, setTokenSource } from '../../api/client.ts'
 import { setFilesOwner } from '../files/localProjects.ts'
 import { AuthContext, safeNext } from './authContext.ts'
+import { setScopeUser } from './userScope.ts'
 import type { Auth } from './authContext.ts'
 import { supabase } from './supabase.ts'
 
@@ -30,6 +31,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(next)
       setReady(true)
       setStreamToken(next?.access_token ?? null, next?.expires_at)
+      if (!next) {
+        // Signed out (here or in another tab): nothing of the last account stays addressable.
+        setScopeUser(null)
+        setFilesOwner(null)
+      }
     })
     // getSession refreshes an expired token first, so a call after a long sleep doesn't bounce off the proxy.
     setTokenSource(async () => (await supabase.auth.getSession()).data.session?.access_token ?? null)
@@ -53,13 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       // Confirmed, or Supabase unreachable: keep a session we already had rather than sign someone
       // out over a bad connection.
-      // Uploaded files are per account, and setConfirmed lets the app render: name the account first.
+      // Uploaded files and saved answers/dashboards are per account, and setConfirmed lets the app render: name the account first.
       setFilesOwner(userId)
+      setScopeUser(userId)
       setConfirmed(userId)
     }).catch(() => {
       // Network failure or a thrown error: same policy as the error branch above, keep the session.
       if (active) {
         setFilesOwner(userId)
+        setScopeUser(userId)
         setConfirmed(userId)
       }
     })

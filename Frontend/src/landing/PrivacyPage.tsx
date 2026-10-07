@@ -61,8 +61,8 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
       <>
         <p>
           Supabase runs sign-in and stores your account in its Mumbai region. Google shows the sign-in screen.
-          Cloudflare serves this website. Supabase and Cloudflare keep short-lived technical logs, such as IP
-          addresses and browser details, to run the service and block abuse.
+          AWDAX runs this website and its server itself. Supabase and the AWDAX server keep short-lived technical logs,
+          such as IP addresses and browser details, to run the service and block abuse.
         </p>
         <p className="mt-3">AWDAX does not sell your data or share it with advertisers.</p>
       </>

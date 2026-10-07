@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 
 import requests  # noqa: E402
 
+import browser  # noqa: E402
 import inspector  # noqa: E402
 import llm_client  # noqa: E402
 import scraper  # noqa: E402
@@ -137,12 +138,28 @@ class PageLoadTests(unittest.TestCase):
 
     def test_every_browser_gets_a_page_load_limit(self):
         with mock.patch.dict(os.environ, {}, clear=True):
-            with mock.patch.object(inspector.webdriver, "Chrome") as chrome:
+            with mock.patch.object(browser.webdriver, "Chrome") as chrome:
                 inspector._setup_driver()
             chrome.return_value.set_page_load_timeout.assert_called_once_with(45)
-            with mock.patch.object(plan_scraper.webdriver, "Chrome") as chrome:
+            with mock.patch.object(browser.webdriver, "Chrome") as chrome:
                 plan_scraper.PlanDrivenScraper(mock.Mock(column_map={})).setup_driver()
             chrome.return_value.set_page_load_timeout.assert_called_once_with(45)
+
+    def test_chrome_starts_the_same_way_everywhere_and_a_server_can_name_its_browser(self):
+        with mock.patch.dict(os.environ, {"CHROME_BIN": "/usr/bin/chromium", "CHROMEDRIVER_PATH": "/usr/bin/chromedriver"}, clear=True),                 mock.patch.object(browser.webdriver, "Chrome") as chrome:
+            browser.launch(capture_network=True, hide_automation=True)
+        options = chrome.call_args.kwargs["options"]
+        self.assertEqual(options.binary_location, "/usr/bin/chromium")
+        self.assertEqual(chrome.call_args.kwargs["service"].path, "/usr/bin/chromedriver")
+        args = options.arguments
+        for flag in ("--no-sandbox", "--disable-dev-shm-usage", "--headless=new", "--window-size=1920,1080"):
+            self.assertIn(flag, args)
+        self.assertIn("--disable-blink-features=AutomationControlled", args)
+        self.assertEqual(options.capabilities["goog:loggingPrefs"], {"performance": "ALL"})
+        with mock.patch.dict(os.environ, {}, clear=True), mock.patch.object(browser.webdriver, "Chrome") as chrome:
+            browser.launch(headless=False)
+        self.assertNotIn("service", chrome.call_args.kwargs)
+        self.assertNotIn("--headless=new", chrome.call_args.kwargs["options"].arguments)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import type { DatasetTable } from '../../api/types.ts'
+import { scopedKey } from '../auth/userScope.ts'
 
 /**
  * Projects made from an uploaded file. The backend can't store them (no upload endpoint, and it stays
@@ -21,19 +22,16 @@ const DB = 'awdax'
 const STORE = 'projects'
 const listeners = new Set<() => void>()
 
-// Before files were per account, every account on this browser shared the 'awdax' database. The first account to sign in
-// after that change keeps it as is (nothing is copied or deleted); every other account gets a database of its own.
+// Before files were per account, every account on this browser shared the 'awdax' database. The account recorded as
+// its owner keeps it as is (nothing is copied or deleted); every other account gets a database of its own. An account
+// is never *assumed* to own it: with no owner on record the shared database stays closed, because it may hold files
+// of several accounts and the first to sign in must not inherit the rest.
 const OWNER_KEY = 'awdax.files.owner'
 
 /** The database for this account's files. Pure apart from `store`, so it is tested without a browser. */
-export function filesDbName(account: string, store: Pick<Storage, 'getItem' | 'setItem'>): string {
+export function filesDbName(account: string, store: Pick<Storage, 'getItem'>): string {
   try {
-    const recorded = store.getItem(OWNER_KEY)
-    if (recorded === null) {
-      store.setItem(OWNER_KEY, account)
-      return DB
-    }
-    if (recorded === account) return DB
+    if (store.getItem(OWNER_KEY) === account) return DB
   } catch {
     // Storage is blocked, so this account can't be recorded: it must not get the shared database.
   }
@@ -135,7 +133,10 @@ export async function deleteLocal(id: string) {
   await run('readwrite', (s) => s.delete(id))
   try {
     // The keys useAnswers, useDashboard and GraphsPanel save this chat under (plus the pre-v2 dashboard key).
-    for (const key of ['answers', 'dashboard', 'dashboard.v2', 'graphs.v2']) localStorage.removeItem(`awdax.${key}.file-${id}`)
+    for (const key of ['answers', 'dashboard', 'dashboard.v2', 'graphs.v2']) {
+      localStorage.removeItem(scopedKey(`awdax.${key}.file-${id}`))
+      localStorage.removeItem(`awdax.${key}.file-${id}`)
+    }
   } catch {
     // nothing to clean
   }

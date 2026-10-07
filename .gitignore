@@ -13,4 +13,6 @@ PROJECT_KEYS.md
 **/PROJECT_KEYS.md
 Frontend/node_modules/
 Frontend/dist/
-
+.ruff_cache/
+*.log
+.pytest_cache/

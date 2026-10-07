@@ -9,6 +9,7 @@ import { parseRunReport } from '../../analytics/runReport.ts'
 import type { DashboardView } from '../dashboard/Dashboard.tsx'
 import { buildSources, overlaySources } from '../sources/buildSources.ts'
 import type { Visit } from '../sources/buildSources.ts'
+import { FailedLinks } from '../sources/FailedLinks.tsx'
 import { SourcesPanel } from '../sources/SourcesPanel.tsx'
 import { SourcesStrip } from '../sources/SourcesStrip.tsx'
 import { ChatData } from './ChatData.tsx'
@@ -58,7 +59,12 @@ export function ChatView({ instanceKey, title, meta, messages, live, visits, act
     () => overlaySources(buildSources({ report, profile, visits, current: live.status.current_source, working }), live.sources, working),
     [report, profile, visits, live.status.current_source, live.sources, working],
   )
-  const panel = <SourcesPanel sources={sources} report={report} visits={visits} />
+  const panel = (
+    <div className="flex flex-col gap-4">
+      <SourcesPanel sources={sources} report={report} visits={visits} />
+      {remote && <FailedLinks instanceId={instanceKey} refreshKey={`${working}-${live.status.phase ?? ''}`} />}
+    </div>
+  )
   const openSources = () => {
     setView('sources')
     dashRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })

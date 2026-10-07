@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { adoptLegacyAlerts } from '../app/chat/alerts.ts'
+import { adoptUnscopedKeys, CHAT_KEY_PREFIXES } from '../app/auth/userScope.ts'
 import { awdax } from './awdax.ts'
 import { forgetChatTitle, migrateLocalTitlesToBackend } from './chatTitles.ts'
 import { apiTime } from './dates.ts'
@@ -59,14 +61,19 @@ export function InstancesProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   useEffect(() => {
-    if (migrated.current || loading) return
+    // Only once the backend has said which chats are this account's: browser data saved before it was per account
+    // is adopted for those chats alone, and a stored title is sent only for a chat this account owns.
+    if (migrated.current || loading || !listOk) return
     migrated.current = true
+    const owned = new Set(list.map((i) => i.id))
+    adoptUnscopedKeys(CHAT_KEY_PREFIXES, owned)
+    adoptLegacyAlerts(owned)
     void migrateLocalTitlesToBackend(async (id, title) => {
       const summary = await awdax.updateInstance(id, { title })
       seq.current.mutated()
       setList((prev) => [summary, ...prev.filter((i) => i.id !== id)].sort(byUpdated))
-    }).then(() => notifyInstancesChanged('mutate'))
-  }, [loading])
+    }, owned).then(() => notifyInstancesChanged('mutate'))
+  }, [loading, listOk, list])
 
   const upsert = useCallback((item: InstanceSummary) => {
     const summary: InstanceSummary = {

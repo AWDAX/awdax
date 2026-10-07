@@ -98,6 +98,20 @@ def _strip_fences(text: str) -> str:
     return text.strip()
 
 
+def _salvage_json(text: str) -> Any:
+    """JSON the model's output limit cut off mid-list ({"rows": [{...}, {...}, {"na): the complete objects before the cut,
+    with the open brackets closed. Better than losing every row of a long page because the last one was unfinished."""
+    ends = [m.start() for m in re.finditer(r"\}", text)][-400:]
+    for pos in reversed(ends):
+        head = text[: pos + 1]
+        for closer in ("", "]", "]}", "}", "}]"):
+            try:
+                return json.loads(head + closer)
+            except ValueError:
+                continue
+    raise ValueError("no complete JSON in the answer")
+
+
 def _parse_json(text: str) -> Any:
     text = _strip_fences(_strip_think(text))
     starts = [i for i in (text.find("{"), text.find("[")) if i >= 0]
@@ -107,7 +121,13 @@ def _parse_json(text: str) -> Any:
         end = text.rfind(close)
         if end > start:
             text = text[start : end + 1]
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except ValueError:
+        if not starts:
+            raise
+        # Cut off before its closing bracket: keep what is complete (see _salvage_json). The caller still checks its shape.
+        return _salvage_json(text)
 
 
 def _nvidia_call(prompt: str, temperature: float, parse: Callable[[str], Any], deadline: float | None = None) -> Any:
@@ -162,18 +182,74 @@ def _nvidia_call(prompt: str, temperature: float, parse: Callable[[str], Any], d
     raise RuntimeError(f"NVIDIA request failed ({last})")
 
 
-def _gemini_text(prompt: str, temperature: float) -> str:
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
+# Follows Google's current flash model. A pinned name stops working the day Google retires it (gemini-2.0-flash did), so a
+# model that has gone falls back to this instead of failing every run.
+FALLBACK_GEMINI_MODEL = "gemini-flash-latest"
+GEMINI_TIMEOUT_S = 90.0
+
+
+def _model_gone(exc: Exception) -> bool:
+    text = f"{type(exc).__name__} {exc}".lower()
+    return "notfound" in text or "no longer available" in text or "is not found" in text or "404" in text
+
+
+_BUSY_WORDS = ("deadlineexceeded", "serviceunavailable", "resourceexhausted", "toomanyrequests", "internalservererror",
+               "overloaded", "timed out", "timeout", "429", "500", "502", "503", "504")
+
+
+def _model_busy(exc: Exception) -> bool:
+    """Gemini answered "busy", overloaded or out of time: worth asking again a moment later (a retired model is not)."""
+    text = f"{type(exc).__name__} {exc}".lower()
+    return any(w in text for w in _BUSY_WORDS)
+
+
+def _gemini_attempts() -> int:
+    try:
+        return max(1, int(os.getenv("GEMINI_ATTEMPTS", "3")))
+    except ValueError:
+        return 3
+
+
+def _gemini_text(prompt: str, temperature: float, *, json_mode: bool = False, timeout: float | None = None) -> str:
+    """One Gemini answer. Every failure is a RuntimeError, like the NVIDIA path, so callers can treat "the model is
+    unavailable" as one thing."""
     try:
         import google.generativeai as genai
     except ImportError as exc:
         raise RuntimeError("google-generativeai is not installed") from exc
     genai.configure(api_key=_key("GEMINI_API_KEY"))
-    model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-2.0-flash"))
-    resp = model.generate_content(prompt)
-    return (resp.text or "").strip()
+    chosen = (os.getenv("GEMINI_MODEL") or "").strip() or DEFAULT_GEMINI_MODEL
+    names = [chosen] if chosen == FALLBACK_GEMINI_MODEL else [chosen, FALLBACK_GEMINI_MODEL]
+    last: Exception | None = None
+    for name in names:
+        config: dict[str, Any] = {}
+        # Google: keep temperature at its default (1.0) on Gemini 3 models; below that they can loop or degrade.
+        if not name.startswith("gemini-3") and name != FALLBACK_GEMINI_MODEL:
+            config["temperature"] = temperature
+        if json_mode:
+            config["response_mime_type"] = "application/json"
+        gone = False
+        for attempt in range(1, _gemini_attempts() + 1):
+            try:
+                model = genai.GenerativeModel(name, generation_config=config or None)
+                resp = model.generate_content(prompt, request_options={"timeout": timeout or GEMINI_TIMEOUT_S})
+                return (resp.text or "").strip()  # raises ValueError when the answer was blocked or empty
+            except Exception as exc:  # noqa: BLE001 - provider errors vary; the caller only needs "unavailable" and why
+                last = exc
+                gone = _model_gone(exc)
+                if gone or not _model_busy(exc) or attempt >= _gemini_attempts():
+                    break
+                wait = 2.0 * attempt  # busy or out of time: a short, growing pause, then ask again
+                logger.warning("Gemini busy (%s); asking again in %.0f s (attempt %d)", type(exc).__name__, wait, attempt + 1)
+                time.sleep(wait)
+        if not gone:
+            break
+        logger.warning("Gemini model %s is gone (%s); trying %s", name, last, FALLBACK_GEMINI_MODEL)
+    raise RuntimeError(f"Gemini request failed ({type(last).__name__}: {str(last)[:200]})") from last
 
 
-def _run(prompt: str, temperature: float, parse: Callable[[str], Any], deadline: float | None = None) -> Any:
+def _run(prompt: str, temperature: float, parse: Callable[[str], Any], deadline: float | None = None, json_mode: bool = False) -> Any:
     has_nvidia = bool(_key("NVIDIA_API_KEY")) and not _nvidia_key_rejected
     has_gemini = bool(_key("GEMINI_API_KEY"))
     if not has_nvidia and not has_gemini:
@@ -187,12 +263,23 @@ def _run(prompt: str, temperature: float, parse: Callable[[str], Any], deadline:
             if not has_gemini:
                 raise
             logger.warning("NVIDIA unavailable; falling back to Gemini")
-    return parse(_gemini_text(prompt, temperature))
+    # Someone may be waiting: never wait on Gemini longer than what is left of the caller's budget.
+    left = None if deadline is None else max(5.0, deadline - time.monotonic())
+    timeout = min(GEMINI_TIMEOUT_S, left) if left else None
+    for attempt in (1, 2):
+        text = _gemini_text(prompt, temperature, json_mode=json_mode, timeout=timeout)
+        try:
+            return parse(text)
+        except ValueError as exc:  # JSON that does not parse: ask once more, it is rarely the same mistake twice
+            if attempt == 2:
+                raise RuntimeError(f"Gemini answered something that could not be read ({exc})") from exc
+            logger.warning("Gemini answer was not valid JSON (%s); asking again", exc)
+    raise RuntimeError("unreachable")  # pragma: no cover
 
 
 def llm_json(prompt: str, *, temperature: float = 0.2, budget_s: float | None = None) -> Any:
     """`budget_s` caps the whole call across NVIDIA's models (someone is waiting on the answer)."""
-    return _run(prompt, temperature, _parse_json, None if budget_s is None else time.monotonic() + budget_s)
+    return _run(prompt, temperature, _parse_json, None if budget_s is None else time.monotonic() + budget_s, json_mode=True)
 
 
 def llm_text(prompt: str, *, temperature: float = 0.2) -> str:

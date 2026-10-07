@@ -3,7 +3,7 @@ import unittest
 from awdax_api.dataset_export import build_dataset_table, dataset_row_count
 from awdax_api.run_report import format_discovery_report
 from awdax_api.serializers import to_awdax_instance
-from ui_sessions import create_session, delete_session, save_session
+from ui_sessions import create_session, delete_session_internal as delete_session
 
 
 class AwdaxCompatTests(unittest.TestCase):
