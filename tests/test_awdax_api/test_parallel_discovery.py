@@ -56,7 +56,7 @@ class ParallelDiscoveryTests(unittest.TestCase):
                 running[0] -= 1
             return _plan(cand.url)
 
-        sources, plans = self.run_discovery([f"q{i}" for i in range(6)], inspect=slow, env={"DISCOVERY_INSPECT_WORKERS": "3", "DISCOVERY_MAX_SOURCES": "6"})
+        sources, plans = self.run_discovery([f"q{i}" for i in range(6)], inspect=slow, env={"DISCOVERY_INSPECT_WORKERS": "3", "DISCOVERY_MAX_SOURCES": "6", "DISCOVERY_ENOUGH_SOURCES": "6"})
         self.assertEqual([p.source_url for p in plans], [f"https://example.org/q{i}" for i in range(6)])
         self.assertEqual(len(sources), 6)
         self.assertEqual(peak[0], 3)

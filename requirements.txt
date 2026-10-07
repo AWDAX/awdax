@@ -1,9 +1,14 @@
-flask
-requests
+flask>=3.1,<4
+flask-sock>=0.7,<1
+requests>=2.32,<3
 certifi
-google-generativeai
-selenium
-pymupdf
+PyJWT>=2.8,<3
+cryptography>=43
+google-generativeai>=0.8,<1
+selenium>=4.25,<5
+pymupdf>=1.24,<2
 pdfminer.six
-flask-sock
-PyJWT
+mcp>=2,<3
+uvicorn>=0.30
+httpx>=0.27,<1
+gunicorn>=23,<26; sys_platform != "win32"

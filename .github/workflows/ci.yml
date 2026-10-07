@@ -1,7 +1,7 @@
 name: CI
 
-# Checks only: backend tests and the frontend gate. No secrets, no deploy. (Frontend/.github/workflows/deploy.yml is
-# from the frontend's old repo; GitHub reads workflows only from the root .github, so it does not run here.)
+# Every pull request and every push to main: the backend (lint, compile, tests, a boot check), the frontend gate, and a check that the
+# deployment images still build. No secrets are used.
 on:
   pull_request:
   push:
@@ -17,20 +17,38 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.14']
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
           cache: pip
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt ruff
+      - name: Lint (unused imports and names, syntax errors)
+        run: ruff check --select F,E9 --exclude Frontend,.agent .
       - name: Compile
         run: python -m compileall -q -x '(^|/)(Frontend|\.venv)/' .
       - name: Backend tests
         run: python -m unittest discover -s tests/test_awdax_api -t tests/test_awdax_api
       - name: Backend tests (tests/*.py; test_awdax_api has no __init__.py, so neither run picks up the other)
         run: python -m unittest discover -s tests -t tests -p 'test_*.py'
+      - name: Boot check (gunicorn serves /health, /ready and the API description)
+        env:
+          SQLITE_PATH: ${{ runner.temp }}/boot.sqlite
+          PORT: '8000'
+        run: |
+          gunicorn -c deploy/gunicorn.conf.py app:app &
+          for i in $(seq 1 30); do curl -fs localhost:8000/health && break; sleep 1; done
+          curl -fs localhost:8000/health
+          curl -fs localhost:8000/ready
+          curl -fs localhost:8000/api/openapi.json | python -c "import json,sys; d=json.load(sys.stdin); assert d['paths'], 'empty API description'"
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8000/api/instances)" = "401"  # strict sign-in by default
+          kill %1
 
   frontend:
     runs-on: ubuntu-latest
@@ -51,3 +69,14 @@ jobs:
       - run: npm audit --audit-level=high
       - name: Type check and build
         run: npm run build
+
+  images:
+    # The two images the server runs. Built, not pushed: this proves a deploy would not fail at the build step.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Backend image
+        run: docker build -t awdax-api .
+      - name: Website image
+        run: docker build -f deploy/web.Dockerfile -t awdax-web .

@@ -1,0 +1,54 @@
+# Run from the repository root:
+#   docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
+# .env holds the backend settings (see .env.example) and, for the site build, VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.
+name: awdax
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: awdax-api
+    env_file: ../.env
+    environment:
+      SQLITE_PATH: /data/regulatory.sqlite
+      PORT: "8000"
+    volumes:
+      - data:/data
+    restart: unless-stopped
+    # Chromium needs more shared memory than Docker's default for heavy pages.
+    shm_size: "1gb"
+
+  mcp:
+    # Claude's MCP endpoint. It shares the API's network, so /api/mcp reaches it on 127.0.0.1:8001 and it reaches the API on 127.0.0.1:8000.
+    image: awdax-api
+    command: ["python", "-m", "mcp_server"]
+    env_file: ../.env
+    network_mode: "service:api"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-}
+    environment:
+      AWDAX_DOMAIN: ${AWDAX_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  data:
+  caddy_data:
+  caddy_config:

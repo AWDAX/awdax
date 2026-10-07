@@ -4,6 +4,7 @@ import { columnSignature } from '../../analytics/signature.ts'
 import { newId } from '../../analytics/spec.ts'
 import type { ChartSpec } from '../../analytics/spec.ts'
 import { suggestCharts } from '../../analytics/suggest.ts'
+import { scopedKey } from '../auth/userScope.ts'
 import { clampH, clampW, layoutPage, sizeFor } from './layout.ts'
 import type { Tile } from './layout.ts'
 
@@ -16,7 +17,7 @@ interface Saved {
 }
 
 // v2: tiles are sized in page rows (1–6) on a one-screen canvas. Older layouts (88px rows) are not reused.
-const keyFor = (instanceId: string) => `awdax.dashboard.v2.${instanceId}`
+const keyFor = (instanceId: string) => scopedKey(`awdax.dashboard.v2.${instanceId}`)
 const fresh = (specs: ChartSpec[]) => specs.map((spec) => ({ ...spec, id: newId() }))
 
 /** The default page: the number cards and the first four charts the table supports. */

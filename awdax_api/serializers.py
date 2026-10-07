@@ -58,7 +58,9 @@ def to_awdax_live_state(sess: dict[str, Any]) -> dict[str, Any]:
             "rows_added": int(run.get("rows_added") or 0),
             "updated_at": run.get("updated_at") or sess["updated_at"],
         }
-    interval = 3600
+    from scraper import live_interval_seconds
+
+    interval = live_interval_seconds()  # the same setting the live loop waits on, so the app says what really happens
     if sess.get("intent"):
         intent = ScrapeIntent.from_dict(sess["intent"])
         if intent_uses_regulatory_feed(intent):

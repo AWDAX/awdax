@@ -1,5 +1,6 @@
 """
-Filter non-vehicle rows (FAQ questions, article headlines, nav text).
+Filter junk rows (FAQ questions, article headlines, nav text). The headline/length/price rules were written for vehicle
+catalogs and only apply to a vehicle topic; question-shaped, navigation and URL-only names are junk for any topic.
 """
 
 from __future__ import annotations
@@ -32,6 +33,17 @@ _NAV_JUNK = frozenset(
 # Real model names are rarely longer than this many words
 _MAX_NAME_WORDS = 7
 
+_VEHICLE_TOPIC = re.compile(
+    r"\b(evs?|electric\s+(?:car|vehicle|scooter|bike|motorcycle)s?|cars?|bikes?|motorcycles?|scooters?|suvs?|sedans?|vehicles?|"
+    r"hatchbacks?|automobiles?)\b",
+    re.I,
+)
+
+
+def topic_is_vehicles(raw_prompt: str = "", topic: str = "") -> bool:
+    """Whether the request is about cars/bikes, where the vehicle-catalog junk rules make sense."""
+    return bool(_VEHICLE_TOPIC.search(f"{raw_prompt} {topic}"))
+
 
 def _name_field(row: dict[str, Any], columns: list[str] | None = None) -> str:
     cols = columns or []
@@ -43,22 +55,22 @@ def _name_field(row: dict[str, Any], columns: list[str] | None = None) -> str:
     return ""
 
 
-def is_junk_vehicle_name(name: str, *, require_price_hint: bool = False, has_price: bool = False) -> bool:
+def is_junk_vehicle_name(name: str, *, require_price_hint: bool = False, has_price: bool = False, vehicle: bool = True) -> bool:
     n = (name or "").strip()
     if not n or len(n) < 2:
-        return True
-    if len(n) > 140:
         return True
     low = n.lower()
     if low in _NAV_JUNK:
         return True
     if n.endswith("?"):
         return True
-    if _QUESTION_START.search(n):
+    if not vehicle:
+        # Any other topic keeps a long first column (a quote, a debate title, a headline) and a title that starts with a
+        # question word ("Do not go gentle..."); only question-shaped (ending in "?"), navigation and URL-only names are junk.
+        return False
+    if len(n) > 140 or _QUESTION_START.search(n):
         return True
     if _ARTICLE_PATTERNS.search(n):
-        return True
-    if re.search(r"\?\s*$", n):
         return True
     # FAQ blocks on aggregator pages
     if " in india" in low and ("which " in low or "what " in low or "lowest priced" in low or "most expensive" in low):
@@ -89,13 +101,14 @@ def is_valid_vehicle_row(
     columns: list[str] | None = None,
     *,
     catalog_with_prices: bool = False,
+    vehicle: bool = True,
 ) -> bool:
     if not isinstance(row, dict):
         return False
     name = _name_field(row, columns)
     price = str(row.get("price") or row.get("price_inr") or row.get("Price (INR)") or "").strip()
     has_price = bool(price) and bool(re.search(r"[\d₹]|lakh|cr\b|rs\.?", price, re.I))
-    if is_junk_vehicle_name(name, require_price_hint=catalog_with_prices, has_price=has_price):
+    if is_junk_vehicle_name(name, require_price_hint=catalog_with_prices, has_price=has_price, vehicle=vehicle):
         return False
     # Single-field rows that are only URL-like
     if name.startswith("http"):
@@ -108,8 +121,9 @@ def filter_vehicle_rows(
     columns: list[str] | None = None,
     *,
     catalog_with_prices: bool = False,
+    vehicle: bool = True,
 ) -> list[dict[str, Any]]:
-    return [r for r in rows if is_valid_vehicle_row(r, columns, catalog_with_prices=catalog_with_prices)]
+    return [r for r in rows if is_valid_vehicle_row(r, columns, catalog_with_prices=catalog_with_prices, vehicle=vehicle)]
 
 
 def intent_expects_priced_catalog(raw_prompt: str, topic: str = "") -> bool:

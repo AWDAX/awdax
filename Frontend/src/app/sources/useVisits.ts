@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react'
+import { scopedKey } from '../auth/userScope.ts'
 import type { Visit } from './buildSources.ts'
 
-const key = (id: string) => `awdax.visits.${id}`
+const key = (id: string) => scopedKey(`awdax.visits.${id}`)
 const MAX = 60
 
 function load(id: string): Visit[] {

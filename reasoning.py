@@ -21,7 +21,9 @@ class ScrapeIntent:
     constraints: list[str] = field(default_factory=list)
     max_sources: int = 10
     raw_prompt: str = ""
-    pipeline: str = "universal"  # universal | regulatory_feed
+    pipeline: str = "universal"  # universal | regulatory_feed | places
+    # Settings of the Google Maps pipeline (places_strategy.reconcile_places_intent); empty otherwise.
+    places: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -41,6 +43,7 @@ class ScrapeIntent:
             max_sources=10,
             raw_prompt=str(data.get("raw_prompt") or ""),
             pipeline=str(data.get("pipeline") or "universal").strip() or "universal",
+            places=dict(data["places"]) if isinstance(data.get("places"), dict) else {},
         )
 
     def validate(self) -> None:
@@ -70,9 +73,28 @@ def parse_prompt(raw: str, *, job_id: str | None = None) -> ScrapeIntent:
 - named_sites (array of URLs or site names user mentioned)
 - constraints (array: legal, rate limits, official sources only, etc.)
 - max_sources (integer 1-10)
-- pipeline (string: "universal" or "regulatory_feed")
+- pipeline (string: "universal", "regulatory_feed" or "places")
+- places (object, only when pipeline is "places": search_terms, locations, near_me, target_count, extra_fields, lead_focus)
 
 Be specific. Prefer official sources in constraints for government data.
+
+Use pipeline "places" when the user wants a list of real-world businesses, venues, organisations or points of interest
+at or near a location: shops, restaurants, cafes, clinics, salons, gyms, hotels, schools, agencies, "leads" or
+"prospects" among local businesses, anything "near me" or "nearby". Google Maps ranks those places; do not scrape
+websites for them. Use "universal" for product prices and specs, statistics, articles and datasets.
+For pipeline "places" also fill the places object:
+- search_terms: 1-8 short Google-Maps category phrases, e.g. "cafes", "dental clinics". When the user wants LEADS or
+  PROSPECTS (they sell something to businesses, e.g. "leads for web development"), list the kinds of local business that
+  would plausibly buy it (restaurants, clinics, salons, retail shops, coaching centres...), NOT competitors, unless asked.
+- locations: every place the user named, as written; [] if none. For a big region or metro area (Delhi NCR, Greater Mumbai,
+  Bay Area) list its main cities or districts instead, at most 8 (Delhi NCR: Delhi, Gurugram, Noida, Ghaziabad, Faridabad).
+- near_me: true when they said near me / nearby, or named no place.
+- target_count: how many places they want. "all", "every" or "complete list" means 300; a number they gave is used (at most
+  300); otherwise 60.
+- extra_fields: any of opening_hours, price_level, delivery, dine_in, takeout, vegetarian the user asked about.
+- lead_focus: "" unless the request is about leads or prospects; then a short phrase for what the user sells.
+- scrape_sites: true (the default) to also open each business's own website for its email, social links and site problems;
+  false only if the user said not to.
 
 Use pipeline "regulatory_feed" ONLY when the user explicitly asks for Indian eGazette /
 egazette.gov.in gazette notifications (PDF listings, ministry notifications on the gazette portal).
@@ -104,6 +126,7 @@ If the user wants a comprehensive list (e.g. all EV cars with prices, compare mo
         }
     )
     intent.validate()
+    from places_strategy import reconcile_places_intent
     from regulatory_strategy import enrich_intent_for_execution
 
-    return enrich_intent_for_execution(intent)
+    return reconcile_places_intent(enrich_intent_for_execution(intent))

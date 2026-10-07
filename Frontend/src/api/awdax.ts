@@ -10,7 +10,10 @@ import {
 } from './awdaxpAdapter.ts'
 import type { Query } from '../analytics/aggregate.ts'
 import type { AskColumn } from '../analytics/askPayload.ts'
+import type { ApiKeyInfo, CreatedApiKey } from '../app/developers/snippets.ts'
+import type { FailedLinksResponse } from '../app/sources/failedLinks.ts'
 import { request } from './client.ts'
+import { currentPosition, wantsMyLocation } from './geolocate.ts'
 
 export type AskReply =
   | { kind: 'query'; query: Query }
@@ -76,9 +79,11 @@ export const awdax = {
    * the app sends this once per chat (from New chat), not for follow-ups.
    */
   startTracking: async (id: string, text: string) => {
+    // "Cafes near me" needs where the person is; the browser asks only for a request like that.
+    const location = wantsMyLocation(text) ? await currentPosition() : null
     await request(`${at(id)}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ content: text }),
+      body: JSON.stringify(location ? { content: text, location } : { content: text }),
     })
     return loadInstance(id)
   },
@@ -115,6 +120,8 @@ export const awdax = {
   },
 
   getSources: (id: string) => request<SourcesResponse>(`${at(id)}/sources`),
+  /** The research step's ranked websites and the links that failed their plain web request. */
+  getFailedLinks: (id: string) => request<FailedLinksResponse>(`${at(id)}/failed-links`),
 
   getStats: (id: string) => request<DatasetStats>(`${at(id)}/dataset/stats`),
 
@@ -133,6 +140,14 @@ export const awdax = {
   /** A question about a table the browser holds: the AI's checked plan, a computed result, or a refusal. */
   ask: (body: { question: string; columns: AskColumn[]; rows: Record<string, string | number | null>[] }) =>
     request<AskReply>('/api/ask', { method: 'POST', body: JSON.stringify(body) }),
+
+  /** The signed-in account's API keys. The secret itself is only ever in createApiKey's answer. */
+  listApiKeys: () => request<ApiKeyInfo[]>('/api/keys'),
+  createApiKey: (body: { name: string; scopes: string[] }) => request<CreatedApiKey>('/api/keys', { method: 'POST', body: JSON.stringify(body) }),
+  revokeApiKey: (id: string) => request<void>(`/api/keys/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  /** The API's own description (OpenAPI), for the Developers page. */
+  openApi: () =>
+    request<{ paths?: Record<string, Record<string, { summary?: string; tags?: string[]; description?: string }>>; tags?: { name: string }[] }>('/api/openapi.json'),
 
   streamUrl: (id: string) => `${import.meta.env.VITE_API_BASE_URL ?? ''}${at(id)}/live/stream`,
 

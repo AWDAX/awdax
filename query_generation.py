@@ -27,18 +27,12 @@ _NARROW_RE = re.compile(
             r"\bnewly launch",
             r"\breview\b",
             r"\bvs\b",
-            r"\btata\b",
-            r"\bmahindra\b",
-            r"\bhyundai\b",
-            r"\bmg motor\b",
-            r"\bbyd\b",
-            r"\bmaruti\b",
-            r"\bkia\b",
-            r"\btesla\b",
         ]
     ),
     re.I,
 )
+# A single car brand narrows a car catalog; for any other topic these words are just names ("Tata" dealers).
+_CAR_BRAND_RE = re.compile(r"\b(tata|mahindra|hyundai|mg motor|byd|maruti|kia|tesla)\b", re.I)
 
 
 @dataclass
@@ -76,18 +70,28 @@ def _wants_full_catalog(user_prompt: str, intent: ScrapeIntent | None = None) ->
     return False
 
 
-def _is_narrow_query(query: str) -> bool:
-    return bool(_NARROW_RE.search(query))
+def _is_ev_catalog(intent: ScrapeIntent | None) -> bool:
+    if intent is None:
+        return False
+    from listing_sources import intent_wants_ev_catalog
+
+    return intent_wants_ev_catalog(intent)
+
+
+def _is_narrow_query(query: str, *, car_brands: bool = False) -> bool:
+    return bool(_NARROW_RE.search(query)) or (car_brands and bool(_CAR_BRAND_RE.search(query)))
 
 
 def _purpose_block(user_prompt: str, intent: ScrapeIntent | None = None) -> str:
     if not _wants_full_catalog(user_prompt, intent):
         return "Each query should help find pages with structured data relevant to the request."
-    return """Purpose: we need to scrape a COMPLETE catalog (every model), with prices/specs in tables or lists—not a shortlist.
+    detail = " (every model, with its prices and specs)" if _is_ev_catalog(intent) else ""
+    brands = ", single-brand (Tata/Mahindra/etc.)" if _is_ev_catalog(intent) else ", single-name"
+    return f"""Purpose: we need to scrape a COMPLETE list{detail} in tables or lists—not a shortlist.
 
-Each search query must target pages that list ALL or MANY items together (comparison pages, full price lists, Wikipedia list articles, aggregator category pages).
+Each search query must target pages that list ALL or MANY items together (comparison pages, full lists, directories, Wikipedia list articles, aggregator category pages).
 
-Do NOT use: best, top N, cheapest, luxury, budget/under ₹X, single-brand (Tata/Mahindra/etc.), upcoming-only, or review roundups.
+Do NOT use: best, top N, cheapest, luxury, budget/under ₹X{brands}, upcoming-only, or review roundups.
 
 Keep each query short (under ~10 words), natural for Google—avoid long site: strings."""
 
@@ -124,7 +128,7 @@ Return JSON only: an array of {n} strings (each string is one search query)."""
         key = gq.query.lower()
         if key in seen:
             continue
-        if _wants_full_catalog(user_prompt, intent) and _is_narrow_query(gq.query):
+        if _wants_full_catalog(user_prompt, intent) and _is_narrow_query(gq.query, car_brands=_is_ev_catalog(intent)):
             continue
         seen.add(key)
         out.append(gq)
@@ -142,13 +146,11 @@ def discovery_extra_queries(intent: ScrapeIntent, *, existing: set[str]) -> list
     out: list[GeneratedQuery] = []
     if intent_is_parliament_sessions(intent):
         seeds = [
-            "List of sessions of the Lok Sabha wikipedia",
-            "Category Sessions of the Rajya Sabha wikipedia",
-            "site:en.wikipedia.org sessions Lok Sabha dates",
-            "site:en.wikipedia.org Rajya Sabha session list",
-            "site:prsindia.org parliament sessions list table",
-            "site:data.gov.in lok sabha session",
-            "site:data.gov.in rajya sabha session",
+            "site:sansad.in/ls/debates Lok Sabha debates search",
+            "site:sansad.in/rs/debates Rajya Sabha official debates",
+            "site:prsindia.org sessiontrack session summary",
+            "site:data.gov.in lok sabha debates",
+            "site:data.gov.in rajya sabha debates",
             "Digital Sansad lok sabha session proceedings list",
             "rajya sabha session dates archive official list",
             "lok sabha session dates sittings table india",
@@ -173,7 +175,17 @@ def discovery_extra_queries(intent: ScrapeIntent, *, existing: set[str]) -> list
 def _fallback_queries(
     user_prompt: str, need: int, seen: set[str], intent: ScrapeIntent | None = None
 ) -> list[GeneratedQuery]:
-    if _wants_full_catalog(user_prompt, intent):
+    if _wants_full_catalog(user_prompt, intent) and not _is_ev_catalog(intent):
+        seeds = [
+            user_prompt,
+            f"{user_prompt} complete list",
+            f"{user_prompt} full list",
+            f"{user_prompt} directory",
+            f"list of {user_prompt}",
+            f"{user_prompt} wikipedia list",
+            f"{user_prompt} data table",
+        ]
+    elif _wants_full_catalog(user_prompt, intent):
         seeds = [
             "all electric cars in India price list",
             "complete list electric vehicles India prices specifications",
@@ -200,7 +212,7 @@ def _fallback_queries(
         s = s.strip()
         if not s or s.lower() in seen:
             continue
-        if _wants_full_catalog(user_prompt, intent) and _is_narrow_query(s):
+        if _wants_full_catalog(user_prompt, intent) and _is_narrow_query(s, car_brands=_is_ev_catalog(intent)):
             continue
         seen.add(s.lower())
         out.append(GeneratedQuery(query=s))

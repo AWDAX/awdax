@@ -1,0 +1,26 @@
+# AWDAX_DOMAIN is the site's address (awdax.synapical.com): Caddy gets and renews its HTTPS certificate. For a local trial set
+# AWDAX_DOMAIN=http://localhost (plain http; a bare `localhost` makes Caddy use its own self-signed https).
+{$AWDAX_DOMAIN:localhost} {
+	encode zstd gzip
+
+	# The API, its live stream (server-sent events and WebSockets) and the MCP endpoint all live under /api. No buffering,
+	# or the live view arrives in bursts.
+	handle /api/* {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+	handle /health {
+		reverse_proxy api:8000
+	}
+	handle /ready {
+		reverse_proxy api:8000
+	}
+
+	# Everything else is the site; unknown paths fall back to the app so deep links work.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

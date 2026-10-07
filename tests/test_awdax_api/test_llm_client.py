@@ -126,5 +126,118 @@ class LlmClientTests(unittest.TestCase):
             self.assertEqual(llm_client.llm_text("p"), "hello")
 
 
+class FakeGemini:
+    """Stands in for google.generativeai: records each model built and each call; `answers` is consumed one per call."""
+
+    def __init__(self, answers):
+        self.answers, self.built, self.calls = list(answers), [], []
+
+    def configure(self, api_key):
+        pass
+
+    def GenerativeModel(self, name, generation_config=None):  # noqa: N802 - the real name
+        self.built.append((name, generation_config))
+        outer = self
+
+        class Model:
+            def generate_content(self, prompt, request_options=None):
+                outer.calls.append((name, request_options))
+                answer = outer.answers.pop(0)
+                if isinstance(answer, Exception):
+                    raise answer
+                return mock.Mock(text=answer)
+
+        return Model()
+
+
+class GeminiTests(unittest.TestCase):
+    ENV = {"GEMINI_API_KEY": "k"}
+
+    def run_with(self, answers, env=None, **kw):
+        fake = FakeGemini(answers)
+        google = mock.Mock(generativeai=fake)
+        with mock.patch.dict(os.environ, {**self.ENV, **(env or {})}, clear=True), \
+                mock.patch.dict(sys.modules, {"google": google, "google.generativeai": fake}):
+            return fake, llm_client.llm_json("p", **kw)
+
+    def test_gemini_3_5_flash_is_the_default_and_answers_in_json_mode(self):
+        fake, out = self.run_with(['{"a": 1}'])
+        self.assertEqual(out, {"a": 1})
+        name, config = fake.built[0]
+        self.assertEqual(name, "gemini-3.5-flash")
+        self.assertEqual(config, {"response_mime_type": "application/json"})
+
+    def test_temperature_is_left_at_googles_default_on_gemini_3_but_used_on_older_models(self):
+        fake, _ = self.run_with(['{"a": 1}'], temperature=0)
+        self.assertNotIn("temperature", fake.built[0][1])
+        fake, _ = self.run_with(['{"a": 1}'], env={"GEMINI_MODEL": "gemini-2.5-flash"}, temperature=0)
+        self.assertEqual(fake.built[0][1]["temperature"], 0)
+
+    def test_a_pinned_model_can_be_chosen(self):
+        fake, _ = self.run_with(['{"a": 1}'], env={"GEMINI_MODEL": "gemini-3.8-flash"})
+        self.assertEqual(fake.built[0][0], "gemini-3.8-flash")
+
+    def test_a_retired_model_falls_back_to_the_latest_alias_instead_of_failing(self):
+        gone = RuntimeError("404 This model models/gemini-3.5-flash is no longer available")
+        fake, out = self.run_with([gone, '{"ok": true}'])
+        self.assertEqual(out, {"ok": True})
+        self.assertEqual([b[0] for b in fake.built], ["gemini-3.5-flash", "gemini-flash-latest"])
+
+    def test_a_busy_or_timed_out_gemini_is_asked_again_after_a_short_wait(self):
+        busy = RuntimeError("503 The model is overloaded. Please try again later.")
+        deadline = RuntimeError("DeadlineExceeded: 504 Deadline Exceeded")
+        with mock.patch.object(llm_client.time, "sleep") as sleep:
+            fake, out = self.run_with([busy, deadline, '{"ok": true}'])
+        self.assertEqual(out, {"ok": True})
+        self.assertEqual(len(fake.built), 3)
+        self.assertEqual([c.args[0] for c in sleep.call_args_list], [2.0, 4.0], "the pause grows")
+        self.assertEqual({b[0] for b in fake.built}, {"gemini-3.5-flash"}, "the same model is asked, not another")
+
+    def test_it_gives_up_after_three_busy_answers_and_a_non_busy_error_is_not_retried(self):
+        busy = RuntimeError("429 Resource has been exhausted")
+        with mock.patch.object(llm_client.time, "sleep"), self.assertRaisesRegex(RuntimeError, "Gemini request failed"):
+            fake, _ = self.run_with([busy, busy, busy, '{"never": "reached"}'])
+        with mock.patch.object(llm_client.time, "sleep") as sleep:
+            fake = None
+            with self.assertRaisesRegex(RuntimeError, "Gemini request failed"):
+                fake, _ = self.run_with([ValueError("response was blocked"), '{"never": "reached"}'])
+        sleep.assert_not_called()
+        with mock.patch.object(llm_client.time, "sleep") as sleep, self.assertRaisesRegex(RuntimeError, "Gemini request failed"):
+            self.run_with([busy, '{"never": "reached"}'], env={"GEMINI_ATTEMPTS": "1"})  # one attempt: no retry
+        sleep.assert_not_called()
+
+    def test_other_failures_do_not_try_another_model_and_become_a_runtime_error(self):
+        fake = None
+        with self.assertRaisesRegex(RuntimeError, "Gemini request failed"):
+            fake, _ = self.run_with([ConnectionError("network down")])
+        # a blocked or empty answer (the SDK raises ValueError on .text) is the same kind of failure
+        with self.assertRaisesRegex(RuntimeError, "Gemini request failed"):
+            self.run_with([ValueError("response was blocked")])
+
+    def test_json_that_does_not_parse_is_asked_for_once_more(self):
+        fake, out = self.run_with(["not json at all", '{"second": "try"}'])
+        self.assertEqual(out, {"second": "try"})
+        self.assertEqual(len(fake.calls), 2)
+        with self.assertRaisesRegex(RuntimeError, "could not be read"):
+            self.run_with(["nope", "still nope"])
+
+    def test_a_request_never_waits_longer_than_the_callers_budget(self):
+        fake, _ = self.run_with(['{"a": 1}'], budget_s=20)
+        # NVIDIA is not configured here, so the whole budget is Gemini's
+        self.assertLessEqual(fake.calls[0][1]["timeout"], 20)
+        fake, _ = self.run_with(['{"a": 1}'])
+        self.assertEqual(fake.calls[0][1]["timeout"], llm_client.GEMINI_TIMEOUT_S)
+
+    def test_nvidia_failing_falls_back_to_gemini(self):
+        fake = FakeGemini(['{"via": "gemini"}'])
+        google = mock.Mock(generativeai=fake)
+        env = {"NVIDIA_API_KEY": SECRET, "GEMINI_API_KEY": "k", "NVIDIA_MODELS": "m"}
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch("requests.post", return_value=_resp(503)), \
+                mock.patch.dict(sys.modules, {"google": google, "google.generativeai": fake}):
+            self.assertEqual(llm_client.llm_json("p"), {"via": "gemini"})
+        llm_client._cooldown_until.clear()
+        llm_client._timed_out.clear()
+
+
 if __name__ == "__main__":
     unittest.main()

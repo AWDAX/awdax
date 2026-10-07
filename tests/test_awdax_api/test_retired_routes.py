@@ -1,8 +1,10 @@
 """The pre-React API and its page were removed from app.py (3 Oct 2026). Callers must see exactly what the old
 legacy guard gave them: the API's JSON 404 on every retired path and method, while the React API still answers."""
+import os
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -35,6 +37,9 @@ RETIRED = [
 
 class RetiredRoutesTests(unittest.TestCase):
     def setUp(self):
+        env = mock.patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev"})
+        env.start()
+        self.addCleanup(env.stop)
         self.client = app.test_client()
 
     def test_every_retired_path_is_the_json_404(self):

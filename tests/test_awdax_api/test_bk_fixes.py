@@ -75,17 +75,17 @@ class InterruptedRunTests(_TempDb):
         ui_sessions.save_session(done)
 
         self.assertEqual(recover_interrupted_runs(), 1)
-        after = ui_sessions.get_session(stuck["id"])
+        after = ui_sessions.get_session_internal(stuck["id"])
         self.assertEqual(after["awdax_run"]["status"], "failed")
         self.assertFalse(after["run_active"])
         self.assertIn("interrupted", after["messages"][-1]["content"].lower())
-        self.assertEqual(ui_sessions.get_session(done["id"])["awdax_run"]["status"], "succeeded")
+        self.assertEqual(ui_sessions.get_session_internal(done["id"])["awdax_run"]["status"], "succeeded")
         self.assertEqual(recover_interrupted_runs(), 0)
 
 
 class RunThreadMergeTests(_TempDb):
     def test_rename_during_run_survives_final_persist(self):
-        from awdax_api import orchestrator
+        from awdax_api import orchestrator, run_registry
         from awdax_api.session_store import load_instance_session, persist_session
 
         sess = ui_sessions.create_session(user_id="u1", title="Old")
@@ -101,7 +101,7 @@ class RunThreadMergeTests(_TempDb):
 
         with mock.patch.object(orchestrator, "run_pipeline_for_session", side_effect=fake_pipeline), \
                 mock.patch.object(orchestrator.live_bridge, "notify_instance"):
-            orchestrator.mark_running(sid)
+            run_registry.mark_running(sid)
             orchestrator._run_thread(sid, "goal", None)
         final = load_instance_session(sid)
         self.assertEqual(final["title"], "Renamed")
@@ -120,7 +120,7 @@ class AccessTests(_TempDb):
         return {"X-User-Id": uid}
 
     def test_other_user_gets_404_everywhere(self):
-        with mock.patch.dict(os.environ, {}, clear=True):
+        with mock.patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev"}, clear=True):
             r = self.client.post("/api/instances", json={"title": "x" * 200}, headers=self._h("A"))
             self.assertEqual(r.status_code, 201)
             iid = r.get_json()["id"]
@@ -146,7 +146,7 @@ class AccessTests(_TempDb):
             wrong = self.client.post("/api/instances", json={}, headers={"X-User-Id": "A", "X-Proxy-Secret": "bad"})
             self.assertEqual(wrong.status_code, 401)
             ok = self.client.post("/api/instances", json={}, headers={"X-User-Id": "A", "X-Proxy-Secret": "s3"})
-            self.assertEqual(ui_sessions.get_session(ok.get_json()["id"])["user_id"], "A")
+            self.assertEqual(ui_sessions.get_session_internal(ok.get_json()["id"])["user_id"], "A")
 
     def test_unverifiable_token_is_a_json_401_not_a_shared_user(self):
         with mock.patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "real-secret-real-secret-real-secret-1"}, clear=True):
@@ -172,7 +172,7 @@ class JwtTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"SUPABASE_JWT_SECRET": self.SECRET}, clear=True):
             with self.assertRaises(AuthError):
                 get_user_id(self._req(tok))
-        with mock.patch.dict(os.environ, {}, clear=True):
+        with mock.patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev"}, clear=True):
             self.assertEqual(get_user_id(self._req(tok)), "victim")
 
     def test_valid_hs256_token_and_cookie_fallback(self):
@@ -187,7 +187,7 @@ class JwtTests(unittest.TestCase):
     def test_garbage_token_fails_closed_and_no_token_is_anonymous(self):
         from auth_helper import AuthError, get_user_id
 
-        with mock.patch.dict(os.environ, {}, clear=True):
+        with mock.patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev"}, clear=True):
             with self.assertRaises(AuthError):
                 get_user_id(self._req("not-a-jwt"))
             self.assertEqual(get_user_id(self._req()), "anonymous")

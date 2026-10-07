@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { detailOf } from './errorText.ts'
 
-test('524 Cloudflare HTML page becomes a plain sentence', () => {
+test('524 gateway-timeout HTML page becomes a plain sentence', () => {
   const out = detailOf('<!DOCTYPE html><html><body>timeout</body></html>', 524)
   assert.equal(out, 'The AWDAX server didn’t answer (HTTP 524). Try again in a minute.')
 })

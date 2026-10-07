@@ -19,7 +19,7 @@ MP4, H.264 video + AAC audio, 1920x1080, 30 fps, with `faststart` so it plays be
 ffmpeg -i input.mov -c:v libx264 -crf 23 -preset slow -c:a aac -b:a 128k -movflags +faststart awdax-tutorial.mp4
 ```
 
-**Cloudflare Pages rejects files over 25 MiB.** If the video is longer or heavier than that, host it elsewhere (for example R2, or an unlisted direct file link) and point `VITE_TUTORIAL_VIDEO_URL` at it.
+**Keep the file small** (the site image is rebuilt on every deploy, so a large video slows it and bloats the repository). If the video is longer or heavier than a few tens of MiB, host it elsewhere (an unlisted video link or object storage) and point `VITE_TUTORIAL_VIDEO_URL` at it.
 
 ## Suggested chapters
 

@@ -1,6 +1,7 @@
 """Ask about this data: the model's plan is held to this table's guardrails, heavy maths runs sandboxed and the
 function never reaches the browser. The model is stubbed: these tests are about what happens to its reply."""
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -101,6 +102,9 @@ class ComputeTests(unittest.TestCase):
 
 class AskRouteTests(unittest.TestCase):
     def setUp(self):
+        env = mock.patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev"})
+        env.start()
+        self.addCleanup(env.stop)
         self.client = app.test_client()
 
     def test_route_answers_and_turns_guardrail_refusals_into_a_refuse_answer(self):

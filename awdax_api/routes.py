@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import json
-import os
 import queue
+from typing import Any
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
 from awdax_api.dataset_export import build_dashboard, build_dataset_table
 from awdax_api.errors import detail_response
-from awdax_api.orchestrator import is_running, resume_instance, start_run
-from awdax_api.run_registry import RunLimitError, has_capacity
+from awdax_api.orchestrator import cancel_run, is_running, resume_instance, submit_run
+from awdax_api.run_registry import RunLimitError, has_room
 from awdax_api.serializers import to_awdax_instance, to_awdax_live_state, to_awdax_messages
-from awdax_api.session_store import append_message, load_instance_session, persist_session
+from awdax_api.session_store import append_message, ensure_awdax_defaults, load_instance_session, persist_session
 from awdax_api.sources_stats_graph import (
     build_dataset_stats,
     build_sources_response,
@@ -22,11 +22,12 @@ from awdax_api.sources_stats_graph import (
 from awdax_api.live_bridge import live_bridge
 from auth_helper import get_user_id
 from scraper import universal_service
-from ui_sessions import create_session, delete_session, get_session, list_sessions, save_session
+from ui_sessions import create_session, delete_session, list_full_sessions, save_session
 
 bp = Blueprint("awdax_api", __name__)
 
 MAX_PROMPT_CHARS = 2000
+MAX_PAGES_LIMIT = 10
 PROMPT_TOO_LONG = f"Request is too long ({MAX_PROMPT_CHARS} characters max)"
 WS_KEEPALIVE_SECONDS = 15
 RUNS_BUSY = "Too many runs are active right now. Please try again in a few minutes."
@@ -44,6 +45,29 @@ def _pump(sub, send, timeout: float = WS_KEEPALIVE_SECONDS) -> None:
         send(json.dumps(msg, default=str))
 
 
+def _coordinate(value: Any, limit: float) -> float:
+    if isinstance(value, bool):
+        raise ValueError
+    number = float(value)
+    if not -limit <= number <= limit:  # also false for NaN
+        raise ValueError
+    return number
+
+
+def _location_hint(body: dict[str, Any]) -> dict[str, Any] | None:
+    """Where the user is, for a "near me" search: the position the browser sent with the message. Nothing else is trusted
+    (a header could be typed by anyone); with no position the search falls back to PLACES_DEFAULT_CENTER."""
+    raw = body.get("location")
+    if raw is None:
+        return None
+    try:
+        if not isinstance(raw, dict):
+            raise ValueError
+        return {"lat": _coordinate(raw.get("lat"), 90), "lng": _coordinate(raw.get("lng"), 180), "source": "browser"}
+    except (TypeError, ValueError):
+        raise ValueError("location must be {lat, lng} in degrees") from None
+
+
 @bp.get("/health")
 def health():
     return jsonify({"status": "ok"})
@@ -57,14 +81,8 @@ def ready():
 @bp.get("/api/instances")
 def list_instances():
     uid = get_user_id(request)
-    rows = []
-    for meta in list_sessions(uid):
-        full = get_session(meta["id"], uid)
-        if not full:
-            continue
-        if full.get("archived"):
-            continue
-        rows.append(to_awdax_instance(full, with_row_count=False))
+    # One query for the whole list (it used to read the table once for the list and once more per chat).
+    rows = [to_awdax_instance(ensure_awdax_defaults(full), with_row_count=False) for full in list_full_sessions(uid) if not full.get("archived")]
     return jsonify(rows)
 
 
@@ -122,6 +140,7 @@ def delete_instance(instance_id: str):
     jid = sess.get("job_id")
     if jid:
         universal_service.stop_live(jid)
+    cancel_run(instance_id)  # an active run stops at its next step and frees its slot; a waiting one leaves the list
     delete_session(instance_id, get_user_id(request))
     return ("", 204)
 
@@ -147,8 +166,20 @@ def post_message(instance_id: str):
         return detail_response(400, "content is required")
     if len(content) > MAX_PROMPT_CHARS:
         return detail_response(400, PROMPT_TOO_LONG)
+    mp = None
+    if body.get("max_pages") is not None:
+        try:
+            mp = int(body["max_pages"])
+        except (TypeError, ValueError, OverflowError):
+            return detail_response(400, "max_pages must be a whole number")
+        mp = max(1, min(mp, MAX_PAGES_LIMIT))
+    try:
+        hint = _location_hint(body)
+    except ValueError as exc:
+        return detail_response(400, str(exc))
     # Refuse before any side effect: a request turned away must not stop tracking, clear the dataset or save a message.
-    if not has_capacity(instance_id, sess.get("user_id")):
+    # At the run limit a request waits for a slot; only a full waiting list turns it away.
+    if not has_room(instance_id, sess.get("user_id")):
         return detail_response(429, RUNS_BUSY)
     append_message(sess, role="user", content=content)
     sess["goal"] = content
@@ -164,10 +195,11 @@ def post_message(instance_id: str):
         universal_service.stop_live(sess["job_id"])
         universal_service.clear_job_dataset(sess["job_id"])
     sess = persist_session(sess)
-    max_pages = body.get("max_pages")
-    mp = int(max_pages) if max_pages is not None else None
+    start_kwargs: dict[str, Any] = {"max_pages": mp}
+    if hint:
+        start_kwargs["location_hint"] = hint
     try:
-        start_run(instance_id, content, max_pages=mp)
+        submit_run(instance_id, content, **start_kwargs)
     except RunLimitError:
         return detail_response(429, RUNS_BUSY)
     except RuntimeError as e:
@@ -234,6 +266,10 @@ def patch_live(instance_id: str):
     if jid and not enabled:
         universal_service.stop_live(jid)
     sess = persist_session(sess)
+    if not enabled:
+        # Pausing stops an active first pass too (it used to run on and keep its slot) and leaves the waiting list.
+        cancel_run(instance_id)
+        sess = load_instance_session(instance_id) or sess
     if enabled:
         resume_instance(instance_id, sess)
         sess = load_instance_session(instance_id) or sess
@@ -282,6 +318,20 @@ def get_sources(instance_id: str):
     if not sess:
         return detail_response(404, "Instance not found")
     return jsonify(build_sources_response(sess))
+
+
+@bp.get("/api/instances/<instance_id>/failed-links")
+def get_failed_links(instance_id: str):
+    """The links this chat's run could not read with a plain web request (blocked, not found, unreachable, CAPTCHA), as a
+    table, plus the websites the research step ranked."""
+    sess = load_instance_session(instance_id, get_user_id(request))
+    if not sess:
+        return detail_response(404, "Instance not found")
+    from url_access import dataset_for_job
+
+    table = dataset_for_job(str(sess.get("job_id") or ""))
+    research = sess.get("research") or {}
+    return jsonify({**table, "research": research.get("websites") or []})
 
 
 @bp.get("/api/instances/<instance_id>/dataset/stats")

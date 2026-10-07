@@ -1,4 +1,4 @@
-"""BE-01 / BE-03: with PROXY_SHARED_SECRET set, identity is only ever proven; never forged or 'anonymous'."""
+"""BE-01 / BE-03: identity is only ever proven (strict is the default); never forged or 'anonymous'. AWDAX_AUTH_MODE=dev is the explicit opt-out."""
 import logging
 import os
 import sys
@@ -110,7 +110,7 @@ class StrictModeTests(_Base):
 
 class PermissiveModeTests(_Base):
     def _env(self, **extra):
-        return mock.patch.dict(os.environ, dict(extra), clear=True)
+        return mock.patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev", **extra}, clear=True)
 
     def test_bare_user_header_works(self):
         with self._env():
@@ -135,9 +135,110 @@ class PermissiveModeTests(_Base):
                 get_user_id(_req())
                 get_user_id(_req({"X-User-Id": "dev"}))
                 get_user_id(_req())
-            hits = [m for m in logs.output if "PROXY_SHARED_SECRET" in m]
+            hits = [m for m in logs.output if "AWDAX_AUTH_MODE=dev" in m]
             self.assertEqual(len(hits), 1, logs.output)
             self.assertIn("unverified", hits[0].lower())
+
+
+class StrictByDefaultTests(_Base):
+    """No AWDAX_AUTH_MODE and no PROXY_SHARED_SECRET at all: the safe mode, not the permissive one."""
+
+    def _env(self, **extra):
+        return mock.patch.dict(os.environ, dict(extra), clear=True)
+
+    def test_nothing_configured_refuses_everything(self):
+        with self._env():
+            with self.assertRaises(AuthError):
+                get_user_id(_req())
+            with self.assertRaises(AuthError):
+                get_user_id(_req({"X-User-Id": "victim"}))
+            with self.assertRaises(AuthError):
+                get_user_id(_req(_bearer(_forged())))
+
+    def test_user_header_is_refused_when_no_proxy_secret_is_configured(self):
+        with self._env():
+            with self.assertRaises(AuthError):
+                get_user_id(_req({"X-User-Id": "alice", "X-Proxy-Secret": ""}))
+
+    def test_blank_user_header_is_refused_not_everyone(self):
+        with self._env(PROXY_SHARED_SECRET=PROXY):
+            for blank in ("", " ", "   "):
+                with self.assertRaises(AuthError):
+                    get_user_id(_req({"X-User-Id": blank, "X-Proxy-Secret": PROXY}))
+
+    def test_the_shared_anonymous_user_is_refused(self):
+        with self._env(PROXY_SHARED_SECRET=PROXY):
+            with self.assertRaises(AuthError):
+                get_user_id(_req({"X-User-Id": "anonymous", "X-Proxy-Secret": PROXY}))
+
+    def test_dev_mode_blank_header_falls_back_to_the_dev_bucket(self):
+        with self._env(AWDAX_AUTH_MODE="dev"):
+            self.assertEqual(get_user_id(_req({"X-User-Id": "  "})), "anonymous")
+
+    def test_identity_carries_how_it_was_proven(self):
+        with self._env(PROXY_SHARED_SECRET=PROXY):
+            ident = auth_helper.get_identity(_req({"X-User-Id": "alice", "X-Proxy-Secret": PROXY}))
+        self.assertEqual((ident.user_id, ident.method), ("alice", "proxy"))
+        self.assertEqual(ident.scopes, frozenset({"read", "write"}))
+
+
+class AsymmetricTokenTests(_Base):
+    """Supabase's ES256 tokens are verified against its published keys, not trusted."""
+
+    URL = "https://proj.supabase.co"
+
+    def setUp(self):
+        super().setUp()
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        self.key = ec.generate_private_key(ec.SECP256R1())
+        self.other = ec.generate_private_key(ec.SECP256R1())
+        signing = mock.Mock()
+        signing.key = self.key.public_key()
+        client = mock.Mock()
+        client.get_signing_key_from_jwt.return_value = signing
+        patch = mock.patch.object(auth_helper, "_jwks_client", return_value=client)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def _token(self, key=None, **claims):
+        import time
+
+        body = {"sub": "gina", "aud": "authenticated", "iss": f"{self.URL}/auth/v1", "exp": int(time.time()) + 600}
+        body.update(claims)
+        body = {k: v for k, v in body.items() if v is not None}
+        return jwt.encode(body, key or self.key, algorithm="ES256")
+
+    def _env(self, **extra):
+        return mock.patch.dict(os.environ, {"SUPABASE_URL": self.URL, **extra}, clear=True)
+
+    def test_valid_token_is_that_user(self):
+        with self._env():
+            self.assertEqual(get_user_id(_req(_bearer(self._token()))), "gina")
+            self.assertEqual(get_user_id(_req(cookie=self._token())), "gina")
+
+    def test_token_signed_by_another_key_is_rejected(self):
+        with self._env():
+            with self.assertRaises(AuthError):
+                get_user_id(_req(_bearer(self._token(key=self.other))))
+
+    def test_expired_wrong_audience_wrong_issuer_and_no_expiry_are_rejected(self):
+        import time
+
+        with self._env():
+            for bad in (
+                self._token(exp=int(time.time()) - 3600),
+                self._token(aud="somebody-else"),
+                self._token(iss="https://evil.example/auth/v1"),
+                self._token(exp=None),
+            ):
+                with self.assertRaises(AuthError):
+                    get_user_id(_req(_bearer(bad)))
+
+    def test_missing_supabase_url_rejects(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(AuthError):
+                get_user_id(_req(_bearer(self._token())))
 
 
 class StrictModeOverHttpTests(_Base):

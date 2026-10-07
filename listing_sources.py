@@ -18,22 +18,14 @@ class AnchorListing:
     source_category: str = "aggregator"
 
 
+# Tried only for requests about the Indian Parliament (intent_is_parliament_sessions), first, ahead of any search. Each address
+# was checked to answer (HTTP 200) and to hold the records: the two official debate listings are JavaScript tables whose data
+# feed is read page by page (data_feed.py); PRS's Session Track is the independent summary of every session. The earlier
+# Wikipedia and PRS "sessions" addresses here had moved and answered 404 on every run.
 _PARLIAMENT_ANCHORS: tuple[AnchorListing, ...] = (
-    AnchorListing(
-        "List of Lok Sabha sessions (Wikipedia)",
-        "https://en.wikipedia.org/wiki/List_of_sessions_of_the_Lok_Sabha",
-        "wiki",
-    ),
-    AnchorListing(
-        "Rajya Sabha sessions (Wikipedia category)",
-        "https://en.wikipedia.org/wiki/Category:Sessions_of_the_Rajya_Sabha",
-        "wiki",
-    ),
-    AnchorListing(
-        "PRS Parliament sessions",
-        "https://prsindia.org/parliament-track/sessions",
-        "aggregator",
-    ),
+    AnchorListing("Digital Sansad: Lok Sabha debates", "https://sansad.in/ls/debates/digitized", "government"),
+    AnchorListing("Digital Sansad: Rajya Sabha official debates", "https://sansad.in/rs/debates/officials", "government"),
+    AnchorListing("PRS Session Track", "https://prsindia.org/sessiontrack", "aggregator"),
 )
 
 _EV_INDIA_ANCHORS: tuple[AnchorListing, ...] = (
@@ -41,7 +33,7 @@ _EV_INDIA_ANCHORS: tuple[AnchorListing, ...] = (
     AnchorListing("CarDekho Electric Cars", "https://www.cardekho.com/electric-cars", "aggregator"),
     AnchorListing("91Wheels Electric Cars", "https://www.91wheels.com/electric-cars", "aggregator"),
     AnchorListing("ZigWheels Electric Cars", "https://www.zigwheels.com/newcars/electric-cars", "aggregator"),
-    AnchorListing("Wikipedia EV India", "https://en.wikipedia.org/wiki/Electric_car_use_in_India", "wiki"),
+    AnchorListing("Wikipedia EV industry in India", "https://en.wikipedia.org/wiki/Electric_vehicle_industry_in_India", "wiki"),
 )
 
 

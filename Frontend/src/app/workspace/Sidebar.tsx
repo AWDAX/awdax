@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router'
 import { setStreamToken } from '../../api/client.ts'
+import { setScopeUser } from '../auth/userScope.ts'
+import { setFilesOwner } from '../files/localProjects.ts'
 import { useAuth } from '../auth/authContext.ts'
-import { LogoutIcon, PlusIcon, ReportIcon, SearchIcon, SidebarIcon } from '../../ui/appIcons.tsx'
+import { BracesIcon, LogoutIcon, PlusIcon, ReportIcon, SearchIcon, SidebarIcon } from '../../ui/appIcons.tsx'
 import { buttonClass } from '../../ui/buttonClass.ts'
 import { Tooltip } from '../../ui/Tooltip.tsx'
 import { TutorialTrigger } from '../../ui/tutorial/TutorialTrigger.tsx'
@@ -58,6 +60,9 @@ export function Sidebar({ onCollapse, onNavigate }: Props) {
           <NavLink to="/app/projects" onClick={onNavigate} className={navClass}>
             <ReportIcon /> Projects report
           </NavLink>
+          <NavLink to="/app/developers" onClick={onNavigate} className={navClass}>
+            <BracesIcon /> API &amp; MCP
+          </NavLink>
         </div>
       </div>
 
@@ -94,6 +99,9 @@ function Account() {
   const leave = async () => {
     // AuthProvider unmounts on navigate, before SIGNED_OUT can clear the stream cookie, so clear it here.
     setStreamToken(null)
+    // Nothing of this account stays addressable (its saved answers, files and alerts) once it has left.
+    setScopeUser(null)
+    setFilesOwner(null)
     navigate('/', { replace: true })
     await signOut()
   }

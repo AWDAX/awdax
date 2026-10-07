@@ -1,0 +1,68 @@
+name: Deploy
+
+# Runs only when someone starts it from the Actions tab (or pushes a version tag like v1.2.0). It logs in to the server over SSH, updates the
+# code there, and rebuilds and restarts the containers. Nothing is deployed by an ordinary push or pull request.
+#
+# One-time setup (repository Settings -> Secrets and variables -> Actions):
+#   secrets:   DEPLOY_HOST (server address), DEPLOY_USER (login), DEPLOY_SSH_KEY (private key of that login)
+#   variables: DEPLOY_PATH (folder of the checkout on the server, e.g. /opt/awdax)
+# The server needs git and Docker, a clone of this repository at DEPLOY_PATH, and a .env file there (docs/DEPLOY.md).
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or commit to deploy
+        default: main
+        required: true
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - name: Check the settings exist
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+        run: |
+          for v in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_PATH; do
+            test -n "${!v}" || { echo "Missing $v (see the comment at the top of this workflow)"; exit 1; }
+          done
+      - name: Update the server and restart
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          REF: ${{ github.event.inputs.ref || github.ref_name }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_PATH" "$REF" <<'REMOTE'
+          set -euo pipefail
+          cd "$1"
+          git fetch --tags --prune origin
+          git checkout --detach "$2" 2>/dev/null || git checkout --detach "origin/$2"
+          docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
+          docker image prune -f
+          # The backend must answer before the deploy counts as done.
+          for i in $(seq 1 30); do
+            docker compose -f deploy/docker-compose.yml --env-file .env exec -T api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)" && exit 0
+            sleep 2
+          done
+          echo "The backend did not answer /health after the update"; docker compose -f deploy/docker-compose.yml --env-file .env logs --tail=80 api; exit 1
+          REMOTE

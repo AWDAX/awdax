@@ -96,7 +96,7 @@ class UserEditsSurviveBackgroundWritesTests(_Base):
 class PromptAndTitleLimitTests(_Base):
     def test_message_over_2000_is_rejected(self):
         iid = self._create()
-        with mock.patch.object(routes, "start_run") as sr:
+        with mock.patch.object(routes, "submit_run") as sr:
             r = self.client.post(f"/api/instances/{iid}/messages", json={"content": "a" * 2001})
         self.assertEqual(r.status_code, 400)
         self.assertEqual(r.get_json()["detail"], "Request is too long (2000 characters max)")
@@ -104,7 +104,7 @@ class PromptAndTitleLimitTests(_Base):
 
     def test_message_of_2000_is_accepted(self):
         iid = self._create()
-        with mock.patch.object(routes, "start_run") as sr:
+        with mock.patch.object(routes, "submit_run") as sr:
             r = self.client.post(f"/api/instances/{iid}/messages", json={"content": "a" * 2000})
         self.assertEqual(r.status_code, 201)
         sr.assert_called_once()

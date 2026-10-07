@@ -6,6 +6,7 @@ import { CHART_LABEL, newId } from '../../analytics/spec.ts'
 import type { ChartSpec, ChartType } from '../../analytics/spec.ts'
 import { queryTitle } from '../../analytics/suggest.ts'
 import { Button } from '../../ui/Button.tsx'
+import { scopedKey } from '../auth/userScope.ts'
 import { ChartPicker } from '../dashboard/ChartPicker.tsx'
 import { draftFor, GALLERY, unavailable } from '../dashboard/chartTypes.ts'
 import { ChartView } from '../dashboard/charts/ChartView.tsx'
@@ -13,7 +14,7 @@ import { graphIdeas, graphProfile } from './graphIdeas.ts'
 import { Select } from '../../ui/Select.tsx'
 
 type Saved = { instanceId: string; signature: string; overrides: Record<string, ChartSpec>; extra: ChartSpec[] }
-const keyFor = (id: string) => `awdax.graphs.v2.${id}`
+const keyFor = (id: string) => scopedKey(`awdax.graphs.v2.${id}`)
 const signatureOf = (p: TableProfile) => p.columns.map((c) => `${c.name}:${c.kind}${c.virtual ? ':virtual' : ''}`).join('|')
 
 function load(id: string, signature: string): Saved {

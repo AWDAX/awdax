@@ -37,7 +37,7 @@ Optional in `.env.local`:
 AWDAX_API=http://127.0.0.1:8000
 ```
 
-For production, Cloudflare Pages uses `functions/api/[[path]].ts` with `AWDAX_API_ORIGIN` pointing at your tunnel or host.
+For production the site and the backend share one domain behind a reverse proxy; see `docs/CONNECT_BACKEND.md`.
 
 ## Stack
 
