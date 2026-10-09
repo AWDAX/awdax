@@ -30,10 +30,28 @@ def _env_int(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
+def _drop_blocks(html: str, tag: str) -> str:
+    """Remove every <tag ...>...</tag> in one pass. str.find, not a lazy regex: a page with thousands of unclosed tags
+    made each regex attempt rescan to the end (minutes per page). An unclosed block runs to the end and is dropped."""
+    lower, open_t, close_t = html.lower(), f"<{tag}", f"</{tag}>"
+    out, i = [], 0
+    while (j := lower.find(open_t, i)) >= 0:
+        after = lower[j + len(open_t): j + len(open_t) + 1]
+        if after and after not in " \t\r\n>/":  # <scripted>, <styles>: not this tag
+            out.append(html[i: j + 1])
+            i = j + 1
+            continue
+        out.append(html[i:j] + " ")
+        k = lower.find(close_t, j)
+        if k < 0:
+            return "".join(out)
+        i = k + len(close_t)
+    out.append(html[i:])
+    return "".join(out)
+
+
 def _strip_scripts_styles(html: str) -> str:
-    html = re.sub(r"<script\b[^>]*>.*?</script>", " ", html, flags=re.I | re.S)
-    html = re.sub(r"<style\b[^>]*>.*?</style>", " ", html, flags=re.I | re.S)
-    return re.sub(r"\s+", " ", html).strip()
+    return re.sub(r"\s+", " ", _drop_blocks(_drop_blocks(html, "script"), "style")).strip()
 
 
 _TITLED_LINK = re.compile(r"(<a\b[^>]*\btitle\s*=\s*[\"']([^\"']+)[\"'][^>]*>)([^<]*)(</a>)", re.I)

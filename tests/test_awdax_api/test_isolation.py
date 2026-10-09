@@ -26,7 +26,7 @@ CHAT_ROUTES = [
 
 
 def _token(sub):
-    return jwt.encode({"sub": sub}, SECRET, algorithm="HS256")
+    return jwt.encode({"sub": sub, "app_metadata": {"provider": "google"}}, SECRET, algorithm="HS256")
 
 
 def _as(sub):

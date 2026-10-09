@@ -19,4 +19,7 @@ def selenium_scroll_and_get_html(driver, *, max_scrolls: int | None = None) -> s
         if h == last_h:
             break
         last_h = h
+    from url_guard import check_browser_url
+
+    check_browser_url(driver)  # scrolling can trigger the page's own navigation; never read a page it led to
     return driver.page_source or ""

@@ -60,3 +60,15 @@ _2026-10-03 12:57_ · code:PASS ui:PASS · code `8c17b5a2d4f1`
 ## Q15 — Fix the 2 sandbox tests CI fails on Linux: OS-independent nesting limit, CPU limit a second past the wall clock
 
 _2026-10-03 13:02_ · code:PASS · code `eeba246a308a`
+
+## S1 — Security: fail closed without the proxy secret, empty user id sees nothing, per-user browser storage (A7)
+
+_2026-10-03 15:11_ · code:PASS ui:PASS · code `8c9e8b63fef2`
+
+## S2 — Security hardening from review: Chrome sandbox + redirect re-check, Google-only identities, run/stream/limit caps, robots.txt, eGazette host + PDF caps, regex input cap, privacy page + full chat deletion
+
+_2026-10-03 15:37_ · code:PASS ui:PASS · code `8739ce78f341`
+
+## S4 — Security on main: Google-only sign-in + port S2 hardening main lacks (robots.txt, chat/run budgets, stream caps, delete_job, PDF caps, exact host checks, max_pages clamp, regex cap, privacy page)
+
+_2026-10-09 13:32_ · code:PASS ui:PASS · code `0f172b73851a`

@@ -2,11 +2,11 @@ import type { ReactNode } from 'react'
 import { AuthFrame } from '../app/AuthFrame.tsx'
 import { Mark } from '../ui/Mark.tsx'
 
-// The privacy policy Google's consent screen links to. It describes what the code does today: Google
-// sign-in through Supabase and nothing else. Update it (and UPDATED) before shipping anything that
-// stores more, such as saved requests, datasets or analytics.
+// The privacy policy Google's consent screen links to. It describes what the code does today: Google sign-in,
+// chats and datasets stored with the account, and the services that read requests and pages. Update it (and
+// UPDATED) whenever what is stored or who receives it changes.
 const CONTACT = 'harshitsinhchauhan250@gmail.com'
-const UPDATED = '27 September 2026'
+const UPDATED = '9 October 2026'
 
 // Inline links: underline from AuthCallback's "Try again", highlighter on hover from the Footer.
 const linkClass =
@@ -41,8 +41,10 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
     title: 'What stays in your browser',
     body: (
       <p>
-        To keep you signed in, your browser stores a session token in local storage. Signing out removes it. This
-        site sets no advertising or analytics cookies.
+        To keep you signed in, your browser stores a session token in local storage. Signing out removes it. Your
+        browser also keeps your own view settings for each chat (saved questions, dashboard layout, charts, which
+        pages you opened, alerts), kept apart for each account that signs in on it. Files you upload as data stay in
+        your browser. This site sets no advertising or analytics cookies.
       </p>
     ),
   },
@@ -50,8 +52,10 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
     title: 'What you create in the app',
     body: (
       <p>
-        For now the app only signs you in. When the request, plan and dataset screens open, what you create there
-        will be stored with your account so you can come back to it. This page will say so before that happens.
+        Your chats are stored with your account on AWDAX’s server so you can come back to them: what you asked for,
+        the plan, the sources AWDAX read and the dataset it built. Nobody else can see them. When you ask a question
+        about a table, the table and your question are sent to AWDAX’s server to work out the answer; that includes
+        a table from a file you uploaded.
       </p>
     ),
   },
@@ -61,8 +65,16 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
       <>
         <p>
           Supabase runs sign-in and stores your account in its Mumbai region. Google shows the sign-in screen.
-          AWDAX runs this website and its server itself. Supabase and the AWDAX server keep short-lived technical logs,
-          such as IP addresses and browser details, to run the service and block abuse.
+          AWDAX runs this website and its server itself. Google Fonts serves its typefaces, so your browser contacts
+          Google for them. Supabase, the AWDAX server and Google keep short-lived technical logs, such as IP addresses
+          and browser details, to run the service and block abuse.
+        </p>
+        <p className="mt-3">
+          To do the work, AWDAX sends your request, and the text of the public web pages it reads for you, to its AI
+          providers (NVIDIA and Google Gemini), and search queries made from your request to its search providers
+          (Serper, Tavily or Google Search). For a request about local businesses it also sends the search, and the
+          location your browser shares if you allow it, to Google Maps. The pages it reads see AWDAX’s server, not you.
+          It only reads pages a site allows crawlers to read.
         </p>
         <p className="mt-3">AWDAX does not sell your data or share it with advertisers.</p>
       </>
@@ -72,8 +84,9 @@ const SECTIONS: { title: string; body: ReactNode }[] = [
     title: 'Deleting your data',
     body: (
       <p>
-        Your account data stays while you have an account. Email {mail} and your account, and everything linked to
-        it, will be deleted. You can also remove AWDAX’s access at any time from your Google account’s{' '}
+        Deleting a chat in the app removes it, its request and the data found for it from AWDAX’s server. Your account
+        stays while you have one: email {mail} and your account, and everything linked to it, will be deleted. You
+        can also remove AWDAX’s access at any time from your Google account’s{' '}
         <TextLink href="https://myaccount.google.com/connections">third-party connections</TextLink> page.
       </p>
     ),

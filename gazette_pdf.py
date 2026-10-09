@@ -9,7 +9,7 @@ from typing import Any
 
 import requests
 
-from url_guard import safe_get
+from url_guard import host_is, safe_get
 
 try:
     import certifi
@@ -83,13 +83,14 @@ def _fetch_pdf_bytes(
 ) -> bytes | None:
     """Download PDF bytes; retry without verify for egazette on macOS SSL issues."""
     verify_opts: list[Any] = [_pdf_verify_option()]
-    if "egazette.gov.in" in (pdf_url or ""):
+    # The real host only: "egazette.gov.in" anywhere else in a URL (a query, a path) must not switch TLS checks off.
+    if host_is(pdf_url or "", "egazette.gov.in"):
         verify_opts.append(False)
     last_err: Exception | None = None
     for verify in verify_opts:
         try:
             # The URL can come from an LLM-written template or a scraped viewer page: every hop is checked (SSRF).
-            resp = safe_get(pdf_url, session=sess, timeout=timeout, verify=verify)
+            resp = safe_get(pdf_url, session=sess, timeout=timeout, verify=verify, max_bytes=MAX_PDF_BYTES)
             if resp.status_code == 200 and len(resp.content) >= 100:
                 return resp.content
             return None
@@ -136,6 +137,31 @@ def _pdf_session(cookies_sess: requests.Session | None = None) -> requests.Sessi
     return sess
 
 
+MAX_PDF_BYTES = 20 * 2**20
+MAX_PDF_PAGES = 200
+
+
+def pdf_text(pdf_bytes: bytes) -> str:
+    """The text of a PDF (PyMuPDF, else pdfminer), from at most its first MAX_PDF_PAGES pages: a huge file found on
+    the web must not tie up a scrape worker."""
+    if PYMUPDF_AVAILABLE:
+        try:
+            with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+                text = "\n".join(page.get_text() for page, _ in zip(doc, range(MAX_PDF_PAGES)))
+            if text.strip():
+                return text
+        except Exception:
+            pass
+    if PDFMINER_AVAILABLE:
+        try:
+            text = pdfminer_extract(io.BytesIO(pdf_bytes), maxpages=MAX_PDF_PAGES)
+            if text.strip():
+                return text
+        except Exception:
+            pass
+    return ""
+
+
 def download_and_extract_pdf(pdf_url: str) -> str:
     if not pdf_url or not pdf_url.strip():
         return ""
@@ -145,27 +171,7 @@ def download_and_extract_pdf(pdf_url: str) -> str:
         if not pdf_bytes:
             return ""
 
-        if PYMUPDF_AVAILABLE:
-            try:
-                parts = []
-                with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
-                    for page in doc:
-                        parts.append(page.get_text())
-                text = "\n".join(parts)
-                if text.strip():
-                    return text
-            except Exception:
-                pass
-
-        if PDFMINER_AVAILABLE:
-            try:
-                text = pdfminer_extract(io.BytesIO(pdf_bytes))
-                if text.strip():
-                    return text
-            except Exception:
-                pass
-
-        return ""
+        return pdf_text(pdf_bytes)
     except Exception as e:
         logger.error(f"PDF download error: {e}")
         return ""

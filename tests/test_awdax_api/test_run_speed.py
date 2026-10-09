@@ -119,7 +119,7 @@ class TimedOutModelTests(unittest.TestCase):
 class PageLoadTests(unittest.TestCase):
     def setUp(self):
         # load_page now vets the URL (DNS) and the page Chrome landed on (SSRF guard); these tests are about timing.
-        for name in ("check_url", "check_browser_url"):
+        for name in ("check_url", "check_browser_url", "check_robots"):
             patcher = mock.patch.object(inspector, name)
             patcher.start()
             self.addCleanup(patcher.stop)

@@ -134,3 +134,36 @@ Verified 2026-10-03 12:57 against code `8c17b5a2d4f1`.
 Verified 2026-10-03 13:02 against code `eeba246a308a`.
 
 - **code** — PASS via `verify.mjs` · recorded 2026-10-03 13:02
+
+## S1 — Security: fail closed without the proxy secret, empty user id sees nothing, per-user browser storage (A7)
+
+Verified 2026-10-03 15:11 against code `8c9e8b63fef2`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 15:10
+- **ui** — PASS via `playwright-core+chromium-1243 (headless)` · recorded 2026-10-03 15:11
+  - routes: /app, /, /app/demo/*, /app/c/*
+  - viewports: mobile, desktop
+  - states: default
+  - 48 assertion(s) · 0 console error(s) · 0 failed request(s)
+
+## S2 — Security hardening from review: Chrome sandbox + redirect re-check, Google-only identities, run/stream/limit caps, robots.txt, eGazette host + PDF caps, regex input cap, privacy page + full chat deletion
+
+Verified 2026-10-03 15:37 against code `8739ce78f341`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-03 15:29
+- **ui** — PASS via `playwright-core+chromium-1243 (headless)` · recorded 2026-10-03 15:37
+  - routes: /app, /, /app/demo/*, /app/c/*
+  - viewports: mobile, desktop
+  - states: default
+  - 48 assertion(s) · 0 console error(s) · 0 failed request(s)
+
+## S4 — Security on main: Google-only sign-in + port S2 hardening main lacks (robots.txt, chat/run budgets, stream caps, delete_job, PDF caps, exact host checks, max_pages clamp, regex cap, privacy page)
+
+Verified 2026-10-09 13:32 against code `0f172b73851a`.
+
+- **code** — PASS via `verify.mjs` · recorded 2026-10-09 13:32
+- **ui** — PASS via `playwright-core` · recorded 2026-10-09 13:32
+  - routes: /app, /privacy
+  - viewports: mobile, desktop
+  - states: default
+  - 18 assertion(s) · 0 console error(s) · 0 failed request(s)

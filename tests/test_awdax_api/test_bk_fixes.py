@@ -47,6 +47,9 @@ class RegulatoryRoutingTests(unittest.TestCase):
 
 class _TempDb(unittest.TestCase):
     def setUp(self):
+        from test_run_lifecycle import fresh_budgets
+
+        fresh_budgets(self)
         self._dir = tempfile.TemporaryDirectory()
         self._patch = mock.patch.object(ui_sessions, "DB_PATH", Path(self._dir.name) / "t.sqlite")
         self._patch.start()
@@ -179,7 +182,7 @@ class JwtTests(unittest.TestCase):
         import jwt
         from auth_helper import get_user_id
 
-        tok = jwt.encode({"sub": "alice"}, self.SECRET, algorithm="HS256")
+        tok = jwt.encode({"sub": "alice", "app_metadata": {"provider": "google"}}, self.SECRET, algorithm="HS256")
         with mock.patch.dict(os.environ, {"SUPABASE_JWT_SECRET": self.SECRET}, clear=True):
             self.assertEqual(get_user_id(self._req(tok)), "alice")
             self.assertEqual(get_user_id(self._req(cookie=tok)), "alice")

@@ -15,7 +15,8 @@ from typing import Any
 from discovery import SourceCandidate, fetch_html, normalize_https, probe_https
 from reasoning import ScrapeIntent, gemini_json
 import url_access
-from url_guard import check_browser_url, check_url
+from robots import check_robots
+from url_guard import check_browser_url, check_url, host_is
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +296,7 @@ def load_page(driver: Any, url: str) -> None:
     Chrome's own redirects ended somewhere that is not allowed.
     """
     check_url(url)
+    check_robots(url)  # a page the site asks crawlers not to read is never opened
     try:
         driver.get(url)
     except TimeoutException:
@@ -361,6 +363,7 @@ def _probe_page_selenium(url: str) -> dict[str, Any]:
         load_page(driver, url)
         wait_until_settled(driver)
         signals["title"] = driver.title
+        check_browser_url(driver)  # the page may have sent the browser somewhere else while it settled
         tables = driver.find_elements(By.TAG_NAME, "table")[:8]
         for i, tbl in enumerate(tables):
             tid = tbl.get_attribute("id") or ""
@@ -478,7 +481,7 @@ def _apply_ai_column_map(plan: ScrapePlan, intent: ScrapeIntent, headers: list[s
 
 def _uses_selenium_scraper(plan: ScrapePlan) -> bool:
     """Only the eGazette table is still scraped with Selenium; every other source is read by the model from its page."""
-    return plan.table_selector == "#gvGazetteList" or "egazette.gov.in" in (plan.entry_url or plan.source_url or "").lower()
+    return plan.table_selector == "#gvGazetteList" or host_is(plan.entry_url or plan.source_url or "", "egazette.gov.in")
 
 
 def _signals_for_prompt(signals: dict[str, Any]) -> dict[str, Any]:
@@ -585,7 +588,7 @@ def inspect_source(
     use_preset_for_egazette: bool = True,
 ) -> ScrapePlan:
     url = normalize_https(source.final_url or source.url)
-    if use_preset_for_egazette and "egazette.gov.in" in url:
+    if use_preset_for_egazette and host_is(url, "egazette.gov.in"):
         plan = egazette_preset_plan()
         plan.dry_run_rows = dry_run_plan(plan, intent)
         plan.source_url = url

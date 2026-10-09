@@ -51,7 +51,7 @@ class StopLiveOnNewMessageTests(_Base):
     def _post(self, iid):
         parent = mock.Mock()
         with mock.patch.object(routes.universal_service, "stop_live", parent.stop_live), \
-                mock.patch.object(routes.universal_service, "clear_job_dataset", parent.clear), \
+                mock.patch.object(routes.universal_service, "delete_job", parent.clear), \
                 mock.patch.object(routes, "submit_run", parent.start_run):
             r = self.client.post(f"/api/instances/{iid}/messages", json={"content": "new goal"})
         return r, parent
@@ -76,7 +76,7 @@ class StopLiveOnNewMessageTests(_Base):
         iid = self._create(job_id="old-job")
         with mock.patch.object(routes, "is_running", return_value=True), \
                 mock.patch.object(routes.universal_service, "stop_live") as stop, \
-                mock.patch.object(routes.universal_service, "clear_job_dataset") as clear, \
+                mock.patch.object(routes.universal_service, "delete_job") as clear, \
                 mock.patch.object(routes, "submit_run") as start:
             r = self.client.post(f"/api/instances/{iid}/messages", json={"content": "x"})
         self.assertEqual(r.status_code, 409)
@@ -240,7 +240,7 @@ class RunLimitTests(_RegistryBase):
         sess.update(job_id="job-1", title="Keep me")
         persist_session(sess)
         with mock.patch.object(routes.universal_service, "stop_live") as stop, \
-                mock.patch.object(routes.universal_service, "clear_job_dataset") as clear, \
+                mock.patch.object(routes.universal_service, "delete_job") as clear, \
                 mock.patch.object(orchestrator.threading, "Thread"):
             r = self.client.post(f"/api/instances/{iid}/messages", json={"content": "a new request"})
         self.assertEqual(r.status_code, 429)

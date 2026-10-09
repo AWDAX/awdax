@@ -1,0 +1,563 @@
+{
+  "task": "S1",
+  "class": "ui",
+  "verdict": "PASS",
+  "recorded": "2026-10-03T15:11:12.675Z",
+  "codeHash": "8c9e8b63fef2340933a1d2c98042f2216e8b7cf1e7c6140dad922a1a9dde616a",
+  "head": "d741b68",
+  "tool": "playwright-core+chromium-1243 (headless)",
+  "resources": {
+    "measuredAt": "2026-10-03T15:11:12.701Z",
+    "cpus": 20,
+    "freeMemMB": 1122,
+    "freeDiskMB": 40803,
+    "root": "X:/",
+    "budget": {
+      "maxParallel": null,
+      "testWorkers": null,
+      "from": {
+        "maxParallel": "default",
+        "testWorkers": "unset"
+      }
+    }
+  },
+  "detail": {
+    "verdict": "PASS",
+    "producer": "playwright-core+chromium-1243 (headless)",
+    "baseUrl": "http://localhost:5174",
+    "startedAt": "2026-10-03T15:10:51.361Z",
+    "finishedAt": "2026-10-03T15:11:12.029Z",
+    "checks": [
+      {
+        "route": "/app",
+        "viewport": "mobile",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document status",
+            "expect": "< 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "main h1",
+            "actual": {
+              "w": 335,
+              "h": 31
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "target": "main",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "[aria-label=\"Upload a file\"]",
+            "actual": {
+              "w": 36,
+              "h": 36
+            },
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "main h1",
+            "expect": "What data do you need?",
+            "actual": "What data do you need?",
+            "ok": true
+          },
+          {
+            "kind": "custom",
+            "target": "meta[name=viewport]",
+            "expect": true,
+            "actual": true,
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/app-mobile-default.png",
+        "screenshotSha256": "2b961121e9d3c84934f575ae3317210ea4f9ba260b69ff2c4831751f5cdff6f2",
+        "screenshotSize": {
+          "w": 375,
+          "h": 812,
+          "bytes": 41373
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "mobile",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document status",
+            "expect": "< 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "h1",
+            "actual": {
+              "w": 327,
+              "h": 150
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "target": "main",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "nav, header",
+            "actual": {
+              "w": 375,
+              "h": 66
+            },
+            "ok": true
+          },
+          {
+            "kind": "custom",
+            "target": "meta[name=viewport]",
+            "expect": true,
+            "actual": true,
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/landing-mobile-default.png",
+        "screenshotSha256": "38f69c1d20b3943865377a6e088c5795e25f7c246663ef2962cefa1313d47165",
+        "screenshotSize": {
+          "w": 375,
+          "h": 812,
+          "bytes": 47346
+        }
+      },
+      {
+        "route": "/app/demo/*",
+        "url": "/app/demo/phones-under-30k",
+        "viewport": "mobile",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document status",
+            "expect": "< 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "#ask-heading",
+            "actual": {
+              "w": 335,
+              "h": 25
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "target": "main",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "ask section row count",
+            "expect": "9",
+            "actual": "9",
+            "ok": true
+          },
+          {
+            "kind": "custom",
+            "target": "meta[name=viewport]",
+            "expect": true,
+            "actual": true,
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/demo-mobile-default.png",
+        "screenshotSha256": "657154ae2ade0bd7b805134dccc08704806a18742b860b58ac6b40a840c4c014",
+        "screenshotSize": {
+          "w": 375,
+          "h": 812,
+          "bytes": 59277
+        }
+      },
+      {
+        "route": "/app/c/*",
+        "url": "/app/c/bdf7b9f89024",
+        "viewport": "mobile",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document status",
+            "expect": "< 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "main h1",
+            "actual": {
+              "w": 283,
+              "h": 25
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "target": "main",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "main h1",
+            "expect": "timing check",
+            "actual": "timing check",
+            "ok": true
+          },
+          {
+            "kind": "custom",
+            "target": "main h1 while the chat request is held 3 s",
+            "expect": "never \"Untitled chat\"",
+            "actual": [
+              "Loading chat",
+              "timing check"
+            ],
+            "ok": true
+          },
+          {
+            "kind": "custom",
+            "target": "meta[name=viewport]",
+            "expect": true,
+            "actual": true,
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/chat-mobile-default.png",
+        "screenshotSha256": "a809324acb1cf8fd87b5c8e2f4049736504def93fa9069ab996083ee17c65227",
+        "screenshotSize": {
+          "w": 375,
+          "h": 812,
+          "bytes": 53852
+        }
+      },
+      {
+        "route": "/app",
+        "viewport": "desktop",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document status",
+            "expect": "< 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "main h1",
+            "actual": {
+              "w": 728,
+              "h": 41
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 1440,
+              "scrollWidth": 1440
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "target": "main",
+            "actual": {
+              "clientWidth": 1176,
+              "scrollWidth": 1176
+            },
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "[aria-label=\"Upload a file\"]",
+            "actual": {
+              "w": 36,
+              "h": 36
+            },
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "main h1",
+            "expect": "What data do you need?",
+            "actual": "What data do you need?",
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/app-desktop-default.png",
+        "screenshotSha256": "969fc1d23a0d5e529432f34f2224420c7747948f516d7036ae9685413b79861c",
+        "screenshotSize": {
+          "w": 1440,
+          "h": 900,
+          "bytes": 104745
+        }
+      },
+      {
+        "route": "/",
+        "viewport": "desktop",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document status",
+            "expect": "< 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "h1",
+            "actual": {
+              "w": 1120,
+              "h": 244
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 1440,
+              "scrollWidth": 1440
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "target": "main",
+            "actual": {
+              "clientWidth": 1440,
+              "scrollWidth": 1440
+            },
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "nav, header",
+            "actual": {
+              "w": 1440,
+              "h": 66
+            },
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/landing-desktop-default.png",
+        "screenshotSha256": "a0c890ddf4b772171e04658747d41bd2346ce7ff209bc25b163bace933f36022",
+        "screenshotSize": {
+          "w": 1440,
+          "h": 900,
+          "bytes": 89139
+        }
+      },
+      {
+        "route": "/app/demo/*",
+        "url": "/app/demo/phones-under-30k",
+        "viewport": "desktop",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document status",
+            "expect": "< 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "#ask-heading",
+            "actual": {
+              "w": 365,
+              "h": 25
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 1440,
+              "scrollWidth": 1440
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "target": "main",
+            "actual": {
+              "clientWidth": 1176,
+              "scrollWidth": 1176
+            },
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "ask section row count",
+            "expect": "9",
+            "actual": "9",
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/demo-desktop-default.png",
+        "screenshotSha256": "bfa96f0320dc329280eda0ee7cae1e19bb1f0ec216ffd966f3ba689dd7dfdfb1",
+        "screenshotSize": {
+          "w": 1440,
+          "h": 900,
+          "bytes": 174039
+        }
+      },
+      {
+        "route": "/app/c/*",
+        "url": "/app/c/bdf7b9f89024",
+        "viewport": "desktop",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document status",
+            "expect": "< 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "main h1",
+            "actual": {
+              "w": 1084,
+              "h": 25
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 1440,
+              "scrollWidth": 1440
+            },
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "target": "main",
+            "actual": {
+              "clientWidth": 1176,
+              "scrollWidth": 1176
+            },
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "main h1",
+            "expect": "timing check",
+            "actual": "timing check",
+            "ok": true
+          },
+          {
+            "kind": "custom",
+            "target": "main h1 while the chat request is held 3 s",
+            "expect": "never \"Untitled chat\"",
+            "actual": [
+              "Loading chat",
+              "timing check"
+            ],
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/chat-desktop-default.png",
+        "screenshotSha256": "d17c01f2bd9e490925d7dca92c13441a7732649baf6efcfea93d3b27d2ad6d37",
+        "screenshotSize": {
+          "w": 1440,
+          "h": 900,
+          "bytes": 139188
+        }
+      }
+    ]
+  }
+}

@@ -90,13 +90,24 @@ def _identity_from_api_key(key: str, *, dev: bool = False) -> Identity:
     return Identity(owner, "api_key", frozenset(resolved.scopes), resolved.key_id)
 
 
+def _signed_in_subject(payload: dict) -> str:
+    """The `sub` of a Google sign-in. Google is the app's only sign-in; anonymous or email/password accounts can be
+    created with the public key, so accepting them would hand anyone unlimited identities and get round per-user limits."""
+    meta = payload.get("app_metadata") or {}
+    providers = meta.get("providers") if isinstance(meta.get("providers"), list) else [meta.get("provider")]
+    if payload.get("is_anonymous") is True or "google" not in providers:
+        logging.warning("JWT rejected: not a Google sign-in")
+        raise AuthError(_SIGN_IN_MESSAGE)
+    return _clean_user_id(payload.get("sub"))
+
+
 def _hs_subject(token: str, secret: str) -> str:
     try:
         payload = jwt.decode(token, secret, algorithms=_HS_ALGS, options={"verify_aud": False})
     except Exception as exc:
         logging.warning("JWT rejected: %s", type(exc).__name__)
         raise AuthError(_SIGN_IN_MESSAGE) from exc
-    return _clean_user_id(payload.get("sub"))
+    return _signed_in_subject(payload)
 
 
 def _jwks_client(supabase_url: str) -> "jwt.PyJWKClient":
@@ -126,7 +137,7 @@ def _asymmetric_subject(token: str) -> str:
     except Exception as exc:
         logging.warning("JWT rejected: %s", type(exc).__name__)
         raise AuthError(_SIGN_IN_MESSAGE) from exc
-    return _clean_user_id(payload.get("sub"))
+    return _signed_in_subject(payload)
 
 
 def _verified_subject(token: str) -> str:

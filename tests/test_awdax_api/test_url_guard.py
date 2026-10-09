@@ -96,6 +96,11 @@ class GuardTestCase(unittest.TestCase):
         gai = mock.patch("socket.getaddrinfo", side_effect=_fake_getaddrinfo(self.names))
         gai.start()
         self.addCleanup(gai.stop)
+        # robots.txt has its own tests (test_robots.py); here it would be one more mocked-out fetch.
+        for target in ("discovery.check_robots", "inspector.check_robots"):
+            robots = mock.patch(target)
+            robots.start()
+            self.addCleanup(robots.stop)
 
 
 class CheckUrlRejectTests(GuardTestCase):

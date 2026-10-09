@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from awdax_api import orchestrator, routes, serializers  # noqa: E402
+from awdax_api import live_routes, orchestrator, routes, serializers  # noqa: E402
 from awdax_api.session_store import load_instance_session  # noqa: E402
 from test_run_lifecycle import _Base  # noqa: E402
 
@@ -38,7 +38,7 @@ class PumpTests(unittest.TestCase):
                 raise _ClosedSocket
 
         with self.assertRaises(_ClosedSocket):
-            routes._pump(Sub(), send, timeout=0.01)
+            live_routes._pump(Sub(), send, timeout=0.01)
         self.assertEqual(sent, ['{"type": "ping"}', '{"type": "ping"}'])
 
     def test_messages_are_forwarded(self):
@@ -52,7 +52,7 @@ class PumpTests(unittest.TestCase):
                 raise _ClosedSocket
 
         with self.assertRaises(_ClosedSocket):
-            routes._pump(q, send, timeout=0.01)
+            live_routes._pump(q, send, timeout=0.01)
         self.assertEqual(sent, ['{"type": "status"}', '{"type": "ping"}'])
 
 

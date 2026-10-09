@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 from inspector import ScrapePlan, load_page, page_load_seconds
 from reasoning import ScrapeIntent
-from url_guard import UnresolvableHost, UnsafeURL, check_url
+from url_guard import UnresolvableHost, UnsafeURL, check_browser_url, check_url
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +149,7 @@ class PlanDrivenScraper:
     def scrape_list_page(self, page_num: int) -> list[dict[str, Any]]:
         rows_out: list[dict[str, Any]] = []
         try:
+            check_browser_url(self.driver)  # ready-step clicks or the page itself may have navigated away
             table = self.driver.find_element(By.CSS_SELECTOR, self.plan.table_selector)
         except NoSuchElementException:
             tables = self.driver.find_elements(By.TAG_NAME, "table")

@@ -1,6 +1,5 @@
 """Selenium scraper for the eGazette listing and its PDF viewer (from RegulatoryFeed.py)."""
 
-import io
 import logging
 import re
 import time
@@ -24,15 +23,12 @@ except ImportError:
 
 
 from gazette_pdf import (  # noqa: E402
-    PDFMINER_AVAILABLE,
-    PYMUPDF_AVAILABLE,
     _fetch_pdf_bytes,
     _pdf_session,
     _scrape_fast_mode,
     filter_hindi_text,
-    fitz,
     guess_pdf_url,
-    pdfminer_extract,
+    pdf_text,
 )
 
 logger = logging.getLogger(__name__)
@@ -178,22 +174,9 @@ class GazetteScraper:
                 if sess:
                     try:
                         content = _fetch_pdf_bytes(_pdf_session(sess), pdf_url, timeout=25)
-                        if content:
-                            if PYMUPDF_AVAILABLE:
-                                try:
-                                    parts = []
-                                    with fitz.open(stream=content, filetype="pdf") as doc:
-                                        for p in doc:
-                                            parts.append(p.get_text())
-                                    text = "\n".join(parts)
-                                    if text.strip():
-                                        return pdf_url, text
-                                except Exception:
-                                    pass
-                            if PDFMINER_AVAILABLE:
-                                text = pdfminer_extract(io.BytesIO(content))
-                                if text.strip():
-                                    return pdf_url, text
+                        text = pdf_text(content) if content else ""
+                        if text.strip():
+                            return pdf_url, text
                     except Exception:
                         pass
             return pdf_url, ""

@@ -13,7 +13,8 @@ from urllib.parse import urlparse, urlunparse
 
 import requests
 
-from url_guard import UnsafeURL, UnresolvableHost, safe_get
+from robots import check_robots
+from url_guard import UnsafeURL, UnresolvableHost, host_is, safe_get
 
 from reasoning import ScrapeIntent, gemini_json
 
@@ -125,6 +126,7 @@ def fetch_html(url: str, *, max_chars: int = 600_000) -> dict[str, Any]:
     last_err: Exception | None = None
     for verify in (_VERIFY, False):
         try:
+            check_robots(url)  # RobotsDisallowed is an UnsafeURL: handled below as a skipped source, with the reason
             # The body is read only up to max_bytes (4 bytes per char covers any UTF-8 text), then cut to max_chars as before.
             r = safe_get(
                 url,
@@ -376,7 +378,7 @@ def _rule_legit_boost(url: str) -> float:
     for tld in GOV_TLD_BONUS:
         if tld in u:
             bonus += 0.15
-    if "egazette.gov.in" in u:
+    if host_is(u, "egazette.gov.in"):
         bonus += 0.2
     if re.search(r"(blogspot|wordpress\.com|medium\.com)", u):
         bonus -= 0.3

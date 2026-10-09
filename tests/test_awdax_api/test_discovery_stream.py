@@ -16,6 +16,11 @@ from ui_sessions import create_session, delete_session_internal as delete_sessio
 
 
 class DiscoveryStreamTests(unittest.TestCase):
+    def setUp(self):
+        from test_run_lifecycle import fresh_budgets
+
+        fresh_budgets(self)
+
     def test_inspection_emits_source_before_and_after_validation(self):
         candidate = SourceCandidate(url="https://example.org/cars", title="Cars", domain="example.org")
         plan = ScrapePlan(
@@ -94,8 +99,8 @@ class DiscoveryStreamTests(unittest.TestCase):
         pending.put({"type": "source", "source": {"url": "https://example.org/cars", "status": "inspecting"}})
         try:
             with (
-                patch("awdax_api.routes.live_bridge.subscribe", return_value=pending),
-                patch("awdax_api.routes.live_bridge.unsubscribe"),
+                patch("awdax_api.live_routes.live_bridge.subscribe", return_value=pending),
+                patch("awdax_api.live_routes.live_bridge.unsubscribe"),
                 patch.dict(os.environ, {"AWDAX_AUTH_MODE": "dev"}),
             ):
                 response = app.test_client().get(f"/api/instances/{sess['id']}/live/stream", buffered=False)

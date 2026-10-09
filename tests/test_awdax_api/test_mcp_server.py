@@ -233,7 +233,7 @@ class EndToEndTests(unittest.TestCase):
         cls._dir.cleanup()
 
     def _key(self, sub, scopes=("read", "write")):
-        session = {"Authorization": "Bearer " + jwt.encode({"sub": sub}, SECRET, algorithm="HS256")}
+        session = {"Authorization": "Bearer " + jwt.encode({"sub": sub, "app_metadata": {"provider": "google"}}, SECRET, algorithm="HS256")}
         res = _http.post(f"{self.site}/api/keys", json={"name": "t", "scopes": list(scopes)}, headers=session)
         self.assertEqual(res.status_code, 201, res.text)
         return res.json()
@@ -296,14 +296,14 @@ class EndToEndTests(unittest.TestCase):
     def test_a_revoked_key_stops_working_at_once(self):
         made = self._key("dave")
         self.assertFalse(call_tool(self.gateway, "list_chats", key=made["key"])[0])
-        session = {"Authorization": "Bearer " + jwt.encode({"sub": "dave"}, SECRET, algorithm="HS256")}
+        session = {"Authorization": "Bearer " + jwt.encode({"sub": "dave", "app_metadata": {"provider": "google"}}, SECRET, algorithm="HS256")}
         self.assertEqual(_http.delete(f"{self.site}/api/keys/{made['id']}", headers=session).status_code, 204)
         # refused by the API's own check at the gateway: the key no longer resolves
         self.assertEqual(rpc(self.gateway, "tools/list", headers={"Authorization": f"Bearer {made['key']}"}).status_code, 401)
 
     def test_the_gateway_refuses_a_caller_with_no_credentials_and_a_session_without_a_key(self):
         self.assertEqual(rpc(self.gateway, "tools/list").status_code, 401)
-        session = {"Authorization": "Bearer " + jwt.encode({"sub": "erin"}, SECRET, algorithm="HS256")}
+        session = {"Authorization": "Bearer " + jwt.encode({"sub": "erin", "app_metadata": {"provider": "google"}}, SECRET, algorithm="HS256")}
         res = rpc(self.gateway, "tools/list", headers=session)
         self.assertEqual(res.status_code, 401, "a browser session is not an MCP credential")
 

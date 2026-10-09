@@ -17,6 +17,7 @@ from auth_helper import AuthError, get_user_id  # noqa: E402
 
 PROXY = "proxy-secret-value"
 JWT_SECRET = "real-secret-real-secret-real-secret-1"
+GOOGLE = {"app_metadata": {"provider": "google", "providers": ["google"]}}  # the only sign-in AWDAX accepts
 
 
 def _req(headers=None, cookie=None):
@@ -86,7 +87,7 @@ class StrictModeTests(_Base):
 
     def test_token_signed_with_jwt_secret_is_that_user(self):
         for alg in ("HS256", "HS384", "HS512"):
-            tok = jwt.encode({"sub": "carol"}, JWT_SECRET, algorithm=alg)
+            tok = jwt.encode({"sub": "carol", "app_metadata": {"provider": "google"}}, JWT_SECRET, algorithm=alg)
             with self._env(SUPABASE_JWT_SECRET=JWT_SECRET):
                 self.assertEqual(get_user_id(_req(_bearer(tok))), "carol", alg)
                 self.assertEqual(get_user_id(_req(cookie=tok)), "carol", alg)
@@ -204,7 +205,7 @@ class AsymmetricTokenTests(_Base):
     def _token(self, key=None, **claims):
         import time
 
-        body = {"sub": "gina", "aud": "authenticated", "iss": f"{self.URL}/auth/v1", "exp": int(time.time()) + 600}
+        body = {"sub": "gina", "aud": "authenticated", "iss": f"{self.URL}/auth/v1", "exp": int(time.time()) + 600, **GOOGLE}
         body.update(claims)
         body = {k: v for k, v in body.items() if v is not None}
         return jwt.encode(body, key or self.key, algorithm="ES256")
@@ -234,6 +235,14 @@ class AsymmetricTokenTests(_Base):
             ):
                 with self.assertRaises(AuthError):
                     get_user_id(_req(_bearer(bad)))
+
+    def test_a_valid_token_that_is_not_a_google_sign_in_is_rejected(self):
+        with self._env():
+            for meta in ({"provider": "email", "providers": ["email"]}, {}):
+                with self.assertRaises(AuthError):
+                    get_user_id(_req(_bearer(self._token(app_metadata=meta))))
+            with self.assertRaises(AuthError):
+                get_user_id(_req(_bearer(self._token(is_anonymous=True))))
 
     def test_missing_supabase_url_rejects(self):
         with mock.patch.dict(os.environ, {}, clear=True):

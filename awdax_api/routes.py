@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
-import queue
 from typing import Any
 
-from flask import Blueprint, Response, jsonify, request, stream_with_context
+from flask import Blueprint, jsonify, request
 
+from awdax_api.budget import Budget
 from awdax_api.dataset_export import build_dashboard, build_dataset_table
 from awdax_api.errors import detail_response
 from awdax_api.orchestrator import cancel_run, is_running, resume_instance, submit_run
@@ -19,7 +18,6 @@ from awdax_api.sources_stats_graph import (
     graph_parameters,
     rescore_dataset,
 )
-from awdax_api.live_bridge import live_bridge
 from auth_helper import get_user_id
 from scraper import universal_service
 from ui_sessions import create_session, delete_session, list_full_sessions, save_session
@@ -29,20 +27,12 @@ bp = Blueprint("awdax_api", __name__)
 MAX_PROMPT_CHARS = 2000
 MAX_PAGES_LIMIT = 10
 PROMPT_TOO_LONG = f"Request is too long ({MAX_PROMPT_CHARS} characters max)"
-WS_KEEPALIVE_SECONDS = 15
 RUNS_BUSY = "Too many runs are active right now. Please try again in a few minutes."
-
-
-def _pump(sub, send, timeout: float = WS_KEEPALIVE_SECONDS) -> None:
-    """Forward queued live messages to `send`. On an idle timeout send a ping frame; a send on a closed
-    socket raises, which ends the loop so the caller's cleanup runs."""
-    while True:
-        try:
-            msg = sub.get(timeout=timeout)
-        except queue.Empty:
-            send(json.dumps({"type": "ping"}))
-            continue
-        send(json.dumps(msg, default=str))
+TOO_MANY_CHATS = "You've started a lot of chats in the last hour. Please try again a little later."
+TOO_MANY_RUNS = "You've started a lot of searches in the last hour. Please try again a little later."
+# Each new chat and each run costs model calls and browser time: per-user budgets on top of the concurrent-run cap.
+CHAT_BUDGET = Budget(30, 3600)
+RUN_BUDGET = Budget(12, 3600)
 
 
 def _coordinate(value: Any, limit: float) -> float:
@@ -94,6 +84,8 @@ def create_instance():
     goal = str(body.get("goal") or "").strip()
     if len(goal) > MAX_PROMPT_CHARS:
         return detail_response(400, PROMPT_TOO_LONG)
+    if not CHAT_BUDGET.spend(uid):
+        return detail_response(429, TOO_MANY_CHATS)
     sess = create_session(user_id=uid, title=title)
     if goal:
         sess["goal"] = goal
@@ -141,6 +133,8 @@ def delete_instance(instance_id: str):
     if jid:
         universal_service.stop_live(jid)
     cancel_run(instance_id)  # an active run stops at its next step and frees its slot; a waiting one leaves the list
+    if jid:
+        universal_service.delete_job(jid)  # its rows, prompt, plans and sources: nothing outlives the chat
     delete_session(instance_id, get_user_id(request))
     return ("", 204)
 
@@ -155,7 +149,8 @@ def get_messages(instance_id: str):
 
 @bp.post("/api/instances/<instance_id>/messages")
 def post_message(instance_id: str):
-    sess = load_instance_session(instance_id, get_user_id(request))
+    uid = get_user_id(request)
+    sess = load_instance_session(instance_id, uid)
     if not sess:
         return detail_response(404, "Instance not found")
     if is_running(instance_id):
@@ -181,6 +176,8 @@ def post_message(instance_id: str):
     # At the run limit a request waits for a slot; only a full waiting list turns it away.
     if not has_room(instance_id, sess.get("user_id")):
         return detail_response(429, RUNS_BUSY)
+    if not RUN_BUDGET.spend(uid):
+        return detail_response(429, TOO_MANY_RUNS)
     append_message(sess, role="user", content=content)
     sess["goal"] = content
     sess["keep_live"] = True
@@ -193,7 +190,7 @@ def post_message(instance_id: str):
     if sess.get("job_id"):
         # The new run gets a new job id; stop the old live loop or it keeps re-scraping unseen (no-op if not live).
         universal_service.stop_live(sess["job_id"])
-        universal_service.clear_job_dataset(sess["job_id"])
+        universal_service.delete_job(sess["job_id"])  # the replaced run's rows, prompt and plans
     sess = persist_session(sess)
     start_kwargs: dict[str, Any] = {"max_pages": mp}
     if hint:
@@ -213,7 +210,8 @@ def get_dataset(instance_id: str):
     if not sess:
         return detail_response(404, "Instance not found")
     try:
-        limit = min(int(request.args.get("limit", "5000")), 5000)
+        # Clamped both ways: SQLite reads LIMIT -1 as "no limit".
+        limit = max(1, min(int(request.args.get("limit", "5000")), 5000))
     except ValueError:
         limit = 5000
     include_partial = request.args.get("include_partial", "false").lower() == "true"
@@ -276,42 +274,6 @@ def patch_live(instance_id: str):
     return jsonify(to_awdax_live_state(sess))
 
 
-@bp.get("/api/instances/<instance_id>/live/stream")
-def live_stream(instance_id: str):
-    sess = load_instance_session(instance_id, get_user_id(request))
-    if not sess:
-        return detail_response(404, "Instance not found")
-
-    @stream_with_context
-    def generate():
-        sub = live_bridge.subscribe(instance_id)
-        try:
-            hello = live_bridge.hello_payload(instance_id)
-            yield f"event: status\ndata: {json.dumps(hello.get('state'), default=str)}\n\n"
-            while True:
-                try:
-                    msg = sub.get(timeout=15)
-                    etype = msg.get("type", "message")
-                    if etype == "run_event":
-                        yield f"event: run_event\ndata: {json.dumps(msg.get('event'), default=str)}\n\n"
-                    elif etype == "source":
-                        yield f"event: source\ndata: {json.dumps(msg.get('source'), default=str)}\n\n"
-                    elif etype == "status":
-                        yield f"event: status\ndata: {json.dumps(msg.get('state'), default=str)}\n\n"
-                    else:
-                        yield f"data: {json.dumps(msg, default=str)}\n\n"
-                except Exception:
-                    yield ": keepalive\n\n"
-        finally:
-            live_bridge.unsubscribe(instance_id, sub)
-
-    return Response(
-        generate(),
-        mimetype="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
-    )
-
-
 @bp.get("/api/instances/<instance_id>/sources")
 def get_sources(instance_id: str):
     sess = load_instance_session(instance_id, get_user_id(request))
@@ -371,22 +333,3 @@ def get_graph(instance_id: str):
     raw = request.args.get("parameters") or ""
     params = [p.strip() for p in raw.split(",") if p.strip()]
     return jsonify(graph_charts(sess, params, include_partial=include_partial))
-
-
-def register_websocket(sock) -> None:
-    @sock.route("/api/instances/<instance_id>/live/ws")
-    def live_ws(ws, instance_id: str):
-        sess = load_instance_session(instance_id, get_user_id(request))
-        if not sess:
-            ws.send(json.dumps({"type": "error", "detail": "Instance not found"}))
-            return
-        live_bridge.add_ws(instance_id, ws)
-        try:
-            ws.send(json.dumps(live_bridge.hello_payload(instance_id), default=str))
-            sub = live_bridge.subscribe(instance_id)
-            try:
-                _pump(sub, ws.send)
-            finally:
-                live_bridge.unsubscribe(instance_id, sub)
-        finally:
-            live_bridge.remove_ws(instance_id, ws)

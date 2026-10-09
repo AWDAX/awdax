@@ -21,7 +21,7 @@ SECRET = "api-keys-test-secret-api-keys-test-secret-1234567890"
 
 
 def _session(sub):
-    return {"Authorization": "Bearer " + jwt.encode({"sub": sub}, SECRET, algorithm="HS256")}
+    return {"Authorization": "Bearer " + jwt.encode({"sub": sub, "app_metadata": {"provider": "google"}}, SECRET, algorithm="HS256")}
 
 
 def _key(key):

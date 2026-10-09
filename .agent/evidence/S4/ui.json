@@ -1,0 +1,211 @@
+{
+  "task": "S4",
+  "class": "ui",
+  "verdict": "PASS",
+  "recorded": "2026-10-09T13:32:01.845Z",
+  "codeHash": "0f172b73851a91b25d05e32678fb1346f70b1e17c15a8a897ee871bfaf110764",
+  "head": "7d82a86",
+  "tool": "playwright-core",
+  "resources": {
+    "measuredAt": "2026-10-09T13:32:01.868Z",
+    "cpus": 20,
+    "freeMemMB": 3369,
+    "freeDiskMB": 44003,
+    "root": "X:/",
+    "budget": {
+      "maxParallel": null,
+      "testWorkers": null,
+      "from": {
+        "maxParallel": "default",
+        "testWorkers": "unset"
+      }
+    }
+  },
+  "detail": {
+    "verdict": "PASS",
+    "producer": "playwright-core",
+    "baseUrl": "http://localhost:5174",
+    "startedAt": "2026-10-09T13:31:30.897Z",
+    "finishedAt": "2026-10-09T13:31:47.779Z",
+    "checks": [
+      {
+        "route": "/app",
+        "viewport": "mobile",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document",
+            "expect": "status < 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "textarea",
+            "expect": true,
+            "actual": true,
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "count",
+            "target": "meta[name=viewport]",
+            "expect": 1,
+            "actual": 1,
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/app-mobile-default.png",
+        "screenshotSha256": "495143555bb20a1ad2a5742ef6dcc3c9ed99b202782695a031c419649b29e0db"
+      },
+      {
+        "route": "/app",
+        "viewport": "desktop",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document",
+            "expect": "status < 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "visible",
+            "target": "textarea",
+            "expect": true,
+            "actual": true,
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 1440,
+              "scrollWidth": 1440
+            },
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/app-desktop-default.png",
+        "screenshotSha256": "9715da01009fbc96caf195a92f2bc8350b74216fccfc7637381ad4f404873daa"
+      },
+      {
+        "route": "/privacy",
+        "viewport": "mobile",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document",
+            "expect": "status < 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "body",
+            "expect": "mentions Google Maps",
+            "actual": true,
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "body",
+            "expect": "self-hosted wording",
+            "actual": true,
+            "ok": true
+          },
+          {
+            "kind": "custom",
+            "target": "body",
+            "expect": "no Cloudflare",
+            "actual": false,
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 375,
+              "scrollWidth": 375
+            },
+            "ok": true
+          },
+          {
+            "kind": "count",
+            "target": "meta[name=viewport]",
+            "expect": 1,
+            "actual": 1,
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/privacy-mobile-default.png",
+        "screenshotSha256": "6c51baa282629aee038a9186fbd71dcaf98b35b2a8548c55163890efec60a519"
+      },
+      {
+        "route": "/privacy",
+        "viewport": "desktop",
+        "state": "default",
+        "settled": "networkidle",
+        "consoleErrors": [],
+        "failedRequests": [],
+        "assertions": [
+          {
+            "kind": "custom",
+            "target": "document",
+            "expect": "status < 400",
+            "actual": 200,
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "body",
+            "expect": "mentions Google Maps",
+            "actual": true,
+            "ok": true
+          },
+          {
+            "kind": "text",
+            "target": "body",
+            "expect": "self-hosted wording",
+            "actual": true,
+            "ok": true
+          },
+          {
+            "kind": "custom",
+            "target": "body",
+            "expect": "no Cloudflare",
+            "actual": false,
+            "ok": true
+          },
+          {
+            "kind": "noOverflow",
+            "actual": {
+              "clientWidth": 1440,
+              "scrollWidth": 1440
+            },
+            "ok": true
+          }
+        ],
+        "screenshot": "shots/privacy-desktop-default.png",
+        "screenshotSha256": "ce9171f19b7c32e99ed8693673de8536084305c5b35edf16553acafb7c6d8352"
+      }
+    ]
+  }
+}

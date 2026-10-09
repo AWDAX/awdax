@@ -1,0 +1,99 @@
+{
+  "verdict": "PASS",
+  "kind": "node",
+  "root": "X:\\Hackathons\\Codecubicle\\awdax\\Frontend",
+  "producer": "verify.mjs",
+  "codeHash": "c424ee5cd4c421fdc1600d02488a6acc9d0b5b1d19d9a6c4be685caeafc1068f",
+  "finishedAt": "2026-10-03T15:24:49.425Z",
+  "testKnob": null,
+  "testKnobWhy": "no usable worker count was requested (null)",
+  "checks": [
+    {
+      "name": "lint",
+      "status": "PASS",
+      "detail": "",
+      "output": "",
+      "run": {
+        "command": "npm",
+        "args": [
+          "run",
+          "lint"
+        ],
+        "termination": "exit",
+        "exitCode": 0,
+        "durationMs": 7756,
+        "timedOut": false,
+        "treeKilled": false,
+        "outputHeldOpen": false,
+        "shell": false,
+        "error": null
+      }
+    },
+    {
+      "name": "types",
+      "status": "PASS",
+      "detail": "",
+      "output": "",
+      "run": {
+        "command": "npx",
+        "args": [
+          "--no-install",
+          "tsc",
+          "--noEmit",
+          "-p",
+          "tsconfig.json"
+        ],
+        "termination": "exit",
+        "exitCode": 0,
+        "durationMs": 1002,
+        "timedOut": false,
+        "treeKilled": false,
+        "outputHeldOpen": false,
+        "shell": false,
+        "error": null
+      }
+    },
+    {
+      "name": "build",
+      "status": "PASS",
+      "detail": "",
+      "output": "",
+      "run": {
+        "command": "npm",
+        "args": [
+          "run",
+          "build"
+        ],
+        "termination": "exit",
+        "exitCode": 0,
+        "durationMs": 5053,
+        "timedOut": false,
+        "treeKilled": false,
+        "outputHeldOpen": false,
+        "shell": false,
+        "error": null
+      }
+    },
+    {
+      "name": "test",
+      "status": "PASS",
+      "detail": "",
+      "output": "",
+      "run": {
+        "command": "npm",
+        "args": [
+          "run",
+          "test"
+        ],
+        "termination": "exit",
+        "exitCode": 0,
+        "durationMs": 1131,
+        "timedOut": false,
+        "treeKilled": false,
+        "outputHeldOpen": false,
+        "shell": false,
+        "error": null
+      }
+    }
+  ]
+}

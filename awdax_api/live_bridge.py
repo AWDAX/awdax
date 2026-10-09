@@ -13,6 +13,11 @@ from awdax_api.session_store import load_instance_session, run_finished, set_awd
 
 logger = logging.getLogger(__name__)
 
+# Each open live stream (SSE or WebSocket) holds a server thread for as long as it stays open: a few hundred tabs
+# would exhaust them. Generous for real use (a chat open in a few tabs), small enough that one user can't.
+MAX_STREAMS_PER_CHAT = 6
+MAX_STREAMS_PER_USER = 16
+
 ROW_REFRESH_S = 2.0  # how often a streamed row refreshes the table and saves the chat; rows in between are counted
 
 
@@ -20,6 +25,8 @@ class LiveBridge:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._subscribers: dict[str, list[queue.Queue]] = {}
+        self._owner_of: dict[int, str] = {}  # id(queue) -> user, for the per-user count
+        self._per_user: dict[str, int] = {}
         self._ws_clients: dict[str, list[Any]] = {}
         self._started = False
         self._row_cache: dict[str, dict[str, Any]] = {}
@@ -34,17 +41,33 @@ class LiveBridge:
         threading.Thread(target=self._fan_in, args=(universal_service.subscribe_events(), "universal"), daemon=True).start()
         threading.Thread(target=self._fan_in, args=(feed_service.subscribe_events(), "regulatory"), daemon=True).start()
 
-    def subscribe(self, instance_id: str) -> queue.Queue:
+    def subscribe(self, instance_id: str, owner: str | None = None) -> queue.Queue | None:
+        """A queue of this chat's live messages, or None when `owner` already holds too many streams (or the chat
+        has too many). Internal callers pass no owner and are never capped."""
         q: queue.Queue = queue.Queue(maxsize=256)
         with self._lock:
-            self._subscribers.setdefault(instance_id, []).append(q)
+            subs = self._subscribers.setdefault(instance_id, [])
+            if owner is not None:
+                if len(subs) >= MAX_STREAMS_PER_CHAT or self._per_user.get(owner, 0) >= MAX_STREAMS_PER_USER:
+                    return None
+                self._per_user[owner] = self._per_user.get(owner, 0) + 1
+                self._owner_of[id(q)] = owner
+            subs.append(q)
         return q
 
     def unsubscribe(self, instance_id: str, q: queue.Queue) -> None:
+        """Safe to call more than once for the same queue."""
         with self._lock:
             subs = self._subscribers.get(instance_id, [])
             if q in subs:
                 subs.remove(q)
+            owner = self._owner_of.pop(id(q), None)
+            if owner is not None:
+                left = self._per_user.get(owner, 1) - 1
+                if left > 0:
+                    self._per_user[owner] = left
+                else:
+                    self._per_user.pop(owner, None)
 
     def add_ws(self, instance_id: str, ws: Any) -> None:
         with self._lock:

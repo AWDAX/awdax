@@ -15,8 +15,20 @@ from awdax_api import orchestrator, pipeline_runner, run_registry  # noqa: E402
 from awdax_api.session_store import load_instance_session, persist_session, set_awdax_run  # noqa: E402
 
 
+def fresh_budgets(test: unittest.TestCase) -> None:
+    """Per-user budgets live for the whole process; each test starts with full ones (same limits)."""
+    from awdax_api import routes
+    from awdax_api.budget import Budget
+
+    for name in ("RUN_BUDGET", "CHAT_BUDGET"):
+        patch = mock.patch.object(routes, name, Budget(getattr(routes, name).limit, getattr(routes, name).window_s))
+        patch.start()
+        test.addCleanup(patch.stop)
+
+
 class _Base(unittest.TestCase):
     def setUp(self):
+        fresh_budgets(self)
         self._dir = tempfile.TemporaryDirectory()
         self._patch = mock.patch.object(ui_sessions, "DB_PATH", Path(self._dir.name) / "t.sqlite")
         self._patch.start()

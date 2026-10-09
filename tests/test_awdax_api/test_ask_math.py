@@ -200,7 +200,7 @@ class _Base(unittest.TestCase):
 
     @staticmethod
     def auth(sub):
-        return {"Authorization": "Bearer " + jwt.encode({"sub": sub}, SECRET, algorithm="HS256")}
+        return {"Authorization": "Bearer " + jwt.encode({"sub": sub, "app_metadata": {"provider": "google"}}, SECRET, algorithm="HS256")}
 
     def ask(self, question, sub="alice", chat=None):
         return self.client.post(f"/api/instances/{chat or self.chat}/ask", json={"question": question}, headers=self.auth(sub))

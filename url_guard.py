@@ -43,6 +43,16 @@ class UnresolvableHost(UnsafeURL):
     """The host name did not resolve; a plain failure rather than a policy block."""
 
 
+def host_is(url: str, host: str) -> bool:
+    """True when the URL's host is `host` or a subdomain of it; never when `host` only appears in a path or query
+    ("https://evil.example/?egazette.gov.in")."""
+    try:
+        h = (urlsplit(url).hostname or "").lower().rstrip(".")
+    except ValueError:
+        return False
+    return h == host or h.endswith("." + host)
+
+
 def _private_allowed() -> bool:
     return os.getenv(ENV_ALLOW_PRIVATE, "").strip().lower() in ("1", "true", "yes")
 

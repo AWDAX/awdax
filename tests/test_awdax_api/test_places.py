@@ -778,7 +778,7 @@ class LocationRouteTests(unittest.TestCase):
 
     @property
     def _jwt(self):
-        return {"Authorization": "Bearer " + jwt.encode({"sub": "u1"}, self.SECRET, algorithm="HS256")}
+        return {"Authorization": "Bearer " + jwt.encode({"sub": "u1", "app_metadata": {"provider": "google"}}, self.SECRET, algorithm="HS256")}
 
     @property
     def _proxy(self):

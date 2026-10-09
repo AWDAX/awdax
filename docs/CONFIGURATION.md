@@ -8,7 +8,7 @@ Every setting is an environment variable, read from `.env` in the repository roo
 | Setting | Why |
 |---|---|
 | `GEMINI_API_KEY` | The model plans requests, ranks websites and reads pages. Without it nothing can run. Get a key at https://aistudio.google.com/apikey. |
-| `SUPABASE_URL` | Every request must prove who sent it. The backend checks the Supabase sign-in token against `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`. Without it, sign-in fails with "Your sign-in could not be verified". |
+| `SUPABASE_URL` | Every request must prove who sent it. The backend checks the Supabase sign-in token against `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`. Without it, sign-in fails with "Your sign-in could not be verified". Only Google sign-ins are accepted: turn off the Email and Anonymous providers in Supabase too. |
 | `API_KEY_PEPPER` | Secret mixed into the hash of every API key. Generate once (`python -c "import secrets; print(secrets.token_urlsafe(48))"`) and never change it: a new value invalidates every key. |
 | `GOOGLE_MAPS_API_KEY` | Only for local-business and "leads" requests. Enable *Places API (New)* (required) and *Geocoding API* and restrict the key to them. Without it those requests use ordinary web discovery. |
 

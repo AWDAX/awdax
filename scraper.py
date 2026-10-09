@@ -563,6 +563,21 @@ class UniversalScrapeService:
         finally:
             conn.close()
 
+    def delete_job(self, job_id: str | None) -> None:
+        """Remove everything a job left behind: rows, merged table, and its prompt, plans and sources. For a deleted
+        chat or a replaced run, so a user's prompt doesn't outlive their chat."""
+        if not job_id:
+            return
+        init_universal_tables()
+        conn = _get_db()
+        try:
+            with conn:
+                for table in ("records", "merged_tables", "scrape_plans", "sources"):
+                    conn.execute(f"DELETE FROM {table} WHERE job_id=?", (job_id,))  # noqa: S608 - fixed names
+                conn.execute("DELETE FROM scrape_jobs WHERE id=?", (job_id,))
+        finally:
+            conn.close()
+
     def save_merged_table(self, job_id: str, table: dict[str, Any]) -> None:
         init_universal_tables()
         conn = _get_db()

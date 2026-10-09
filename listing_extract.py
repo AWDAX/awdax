@@ -12,6 +12,7 @@ from urllib.parse import urljoin, urlsplit
 from discovery import fetch_html
 from inspector import ScrapePlan
 from reasoning import ScrapeIntent
+from url_guard import host_is
 
 logger = logging.getLogger(__name__)
 
@@ -320,7 +321,7 @@ def _extract_listing_rows(
 
 def _is_regulatory_table_plan(plan: ScrapePlan) -> bool:
     url = (plan.entry_url or plan.source_url or "").lower()
-    return plan.table_selector == "#gvGazetteList" or "egazette.gov.in" in url
+    return plan.table_selector == "#gvGazetteList" or host_is(url, "egazette.gov.in")
 
 
 def visible_text_length(html: str) -> int:

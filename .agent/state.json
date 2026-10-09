@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "AWDAX",
   "created": "2026-10-02T07:37:28.133Z",
-  "updated": "2026-10-03T13:02:46.936Z",
+  "updated": "2026-10-09T13:32:03.072Z",
   "phase": "Frontend audit and safe remediation planning",
   "active": null,
   "tasks": [
@@ -809,6 +809,225 @@
         "failures": [],
         "stop": null
       }
+    },
+    {
+      "id": "S1",
+      "title": "Security: fail closed without the proxy secret, empty user id sees nothing, per-user browser storage (A7)",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T15:10:50.553Z",
+          "codeHash": "8c9e8b63fef2340933a1d2c98042f2216e8b7cf1e7c6140dad922a1a9dde616a"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T15:11:12.675Z",
+          "codeHash": "8c9e8b63fef2340933a1d2c98042f2216e8b7cf1e7c6140dad922a1a9dde616a",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T15:11:20.700Z",
+          "text": "Fail closed: get_user_id refuses (401) with no PROXY_SHARED_SECRET unless AWDAX_INSECURE_DEV_AUTH=1 (local dev; added to local .env, documented in AGENTS.md/LOCAL_DEV.md/SITE_STATUS.md/.env.example names); X-User-Id stripped before use; ui_sessions list/get/delete use 'is not None' so '' matches nothing; Pages proxy answers 503 without PROXY_SHARED_SECRET. A7 decided per plan: accountKey() gives the browser's first account its existing keys and every other account base@account (same owner rule as filesDbName) for answers, dashboard, graphs, visits, alerts and file-chat cleanup; alerts also survive a stored 'null'. Tests: 200 + 8 backend OK (new: blank id sees nothing, SSE + WebSocket refuse other users, unconfigured server refuses all, dev-only anonymous), proxy 7/7, frontend gate PASS. Live check over HTTP: A and B each list only their own chat, B gets 404 on A's chat and dataset, blank ids see neither."
+        }
+      ],
+      "started": "2026-10-03T15:03:18.033Z",
+      "finished": "2026-10-03T15:11:21.352Z",
+      "blockedReason": null,
+      "base": "d741b6877fa8bbfc0e338c7576c0bfddae617b80",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "S2",
+      "title": "Security hardening from review: Chrome sandbox + redirect re-check, Google-only identities, run/stream/limit caps, robots.txt, eGazette host + PDF caps, regex input cap, privacy page + full chat deletion",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T15:29:06.489Z",
+          "codeHash": "8739ce78f3419ba479c707e7798819f60dc7299269ea647ffe89439460027a07"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-03T15:37:40.905Z",
+          "codeHash": "8739ce78f3419ba479c707e7798819f60dc7299269ea647ffe89439460027a07",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/",
+              "/app/demo/*",
+              "/app/c/*"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 8,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-03T15:37:46.420Z",
+          "text": "Without a spoofed user agent, headless Chrome announces 'HeadlessChrome' and some sites (Gadgets360: Access Denied) refuse it; tested 3 Oct: UA alone restores it, the blink flag does not. Real phones run failed 0 rows (Gadgets360 403, model-guessed MySmartPrice URLs 404, NVIDIA 503/timeouts). Owner decides whether to send a normal browser UA.",
+          "kind": "finding"
+        },
+        {
+          "ts": "2026-10-03T15:37:46.657Z",
+          "text": "Reviewer finding 4 (model-supplied job_id) not reachable: parse_prompt overwrites job_id after the model's fields and its only caller passes none.",
+          "kind": "finding"
+        }
+      ],
+      "started": "2026-10-03T15:11:22.749Z",
+      "finished": "2026-10-03T15:37:47.380Z",
+      "blockedReason": null,
+      "base": "aa36e8fe7aeddb5566939cb56c60e413d5d148e1",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
+    },
+    {
+      "id": "S3",
+      "title": "Backend verifies Supabase ES256 tokens itself (Oracle serves frontend+backend, no Pages proxy)",
+      "state": "BLOCKED",
+      "deps": [],
+      "attempts": 2,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-09T13:22:44.107Z",
+          "codeHash": "8bdd3368c9e1e692ac5dee4083afe61845f685555417c3e2972e2fb29b53a430"
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-09T13:22:44.330Z",
+          "text": "Main (PR #28, 7 Oct) already verifies ES256 tokens against SUPABASE_URL's JWKS and is strict by default; S3 adds only the Google-only check. Work moved to branch fix/security-port from origin/main; fix/security-hardening (S1/S2) kept as reference, its S1 is superseded by main.",
+          "kind": "caveat"
+        },
+        {
+          "ts": "2026-10-09T13:22:44.514Z",
+          "text": "Backend 516/518: test_discovery_order time-budget test fails on clean origin/main too (pre-existing); test_mcp_server not run locally (httpx missing from local venv, declared in requirements.txt), CI covers it.",
+          "kind": "limitation"
+        },
+        {
+          "ts": "2026-10-09T13:24:12.050Z",
+          "text": "Superseded by S4. S3's base is f2fbe78 on fix/security-hardening, which is not an ancestor of fix/security-port (built on origin/main 7d82a86), so done demanded delivery evidence for main's Dockerfile/CI. loop start keeps an existing base, so the work continues as S4. S3's Google-only change is carried into S4 unchanged.",
+          "kind": "followup"
+        }
+      ],
+      "started": "2026-10-09T13:23:15.091Z",
+      "finished": null,
+      "blockedReason": "Superseded by S4: its base commit is on the old branch and no command moves it",
+      "base": "f2fbe78d9ac5691d984ec6ea55e532334d7fb421",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      },
+      "blocked": {
+        "category": "TOOL",
+        "why": "Superseded by S4: its base commit is on the old branch and no command moves it",
+        "needs": "Owner waives S3 (resolution: waived); the work is done under S4",
+        "at": "2026-10-09T13:24:12.236Z",
+        "attempts": 2,
+        "failures": []
+      }
+    },
+    {
+      "id": "S4",
+      "title": "Security on main: Google-only sign-in + port S2 hardening main lacks (robots.txt, chat/run budgets, stream caps, delete_job, PDF caps, exact host checks, max_pages clamp, regex cap, privacy page)",
+      "state": "DONE",
+      "deps": [],
+      "attempts": 1,
+      "evidence": {
+        "code": {
+          "verdict": "PASS",
+          "recorded": "2026-10-09T13:32:01.308Z",
+          "codeHash": "0f172b73851a91b25d05e32678fb1346f70b1e17c15a8a897ee871bfaf110764"
+        },
+        "ui": {
+          "verdict": "PASS",
+          "recorded": "2026-10-09T13:32:01.845Z",
+          "codeHash": "0f172b73851a91b25d05e32678fb1346f70b1e17c15a8a897ee871bfaf110764",
+          "coverage": {
+            "routes": [
+              "/app",
+              "/privacy"
+            ],
+            "viewports": [
+              "mobile",
+              "desktop"
+            ],
+            "states": [
+              "default"
+            ],
+            "checks": 4,
+            "consoleErrors": 0,
+            "failedRequests": 0
+          }
+        }
+      },
+      "notes": [
+        {
+          "ts": "2026-10-09T13:32:02.065Z",
+          "text": "Kept main's browser.py (always --no-sandbox): its Docker image runs Chrome as non-root user awdax, where Docker's default seccomp blocks Chrome's sandbox anyway. S2's sandbox change and its evasion-flag removal were not ported; main exposes hide_automation as an opt-in.",
+          "kind": "caveat"
+        },
+        {
+          "ts": "2026-10-09T13:32:02.290Z",
+          "text": "Not ported, main already covers: max_pages clamp (MAX_PAGES_LIMIT), regex cap in listing_extract (main parses tables with HTMLParser), ask budget (main's _over_budget). routes.py is 335 lines (main had 392) after moving the live stream routes to live_routes.py.",
+          "kind": "limitation"
+        },
+        {
+          "ts": "2026-10-09T13:32:02.482Z",
+          "text": "Backend 535/537 locally: test_discovery_order time-budget test fails on clean origin/main too; test_mcp_server not run (httpx missing from local venv, declared in requirements.txt), CI covers it.",
+          "kind": "limitation"
+        }
+      ],
+      "started": "2026-10-09T13:24:13.230Z",
+      "finished": "2026-10-09T13:32:03.070Z",
+      "blockedReason": null,
+      "base": "7d82a862f44806b74fd632004e5ec307c055748a",
+      "recovery": {
+        "round": 0,
+        "failures": [],
+        "stop": null
+      }
     }
   ],
   "log": [
@@ -1291,7 +1510,162 @@
       "ts": "2026-10-03T13:02:46.936Z",
       "event": "done",
       "detail": "Q15 (code:PASS)"
+    },
+    {
+      "ts": "2026-10-03T15:03:17.239Z",
+      "event": "add",
+      "detail": "S1 Security: fail closed without the proxy secret, empty user id sees nothing, per-user browser storage (A7)"
+    },
+    {
+      "ts": "2026-10-03T15:03:17.459Z",
+      "event": "add",
+      "detail": "S2 Security hardening from review: Chrome sandbox + redirect re-check, Google-only identities, run/stream/limit caps, robots.txt, eGazette host + PDF caps, regex input cap, privacy page + full chat deletion"
+    },
+    {
+      "ts": "2026-10-03T15:03:18.033Z",
+      "event": "start",
+      "detail": "S1 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T15:10:50.592Z",
+      "event": "evidence",
+      "detail": "S1/code PASS"
+    },
+    {
+      "ts": "2026-10-03T15:11:12.712Z",
+      "event": "evidence",
+      "detail": "S1/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T15:11:20.700Z",
+      "event": "note",
+      "detail": "S1: Fail closed: get_user_id refuses (401) with no PROXY_SHARED_"
+    },
+    {
+      "ts": "2026-10-03T15:11:21.355Z",
+      "event": "done",
+      "detail": "S1 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T15:11:22.749Z",
+      "event": "start",
+      "detail": "S2 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-03T15:29:06.527Z",
+      "event": "evidence",
+      "detail": "S2/code PASS"
+    },
+    {
+      "ts": "2026-10-03T15:37:40.942Z",
+      "event": "evidence",
+      "detail": "S2/ui PASS"
+    },
+    {
+      "ts": "2026-10-03T15:37:46.420Z",
+      "event": "note",
+      "detail": "S2 [finding]: Without a spoofed user agent, headless Chrome announces 'Hea"
+    },
+    {
+      "ts": "2026-10-03T15:37:46.657Z",
+      "event": "note",
+      "detail": "S2 [finding]: Reviewer finding 4 (model-supplied job_id) not reachable: pa"
+    },
+    {
+      "ts": "2026-10-03T15:37:47.382Z",
+      "event": "done",
+      "detail": "S2 (code:PASS ui:PASS)"
+    },
+    {
+      "ts": "2026-10-03T15:46:54.791Z",
+      "event": "add",
+      "detail": "S3 Backend verifies Supabase ES256 tokens itself (Oracle serves frontend+backend, no Pages proxy)"
+    },
+    {
+      "ts": "2026-10-03T15:46:55.348Z",
+      "event": "start",
+      "detail": "S3 (attempt 1, checkpoint clean tree)"
+    },
+    {
+      "ts": "2026-10-09T13:22:44.139Z",
+      "event": "evidence",
+      "detail": "S3/code PASS"
+    },
+    {
+      "ts": "2026-10-09T13:22:44.330Z",
+      "event": "note",
+      "detail": "S3 [caveat]: Main (PR #28, 7 Oct) already verifies ES256 tokens against S"
+    },
+    {
+      "ts": "2026-10-09T13:22:44.514Z",
+      "event": "note",
+      "detail": "S3 [limitation]: Backend 516/518: test_discovery_order time-budget test fails"
+    },
+    {
+      "ts": "2026-10-09T13:23:14.347Z",
+      "event": "retry",
+      "detail": "S3 after attempt 1"
+    },
+    {
+      "ts": "2026-10-09T13:23:15.091Z",
+      "event": "start",
+      "detail": "S3 (attempt 2, checkpoint 2026-10-09T13-23-14-890)"
+    },
+    {
+      "ts": "2026-10-09T13:24:11.861Z",
+      "event": "retry",
+      "detail": "S3 after attempt 2"
+    },
+    {
+      "ts": "2026-10-09T13:24:12.050Z",
+      "event": "note",
+      "detail": "S3 [followup]: Superseded by S4. S3's base is f2fbe78 on fix/security-harde"
+    },
+    {
+      "ts": "2026-10-09T13:24:12.236Z",
+      "event": "block",
+      "detail": "S3 [TOOL]: Superseded by S4: its base commit is on the old branch and no command moves it — needs Owner waives S3 (resolution: waived); the work is done under S4"
+    },
+    {
+      "ts": "2026-10-09T13:24:12.449Z",
+      "event": "add",
+      "detail": "S4 Security on main: Google-only sign-in + port S2 hardening main lacks (robots.txt, chat/run budgets, stream caps, delete_job, PDF caps, exact host checks, max_pages clamp, regex cap, privacy page)"
+    },
+    {
+      "ts": "2026-10-09T13:24:13.231Z",
+      "event": "start",
+      "detail": "S4 (attempt 1, checkpoint 2026-10-09T13-24-13-019)"
+    },
+    {
+      "ts": "2026-10-09T13:32:01.342Z",
+      "event": "evidence",
+      "detail": "S4/code PASS"
+    },
+    {
+      "ts": "2026-10-09T13:32:01.881Z",
+      "event": "evidence",
+      "detail": "S4/ui PASS"
+    },
+    {
+      "ts": "2026-10-09T13:32:02.065Z",
+      "event": "note",
+      "detail": "S4 [caveat]: Kept main's browser.py (always --no-sandbox): its Docker ima"
+    },
+    {
+      "ts": "2026-10-09T13:32:02.290Z",
+      "event": "note",
+      "detail": "S4 [limitation]: Not ported, main already covers: max_pages clamp (MAX_PAGES_"
+    },
+    {
+      "ts": "2026-10-09T13:32:02.482Z",
+      "event": "note",
+      "detail": "S4 [limitation]: Backend 535/537 locally: test_discovery_order time-budget te"
+    },
+    {
+      "ts": "2026-10-09T13:32:03.072Z",
+      "event": "done",
+      "detail": "S4 (code:PASS ui:PASS)"
     }
   ],
-  "integrity": "475732c624a7891ca4d0c37161327410937b30b5a032016b7f9f4b4f34cab251"
+  "integrity": "4b758575600bc581fbbfce150042e60333ea8d01abdf76b0d0efbc334bb95203"
 }
